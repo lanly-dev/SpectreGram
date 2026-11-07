@@ -14,6 +14,8 @@ let audioBuffer: AudioBuffer | null = null;
 let sampleRate = 0;
 let claimedFormat = 'Unknown';
 let lastGrid: DbGrid | null = null;
+// Base name (no extension) of the file being analyzed — names the PNG export.
+let currentBaseName = 'spectregram';
 
 // Playback state (optional playhead — analyzer, not a player).
 let playCtx: AudioContext | null = null;
@@ -127,6 +129,8 @@ async function handleFile(file: File): Promise<void> {
   // Cancel any in-flight analysis and playback before starting fresh.
   teardownWorker();
   stopPlayback();
+  const dot = file.name.lastIndexOf('.');
+  currentBaseName = dot > 0 ? file.name.slice(0, dot) : file.name || 'spectregram';
   setVerdict('');
   setProgress(0);
   setStatus('Decoding…');
@@ -206,10 +210,18 @@ function setupPng(): void {
     if (!canvas) return;
     try {
       const blob = await exportPng(canvas);
+      const fileName = `${currentBaseName}-spectrogram.png`;
+      // Desktop: native save dialog via the preload bridge. Web: download.
+      const desktop = window.spectregramDesktop;
+      if (desktop) {
+        const saved = await desktop.savePng(await blob.arrayBuffer(), fileName);
+        setStatus(saved ? `Saved ${fileName}` : 'Save cancelled.');
+        return;
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'spectregram.png';
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -218,6 +230,26 @@ function setupPng(): void {
       console.error('export failed:', e);
       setStatus('Export failed.');
     }
+  });
+}
+
+// Desktop only: files opened with / passed to the app arrive as paths. Read
+// the bytes through the bridge and hand them to the exact same handleFile
+// path as a drop or pick (wrapped in a File), so analysis is identical.
+function setupDesktopOpenFile(): void {
+  const desktop = window.spectregramDesktop;
+  if (!desktop) return;
+  desktop.onOpenFile((filePath) => {
+    void (async () => {
+      try {
+        const buffer = await desktop.readFile(filePath);
+        const name = filePath.split(/[\\/]/).pop() ?? 'audio';
+        await handleFile(new File([buffer], name));
+      } catch (e) {
+        console.error('open-file failed:', e);
+        setStatus('Could not open that file.');
+      }
+    })();
   });
 }
 
@@ -296,6 +328,7 @@ function init(): void {
   setupPaletteToggle();
   setupPng();
   setupPlay();
+  setupDesktopOpenFile();
   setStatus('Drop an audio file or pick one to begin.');
   window.addEventListener('beforeunload', () => {
     teardownWorker();

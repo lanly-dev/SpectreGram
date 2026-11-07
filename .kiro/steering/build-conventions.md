@@ -29,8 +29,10 @@ idea, not the source.
   corrupts every verdict downstream.
 - **Tests:** Vitest, for `cutoff.ts` only — lock thresholds against the
   genuine-FLAC vs fake-FLAC test pair. No e2e suite in v1.
-- **Hosting:** static only (GitHub Pages) — no server, no Next.js, no
-  Electron/Tauri.
+- **Packaging:** Electron desktop app (installers via electron-builder);
+  the same web build is kept as a static demo (GitHub Pages). No server,
+  no Next.js. (Electron pivot DECIDED 2026-11-06 — supersedes the earlier
+  static-only lock; see `AGENTS.md`.)
 
 ## File structure (spec tasks map 1:1)
 ```

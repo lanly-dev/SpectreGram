@@ -1,6 +1,7 @@
 # SpectreGram 👻
 
-An in-browser acoustic spectrum analyser — a clean-room reimagining of
+A desktop acoustic spectrum analyser — with the same build also running
+in the browser as a no-install demo — a clean-room reimagining of
 [Spek](https://github.com/alexkay/spek) for the file-era audio inspector who
 refused to move on. Drop in an audio file; get the full-track spectrogram, an
 estimate of the true frequency cutoff, and a verdict: is this file what it
@@ -14,7 +15,9 @@ Spek was the audiophile's x-ray: a desktop tool that showed you whether your
 local-library world that needed it, and desktop installers got hard to
 justify. SpectreGram brings the idea back, reimagined:
 
-- **No install.** Runs entirely in the browser — your files never leave the tab.
+- **A real desktop app again** — Electron shell, open-with file routing,
+  native save dialog. Your files never leave your machine.
+- **No-install demo.** The identical build also runs in the browser.
 - **An automated verdict**, not a graph you squint at.
 - **A haunted spectrogram** as the visual centerpiece, not a grey utility plot.
 
@@ -33,16 +36,41 @@ before implementation code.
 
 ## Stack
 Vite + TypeScript (vanilla, no framework) · Canvas 2D · Web Audio
-`decodeAudioData` · STFT in a Web Worker · `fft.js` · Vitest. Static hosting
-only. Full locked requirements in `AGENTS.md`.
+`decodeAudioData` · STFT in a Web Worker · `fft.js` · Vitest · Electron +
+electron-builder for the desktop shell. Full locked requirements in
+`AGENTS.md`.
+
+## Run it
+
+Desktop (the product):
+
+```sh
+npm install
+npm run desktop        # build + launch the Electron app
+npm run electron:dev   # dev loop: Vite HMR + Electron shell
+npm run dist           # installer for your OS (win NSIS · mac dmg · linux AppImage)
+```
+
+Web demo (same code): `npm run dev`, or `npm run build` + any static host.
+
+Release installers are unsigned in v1 — Windows SmartScreen / macOS
+Gatekeeper will warn on first launch; that's expected.
 
 ## Status
-Functional core implemented and pushed (`main` @ `6c4e4a1`): decode → STFT
-(Web Worker, fft.js) → cutoff/verdict → Canvas render → PNG export. Build +
-Vitest (8/8) green. Spec-first artifacts in `/.kiro/specs/spectregram/`.
+Functional core implemented (`main` @ `6c4e4a1`): decode → STFT
+(Web Worker, fft.js) → cutoff/verdict → Canvas render → PNG export.
+Spec-first artifacts in `/.kiro/specs/spectregram/`.
+
+**Desktop shell implemented** (Electron, per `/.kiro/specs/electron-shell/`):
+window + `app://` protocol, preload bridge (native PNG save dialog,
+open-with routing), web build behavior unchanged. Verified headless on
+Linux: unpackaged, packaged, and AppImage builds all pass an
+open-file → verdict smoke on a synthetic genuine (20.5 kHz) vs fake-FLAC
+(15.6 kHz, "costume") pair; build + Vitest (10/10) green. Windows/macOS
+installers not yet built; no GitHub Release yet.
 
 **Active:** one review blocker (B1 — a cutoff edge case); fix + regression
-tests are in the working tree, **uncommitted & unverified**. **Pending:**
+tests are in a local working tree, **uncommitted & unverified**. **Pending:**
 real-file calibration of cutoff thresholds (AGENTS.md #3) and a deferred
 Halloween-styling pass. See `AGENTS.md` → Status & Open decisions for the
 full picture.

@@ -5,7 +5,8 @@
 > product context Kiro sessions always need.
 
 ## What it is
-SpectreGram is an in-browser acoustic spectrum analyser — a clean-room
+SpectreGram is a desktop acoustic spectrum analyser (Electron) — the same
+build also runs in the browser as a demo — a clean-room
 reimagining of Spek (https://github.com/alexkay/spek). Drop an audio file in
 and it renders the full-track spectrogram, estimates the true frequency
 cutoff, and gives a verdict: is this file what it claims to be, or a
@@ -13,7 +14,8 @@ low-bitrate file in a lossless costume?
 
 ## The pitch (Kiroween "Resurrection")
 The dead tech is file-era audio inspection (Spek and its kin). Today's
-innovations: fully in-browser (no install, files never leave the device), an
+innovations: a real desktop app like the original (files never leave the
+machine; the web build is a no-install demo of the same code), an
 automated verdict instead of reading the graph by eye, and a spectrogram
 rendered as a haunted visual centerpiece rather than a grey utility plot.
 
@@ -31,8 +33,8 @@ rendered as a haunted visual centerpiece rather than a grey utility plot.
 ## Non-goals (hard caps)
 - This is an analyzer, not a player: no playlist, no skins, no library
   management.
-- No server, no uploads, no accounts. "Your files never leave this tab" is a
-  feature — keep it true.
+- No server, no uploads, no accounts. "Your files never leave your machine"
+  is a feature — keep it true.
 - No claim of proof: the cutoff heuristic can be fooled; always present the
   verdict as an estimate in UI and every write-up.
 
