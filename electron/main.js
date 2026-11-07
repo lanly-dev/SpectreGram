@@ -4,7 +4,7 @@
 // the renderer (Web Audio + module Web Worker), exactly as in the web build.
 // Spec: /.kiro/specs/electron-shell/
 
-import { app, BrowserWindow, dialog, ipcMain, net, protocol } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -114,12 +114,97 @@ function registerIpc() {
   });
 }
 
+// --- Native menu (File / Help) --------------------------------------------
+
+function menuOpen() {
+  if (!mainWindow) return;
+  void dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [{ name: 'Audio files', extensions: [...AUDIO_EXTS].sort() }],
+  }).then((result) => {
+    if (result.canceled || !result.filePaths.length) return;
+    queueOpenFile(result.filePaths[0]);
+  });
+}
+
+function menuSave() {
+  if (mainWindow) mainWindow.webContents.send('sg:save-png');
+}
+
+function menuQuit() {
+  app.quit();
+}
+
+function menuLanguage() {
+  if (!mainWindow) return;
+  void dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: 'Language',
+    message: 'Interface language',
+    detail: 'Language selection will arrive in a later release.',
+  });
+}
+
+function menuAbout() {
+  if (!mainWindow) return;
+  void dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: 'About SpectreGram',
+    message: 'SpectreGram',
+    detail: 'Acoustic spectrum analyser and lossy-disguise verdict.\nYour files never leave your machine.\nMIT license — Kiroween 2026.',
+  });
+}
+
+function menuDevTools() {
+  if (mainWindow) mainWindow.webContents.toggleDevTools();
+}
+
+function buildMenu() {
+  const template = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Open...',
+          accelerator: process.platform === 'darwin' ? 'Cmd+O' : 'Ctrl+O',
+          click: menuOpen,
+        },
+        {
+          label: 'Save',
+          accelerator: process.platform === 'darwin' ? 'Cmd+S' : 'Ctrl+S',
+          click: menuSave,
+        },
+        { type: 'separator' },
+        {
+          label: 'Quit',
+          accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
+          click: menuQuit,
+        },
+      ],
+    },
+    {
+      label: 'Help',
+      submenu: [
+        { label: 'Language', click: menuLanguage },
+        { label: 'About', click: menuAbout },
+        { type: 'separator' },
+        {
+          label: 'Developer Tools',
+          accelerator: process.platform === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I',
+          click: menuDevTools,
+        },
+      ],
+    },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 840,
-    minWidth: 900,
-    minHeight: 600,
+    width: 666,
+    height: 366,
+    minWidth: 320,
+    minHeight: 240,
     title: 'SpectreGram',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -207,6 +292,7 @@ async function runSmoke() {
 app.whenReady().then(() => {
   registerProtocol();
   registerIpc();
+  buildMenu();
   createWindow();
   const coldPath = pathFromArgv(process.argv) || (SMOKE_FILE ? path.resolve(SMOKE_FILE) : null);
   if (coldPath) queueOpenFile(coldPath);

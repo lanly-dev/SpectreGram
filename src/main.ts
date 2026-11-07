@@ -202,30 +202,52 @@ function setupPaletteToggle(): void {
   });
 }
 
+function savePngFromCanvas(): Promise<boolean> {
+  const canvas = el<HTMLCanvasElement>('canvas');
+  if (!canvas) return Promise.resolve(false);
+  const fileName = `${currentBaseName}-spectrogram.png`;
+  // Desktop: native save dialog via the preload bridge. Web: download.
+  const desktop = window.spectregramDesktop;
+  if (desktop) {
+    return exportPng(canvas)
+      .then((blob) => blob.arrayBuffer())
+      .then((ab) => desktop.savePng(ab, fileName));
+  }
+  return exportPng(canvas).then((blob) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  });
+}
+
 function setupPng(): void {
   const btn = $('png-btn');
   if (!btn) return;
   btn.addEventListener('click', async () => {
-    const canvas = el<HTMLCanvasElement>('canvas');
-    if (!canvas) return;
     try {
-      const blob = await exportPng(canvas);
-      const fileName = `${currentBaseName}-spectrogram.png`;
-      // Desktop: native save dialog via the preload bridge. Web: download.
-      const desktop = window.spectregramDesktop;
-      if (desktop) {
-        const saved = await desktop.savePng(await blob.arrayBuffer(), fileName);
-        setStatus(saved ? `Saved ${fileName}` : 'Save cancelled.');
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const saved = await savePngFromCanvas();
+      setStatus(saved ? `Saved ${currentBaseName}-spectrogram.png` : 'Save cancelled.');
+    } catch (e) {
+      console.error('export failed:', e);
+      setStatus('Export failed.');
+    }
+  });
+}
+
+/** File > Save menu: paint the spectrogram PNG and save it through the bridge. */
+function setupMenuSave(): void {
+  const desktop = window.spectregramDesktop;
+  if (!desktop) return;
+  desktop.onSavePng(async () => {
+    try {
+      const saved = await savePngFromCanvas();
+      setStatus(saved ? `Saved ${currentBaseName}-spectrogram.png` : 'Save cancelled.');
     } catch (e) {
       console.error('export failed:', e);
       setStatus('Export failed.');
@@ -327,6 +349,7 @@ function init(): void {
   setupIntake();
   setupPaletteToggle();
   setupPng();
+  setupMenuSave();
   setupPlay();
   setupDesktopOpenFile();
   setStatus('Drop an audio file or pick one to begin.');

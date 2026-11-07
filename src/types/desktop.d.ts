@@ -10,6 +10,8 @@ export interface SpectreGramDesktop {
   readFile(filePath: string): Promise<ArrayBuffer>;
   /** Subscribe to open-with events; returns an unsubscribe function. */
   onOpenFile(callback: (filePath: string) => void): () => void;
+  /** File > Save menu: renderer paints the spectrogram PNG and saves it. */
+  onSavePng(callback: () => void): () => void;
 }
 
 declare global {

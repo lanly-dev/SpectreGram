@@ -15,4 +15,10 @@ contextBridge.exposeInMainWorld('spectregramDesktop', {
     ipcRenderer.on('sg:open-file', listener);
     return () => ipcRenderer.removeListener('sg:open-file', listener);
   },
+  /** File > Save menu: renderer paints the spectrogram PNG and saves it. */
+  onSavePng: (callback) => {
+    const listener = (_event) => callback();
+    ipcRenderer.on('sg:save-png', listener);
+    return () => ipcRenderer.removeListener('sg:save-png', listener);
+  },
 });

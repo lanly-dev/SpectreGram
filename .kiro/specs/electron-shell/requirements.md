@@ -15,7 +15,7 @@ Ship SpectreGram as an installable desktop app (Windows / macOS / Linux) like th
 6. **Credit discipline:** this is packaging, not core. Plain-JS main process (no TS build step for main, no electron-vite). If a task starts growing, cut it, don't gold-plate it.
 
 ### Functional requirements
-- F1. App launches to the existing UI in a native window (default ~1280×840, min ~900×600), title "SpectreGram", app icon (placeholder ghost mark acceptable for v1; final icon is a flair-pass item).
+- F1. App launches to the existing UI in a native window (default ~666×366, min ~320×240), title "SpectreGram", app icon (placeholder ghost mark acceptable for v1; final icon is a flair-pass item).
 - F2. Drag-and-drop and file-pick work exactly as in the browser (Chromium File API — no change needed).
 - F3. PNG export uses the native Save dialog on desktop (default filename derived from the audio file name, e.g. `<name>-spectrogram.png`); on web it keeps the current download behavior.
 - F4. "Open With / double-click an audio file" launches (or focuses) the app and analyzes that file (Windows/macOS file association for mp3/flac/wav/ogg/m4a/opus/aac; second-instance opens route to the running window).

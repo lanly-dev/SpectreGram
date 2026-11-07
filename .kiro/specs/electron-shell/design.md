@@ -16,7 +16,7 @@ Everything else is untouched. DevDeps added: `electron`, `electron-builder` (pin
 - **Loading strategy (Risk R1):** ES-module workers + module scripts are unreliable over `file://`. Do NOT `loadFile` blindly. Serve `dist/` to the window via a custom `app://` protocol (`protocol.handle`, modern Electron) mapped to the dist folder, and load `app://bundle/index.html`. In dev, load the Vite dev-server URL (`http://localhost:5173`) when `ELECTRON_DEV=1`, so HMR still works.
   - Fallback if `app://` misbehaves with the worker: tiny localhost static server in main (127.0.0.1, ephemeral port). Either way, acceptance check F5 is run against the PACKAGED build before calling this done.
 - Single-instance lock; `second-instance` + macOS `open-file` events forward the file path to the renderer via the preload bridge (§2.3) once the window is ready; cold-start file path is held and delivered after `did-finish-load`.
-- Minimal native menu (default Electron menu is fine; remove nothing the OS expects, add nothing custom in v1).
+- Custom native menu (File: Open… / Save / Quit; Help: Language / About / Developer Tools), in addition to OS menu defaults.
 
 ### 2.3 Preload bridges (the only renderer changes)
 ```js
