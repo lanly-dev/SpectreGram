@@ -3,3 +3,7 @@ dist
 release
 *.local
 package-lock.json
+
+# Agent task artifacts are transient and must not be committed — they record
+# absolute local paths. Keep .agents/ out of the repo.
+.agents/
