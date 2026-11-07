@@ -1,0 +1,16 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": "B1",
+      "severity": "blocker",
+      "file": "src/audio/cutoff.ts",
+      "lines": "165-169",
+      "summary": "Final contiguous run is dropped: a valid run reaching the Nyquist bin is reported as cutoff 0.",
+      "evidence": "The else-branch run-completion updates both bestLen and bestEnd, but the final-run check (lines 165-166) updates only bestEnd = curEnd and leaves bestLen at its initial 0. The guard 'if (bestLen === 0) return { cutoffBin: 0, cutoffHz: 0 }' then returns cutoff 0 even though a valid run was found. Trigger: an above-threshold run that extends to the last bin (Nyquist) with all below-threshold bins before it (e.g. quiet low-frequency region >=5% of bins, then sustained energy to Nyquist). The P5-across-bins floor guarantees >=5% of bins are below threshold; when concentrated at the low end, the lone run reaching Nyquist is the 'final run' and is dropped. The locked Vitest suite does not cover it (all bandGrid fixtures place noise above the run).",
+      "consequence": "A genuine lossless file with energy extending to Nyquist is misreported as cutoff 0 -> verdict 'No clear cutoff detected. (estimate)' instead of 'consistent with genuine lossless', defeating the product's core verdict for that input. The common acceptance-case pair (roll-off before Nyquist vs 128k-MP3 cliff) is unaffected.",
+      "correction": "Update bestLen in the final-run check so the guard fires only when no run exists: 'if (curLen > bestLen) { bestLen = curLen; bestEnd = curEnd; }' (equivalently, use bestEnd === -1 as the no-run sentinel)."
+    }
+  ],
+  "reviewDoc": ".agents/tasks/spectregram-core/review.md"
+}
