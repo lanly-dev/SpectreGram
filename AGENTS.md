@@ -5,7 +5,9 @@ Kiroween 2026 entry — **Resurrection**. Read this file first in every session 
 ## Status
 - Name **SpectreGram** — confirmed 2026-11-06. Collision check run 2026-11-06: no established audio/spectrogram app or GitHub project with this exact name found; minor distant hits only (a Ludum Dare game and a DEF CON acoustic-research tool both spelled "Spectregram", plus spam Instagram-viewer pages) — low risk, different domains. Never name it "Spek" — Spek is a real open-source project; we revive its idea, not its name.
 - Stack **DECIDED 2026-11-06: Vite + TypeScript, vanilla (no framework)** — full locked requirements in the Stack section below.
-- Repo `lanly-dev/spectregram` — **not yet created**. Do not create it, register anything, or request credits until explicit go is given in this project's side chat.
+- Repo `lanly-dev/SpectreGram` — **created; remote set** (origin → https://github.com/lanly-dev/SpectreGram.git). Functional core committed & pushed: `main` @ `6c4e4a1` (`dcad27c` = initial scaffold). No credits requested.
+- Build **(2026-11-06) functional core implemented & verified green** at `6c4e4a1`: `npm run build` ✓, Vitest `cutoff.ts` 8/8 ✓ (incl. band-limited<full-bandwidth and genuine-vs-fake on synthetic grids), dev smoke ✓. Spec-first: `design.md` + `tasks.md` in `.kiro/specs/spectregram/`. **Review verdict: CHANGES_REQUESTED — one blocker B1** (see Open decisions). Build loop stopped at user request; user continuing manually.
+- Working tree: uncommitted edits to `src/audio/cutoff.ts` (+1: `bestLen = curLen;`) and `src/audio/cutoff.test.ts` (+64: new "run reaching Nyquist (final-run regression)" describe block, 2 tests) — the interrupted pass's **B1 fix + regression tests, UNVERIFIED** (build/test not re-run after these edits). `review.md`/`review.json` untracked. Run `npm run build && npm run test` before committing.
 - Deadline: **Fri Dec 4, 2026, 2:00 PM PT**. Shared credit pool rules apply (see Budget).
 
 ## What this is
@@ -58,10 +60,12 @@ index.html / src/style.css
 - No claim of proof: the cutoff heuristic can be fooled (legitimately filtered or quiet masters). Always present the verdict as an estimate, in the UI and in every write-up.
 
 ## Acceptance checks
-- [ ] Known test pair: a genuine lossless file and a 128k-mp3-disguised-as-FLAC render visibly different spectrograms, and the verdicts differ accordingly.
-- [ ] A 60-second track renders its full spectrogram without freezing the tab unacceptably (progress indication if slow).
-- [ ] PNG export opens and matches what was on screen.
-- [ ] Verdict text says "estimate" (or equivalent) everywhere it appears.
+Legend: `[x]` done · `[~]` automated/partial · `[ ]` pending manual (real browser + real audio files).
+
+- [~] Known test pair: synthetic grids pass (genuine-lossless vs 128k-MP3-as-FLAC — cutoffs AND verdicts differ, Vitest 8/8). **Real-file confirmation pending** — drop actual FLAC vs fake-FLAC in a browser. (Bright-lossless-to-Nyquist case also blocked by B1 until the working-tree fix is verified & committed.)
+- [ ] A 60-second track renders its full spectrogram without freezing the tab unacceptably (progress indication if slow). **Pending manual** (worker + progress posted; not yet timed on a real 60s file).
+- [~] PNG export opens and matches what was on screen. **Code path verified** (`toBlob` on the rendered `#canvas`; playhead is a separate overlay, no taint); pixel-perfect match vs the CSS-scaled display is a manual eyeball.
+- [x] Verdict text says "estimate" (or equivalent) everywhere it appears — asserted by a test over every verdict branch in `cutoff.ts`.
 
 ## Packaging checklist
 - [ ] Working app URL (static hosting), public repo + MIT license + `/.kiro`.
@@ -72,8 +76,17 @@ index.html / src/style.css
 ## Open decisions
 1. ~~Name final?~~ **DECIDED 2026-11-06: SpectreGram** (collision check run, see Status).
 2. ~~Stack?~~ **DECIDED 2026-11-06: Vite + TypeScript, vanilla (no framework)** — see Stack section above for the full locked requirements.
-3. Verdict strictness: how aggressive should the cutoff thresholds be? Calibrate on real files before locking.
-4. Go / no-go to create repo and start the Kiro spec — still awaiting explicit go in this chat.
+3. ~~Verdict strictness?~~ **Resolved with tunable defaults 2026-11-06 — pending real-file calibration.** Cutoff detector: per-bin 85th-percentile energy profile, noise floor = P5 across bins, threshold = floor + 20 dB, cutoff = max bin of the largest contiguous above-threshold run; verdict by `cutoffHz/Nyquist` vs `LOSSLESS_HIGH_RATIO=0.90` / `SUSPICIOUS_RATIO=0.73`. All values `// TUNABLE` in `src/audio/cutoff.ts`. STFT defaults (Hann, fftSize 2048, hop 1024, 120 dB) also tunable. Recalibrate against a real genuine-FLAC vs 128k-MP3-as-FLAC pair before locking.
+4. ~~Go / no-go to create repo and start the Kiro spec?~~ **DONE 2026-11-06** — repo `lanly-dev/SpectreGram` created, spec authored (`/.kiro/specs/spectregram/`), core implemented.
+5. **Blocker B1 (active)** — the post-loop final-run check in `estimateCutoff` (`src/audio/cutoff.ts`) dropped the final contiguous run: a run reaching the Nyquist bin reported cutoff 0 → "No clear cutoff detected" instead of "genuine lossless". Fix (`+ bestLen = curLen;` inside the final-run `if`) + 2 regression tests are in the working tree but **uncommitted & unverified**. Run `npm run build && npm run test`; if green, commit & push. The committed `6c4e4a1` tests don't cover this case.
+6. **Halloween flair pass (deferred)** — "function app first, then decide halloween elements." Palettes (hellfire/ectoplasm) render correctly but are minimal/unstyled; haunted theming + optional playhead polish are a separate later pass — not started.
+
+## Build log & lessons (2026-11-06)
+- Spec-first build via a Kiro workflow (design → code → review). Core landed green in one code pass; review caught one blocker (B1).
+- **An aborted review loop left uncommitted edits in the working tree** (B1 fix + regression tests) — always verify before committing an interrupted pass's changes; the pass was cut off before build/test re-ran.
+- The cutoff detector's P5-across-bins noise floor needs ≥5% of bins below threshold; synthetic fixtures that leave <5% yield cutoff 0. The Vitest grid uses 0.94 (not 0.95) and the verify sine tops at bin 930 (not 1000) for this reason — see `.agents/tasks/spectregram-core/verification.md`.
+- Real-file calibration is still open (decision #3); synthetic grids are a stand-in, not a substitute for the genuine-vs-fake acceptance pair.
+- GitHub repo + push happened outside the agent (user-created) — the earlier "repo not yet created" gate is cleared.
 
 ## How we work
 Plan → Work → Assess → Compound. Lessons earned go into this file immediately. Decisions land in Open decisions the same session. This is the smallest, safest entry — its job in the portfolio is to be *finished early and submitted-ready*; resist every urge to grow it.

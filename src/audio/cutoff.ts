@@ -163,6 +163,7 @@ export function estimateCutoff(
     }
   }
   if (curLen > bestLen) {
+    bestLen = curLen;
     bestEnd = curEnd;
   }
 

@@ -37,9 +37,15 @@ Vite + TypeScript (vanilla, no framework) · Canvas 2D · Web Audio
 only. Full locked requirements in `AGENTS.md`.
 
 ## Status
-Pre-implementation. Scope and stack are locked in `AGENTS.md`; the spec is
-being authored. See `AGENTS.md` → Open decisions for what's still open
-(notably cutoff-threshold calibration).
+Functional core implemented and pushed (`main` @ `6c4e4a1`): decode → STFT
+(Web Worker, fft.js) → cutoff/verdict → Canvas render → PNG export. Build +
+Vitest (8/8) green. Spec-first artifacts in `/.kiro/specs/spectregram/`.
+
+**Active:** one review blocker (B1 — a cutoff edge case); fix + regression
+tests are in the working tree, **uncommitted & unverified**. **Pending:**
+real-file calibration of cutoff thresholds (AGENTS.md #3) and a deferred
+Halloween-styling pass. See `AGENTS.md` → Status & Open decisions for the
+full picture.
 
 ## License
 MIT — see [LICENSE](./LICENSE). Spek is GPL-3.0 and is **not** a dependency of

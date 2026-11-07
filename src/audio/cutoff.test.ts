@@ -62,6 +62,30 @@ function flatGrid(levelDb: number, bins = BINS, frames = FRAMES): DbGrid {
   return gridFrom2D(rows);
 }
 
+/**
+ * Noise at the LOW end (before the run), sustained energy from `signalStartBin`
+ * through the LAST bin (Nyquist), so the above-threshold run is the unterminated
+ * "final run". The low-noise region must exceed ~5% of bins for the P5 floor to
+ * land on noise (bins=1025 -> startBin 60 leaves 60 noise bins, ~5.9%).
+ */
+function runToNyquistGrid(
+  signalStartBin: number,
+  signalDb = -10,
+  noiseDb = -90,
+  bins = BINS,
+  frames = FRAMES,
+): DbGrid {
+  const rows: number[][] = [];
+  for (let t = 0; t < frames; t++) {
+    const row: number[] = new Array(bins);
+    for (let k = 0; k < bins; k++) {
+      row[k] = k >= signalStartBin ? signalDb : noiseDb;
+    }
+    rows.push(row);
+  }
+  return gridFrom2D(rows);
+}
+
 describe('estimateCutoff', () => {
   it('returns cutoffHz=0 for an empty (too-short) grid', () => {
     const empty: DbGrid = { data: new Float32Array(0), frames: 0, bins: BINS };
@@ -100,6 +124,46 @@ describe('band-limited vs full-bandwidth', () => {
     expect(band.verdict).not.toBe(full.verdict);
     expect(band.verdict).toMatch(/inconclusive/i);
     expect(full.verdict).toMatch(/genuine lossless/i);
+  });
+});
+
+describe('run reaching Nyquist (final-run regression)', () => {
+  it('a run extending to the last bin with noise before it is not dropped', () => {
+    // Regression for the dropped final run: quiet low bins (>=5% for the P5
+    // floor), then sustained energy through the Nyquist bin. The run is the
+    // unterminated "final run"; before the fix bestLen stayed 0 and cutoff was
+    // misreported as 0 ("no clear cutoff").
+    const grid = runToNyquistGrid(60);
+    const r = analyze(grid, SAMPLE_RATE, 'FLAC');
+
+    // cutoff reaches the Nyquist bin (bins - 1).
+    expect(r.cutoff.cutoffBin).toBe(BINS - 1);
+    expect(r.cutoff.cutoffHz).toBeCloseTo(NYQUIST, 1);
+    expect(r.verdict).toMatch(/genuine lossless/i);
+  });
+
+  it('the largest run wins over a later, longer-noise-prefix final run', () => {
+    // Mid-band noise splits two runs; the larger run (lower) is the cutoff
+    // even though a second run reaches the last bin — confirms the final-run
+    // fix promotes the largest run, not just any final run.
+    const bins = BINS;
+    const rows: number[][] = [];
+    for (let t = 0; t < FRAMES; t++) {
+      const row: number[] = new Array(bins);
+      for (let k = 0; k < bins; k++) {
+        // low run: bins 60..500 (441 bins); gap: bins 501..560 (noise);
+        // final run: bins 561..1024 (464 bins, larger, reaches Nyquist).
+        const inLowRun = k >= 60 && k <= 500;
+        const inFinalRun = k >= 561;
+        row[k] = inLowRun || inFinalRun ? -10 : -90;
+      }
+      rows.push(row);
+    }
+    const grid = gridFrom2D(rows);
+    const r = estimateCutoff(grid, SAMPLE_RATE);
+    // The final run (464 bins) is larger than the low run (441 bins), so the
+    // cutoff is the end of the final run = Nyquist bin.
+    expect(r.cutoffBin).toBe(BINS - 1);
   });
 });
 
