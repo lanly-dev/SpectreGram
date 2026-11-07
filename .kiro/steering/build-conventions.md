@@ -52,3 +52,18 @@ index.html / src/style.css
 - Verdict strings are generated in one place (`cutoff.ts`) so the "estimate"
   label can never be missed.
 - Pin dependency versions exactly (`package.json`), no open ranges.
+
+## Privacy — no absolute paths in tracked files (hard rule)
+Never write an absolute local path (e.g. `C:\Users\...`, `/home/...`,
+`/Users/...`) into any file that is tracked by git. This includes source
+code, docs, specs, steering files, review artifacts, and verification notes.
+
+- Use repo-relative paths (`src/audio/cutoff.ts`, `.kiro/specs/...`) or
+  path-agnostic references everywhere.
+- Agent task artifacts under `.agents/` are gitignored for this exact reason
+  — do NOT `git add .agents/` or remove `.agents/` from `.gitignore`.
+- If a tool or script needs an absolute path at runtime, derive it
+  programmatically (e.g. `import.meta.url`, `__dirname`, `process.cwd()`)
+  rather than hard-coding it.
+- Before committing, verify no absolute path leaked:
+  `git diff --cached | Select-String -Pattern '[A-Za-z]:\\\\Users\\\\|/home/|/Users/'`

@@ -6,7 +6,7 @@
       "trigger": "SessionStart",
       "action": {
         "type": "agent",
-        "prompt": "You are working on SpectreGram, a Kiroween 2026 Resurrection entry. Read AGENTS.md first. Build spec-first: keep specs in /.kiro before implementation code. Clean-room only — Spek is GPL-3.0, this project is MIT; never copy Spek's code, reimplement the idea. Every verdict must be labelled an estimate. Respect the locked stack in AGENTS.md (vanilla TS + Vite, Canvas 2D, Web Audio, fft.js, Web Worker, Vitest) — add no framework or backend without explicit go."
+        "prompt": "You are working on SpectreGram, a Kiroween 2026 Resurrection entry. Read AGENTS.md first. Build spec-first: keep specs in /.kiro before implementation code. Clean-room only — Spek is GPL-3.0, this project is MIT; never copy Spek's code, reimplement the idea. Every verdict must be labelled an estimate. Respect the locked stack in AGENTS.md (vanilla TS + Vite, Canvas 2D, Web Audio, fft.js, Web Worker, Vitest) — add no framework or backend without explicit go. PRIVACY HARD RULE: never write an absolute local path (C:\\Users\\..., /home/..., /Users/...) into any tracked file — source, docs, specs, or review artifacts. Use repo-relative paths only. .agents/ is gitignored; never git add it."
       }
     }
   ]
