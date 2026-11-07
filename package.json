@@ -1,1 +1,87 @@
-{"build":{"appId":"dev.lanly.spectregram","directories":{"output":"release"},"fileAssociations":[{"ext":"mp3","name":"MP3 audio","role":"Viewer"},{"ext":"flac","name":"FLAC audio","role":"Viewer"},{"ext":"wav","name":"WAV audio","role":"Viewer"},{"ext":"ogg","name":"Ogg audio","role":"Viewer"},{"ext":"m4a","name":"M4A audio","role":"Viewer"},{"ext":"opus","name":"Opus audio","role":"Viewer"},{"ext":"aac","name":"AAC audio","role":"Viewer"}],"files":["dist/**","electron/**","package.json"],"linux":{"target":"AppImage"},"mac":{"target":"dmg"},"productName":"SpectreGram","win":{"target":"nsis"}},"dependencies":{"fft.js":"4.0.1"},"description":"SpectreGram — acoustic spectrum analyser and lossy-disguise verdict (Kiroween 2026 Resurrection). Desktop app (Electron) + web demo, same code.","devDependencies":{"electron":"45.2.3","electron-builder":"26.18.0","typescript":"5.6.3","vite":"5.4.10","vitest":"2.1.4"},"main":"electron/main.js","name":"spectregram","private":true,"scripts":{"build":"tsc --noEmit && vite build","desktop":"npm run build && electron .","dev":"vite","dist":"npm run build && electron-builder","electron:dev":"node scripts/electron-dev.mjs","pack":"npm run build && electron-builder --dir","preview":"vite preview","test":"vitest run","test:watch":"vitest"},"type":"module","version":"0.1.0"}
+{
+    "name": "spectregram",
+    "description": "SpectreGram — acoustic spectrum analyser and lossy-disguise verdict (Kiroween 2026 Resurrection). Desktop app (Electron) + web demo, same code.",
+    "private": true,
+    "main": "electron/main.js",
+    "build": {
+        "appId": "dev.lanly.spectregram",
+        "productName": "SpectreGram",
+        "directories": {
+            "output": "release"
+        },
+        "fileAssociations": [
+            {
+                "ext": "mp3",
+                "name": "MP3 audio",
+                "role": "Viewer"
+            },
+            {
+                "ext": "flac",
+                "name": "FLAC audio",
+                "role": "Viewer"
+            },
+            {
+                "ext": "wav",
+                "name": "WAV audio",
+                "role": "Viewer"
+            },
+            {
+                "ext": "ogg",
+                "name": "Ogg audio",
+                "role": "Viewer"
+            },
+            {
+                "ext": "m4a",
+                "name": "M4A audio",
+                "role": "Viewer"
+            },
+            {
+                "ext": "opus",
+                "name": "Opus audio",
+                "role": "Viewer"
+            },
+            {
+                "ext": "aac",
+                "name": "AAC audio",
+                "role": "Viewer"
+            }
+        ],
+        "files": [
+            "dist/**",
+            "electron/**",
+            "package.json"
+        ],
+        "linux": {
+            "target": "AppImage"
+        },
+        "mac": {
+            "target": "dmg"
+        },
+        "win": {
+            "target": "nsis"
+        }
+    },
+    "dependencies": {
+        "fft.js": "4.0.1"
+    },
+    "devDependencies": {
+        "electron": "45.2.3",
+        "electron-builder": "26.18.0",
+        "typescript": "5.6.3",
+        "vite": "5.4.10",
+        "vitest": "2.1.4"
+    },
+    "scripts": {
+        "build": "tsc --noEmit && vite build",
+        "start": "npm run build && electron .",
+        "dev": "node scripts/electron-dev.mjs",
+        "dist": "npm run build && electron-builder",
+        "pack": "npm run build && electron-builder --dir",
+        "web:dev": "vite",
+        "web:preview": "vite preview",
+        "test": "vitest run",
+        "test:watch": "vitest"
+    },
+    "type": "module",
+    "version": "0.1.0"
+}
