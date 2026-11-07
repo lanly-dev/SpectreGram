@@ -62,14 +62,14 @@
         }
     },
     "dependencies": {
-        "fft.js": "4.0.1"
+        "fft.js": "4.0.4"
     },
     "devDependencies": {
         "electron": "45.2.3",
         "electron-builder": "26.18.0",
-        "typescript": "5.6.3",
-        "vite": "5.4.10",
-        "vitest": "2.1.4"
+        "typescript": "7.0.2",
+        "vite": "8.3.6",
+        "vitest": "5.1.0"
     },
     "scripts": {
         "build": "tsc --noEmit && vite build",
