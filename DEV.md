@@ -38,7 +38,7 @@ with `start`, package with `dist`.
 Two loops have hot reload; the production path does not:
 
 - **`dev`** (desktop dev loop; `preview` is its alias) — `scripts/electron-dev.mjs` starts the
-  Vite dev server, waits for it on http://localhost:5173, then launches
+  Vite dev server, waits for it on the dedicated port http://localhost:5273 — and verifies the page it gets back really is SpectreGram (a `<title>` identity check) — then launches
   Electron with `SPECTREGRAM_DEV_URL` set, so the main process loads the
   dev server instead of `app://`. Edits under `src/` hot-reload in the
   window. Edits to `electron/main.js` or `electron/preload.cjs` do **not**
