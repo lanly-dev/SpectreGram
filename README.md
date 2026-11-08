@@ -47,28 +47,11 @@ npm install
 npm run dev     # build + launch the desktop app
 ```
 
-### Scripts
-
-Every run script in `package.json`, and what each one is for:
-
-| Command | What it does |
-| --- | --- |
-| `npm run start` | Build first (`build`), then launch the Electron app on the production `app://` path — the real app, exactly as it ships packaged. No hot reload; restart to pick up changes. |
-| `npm run dev` | Alias for `start` — the everyday "run the desktop app" command. Note: this is **not** the Vite dev server (that's `web:dev`). |
-| `npm run build` | Typecheck (`tsc --noEmit`) + production build into `dist/`. Runs automatically as the first step of `start`, `dist`, and `pack`, so you rarely call it alone except to check a build. |
-| `npm run preview` | Desktop dev loop: starts Vite and opens the Electron shell against it, so edits under `src/` hot-reload while you work. Changes to `electron/` still need a restart. Despite the name, this is **not** `vite preview` (that's `web:preview`). |
-| `npm run dist` | Build, then package the installer for your OS into `release/` (Windows NSIS · macOS dmg · Linux AppImage). |
-| `npm run pack` | Build, then package into `release/` *without* an installer — just the unpacked app directory. For checking the packaged form runs before you make installers. |
-| `npm run web:dev` | Vite dev server in the browser (http://localhost:5173) — developing the web demo with hot reload, no Electron. |
-| `npm run web:preview` | Serve the production `dist/` build locally, to check the web demo exactly as it will ship. |
-| `npm run test` | Run the Vitest suite once (`src/audio/cutoff.test.ts` — the cutoff/verdict tests). |
-| `npm run test:watch` | Vitest in watch mode — re-runs the suite as files change. |
-
-Rule of thumb: develop with `preview` (or `web:dev` for the demo), verify
-with `dev`, package with `dist`.
-
 Release installers are unsigned in v1 — Windows SmartScreen / macOS
 Gatekeeper will warn on first launch; that's expected.
+
+**Developing on this repo?** Run scripts, dev loops, build, test, and
+packaging details live in [DEV.md](./DEV.md).
 
 ## Status
 Functional core implemented (`main` @ `6c4e4a1`): decode → STFT
