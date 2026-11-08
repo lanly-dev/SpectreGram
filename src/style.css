@@ -29,21 +29,22 @@ body {
 }
 
 main {
-  max-width: 960px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 24px 20px 48px;
+  padding: 8px 10px 12px;
+  font-size: 0.85rem;
 }
 
 header h1 {
-  margin: 0 0 4px;
-  font-size: 1.8rem;
+  margin: 0 0 3px;
+  font-size: 1.25rem;
   letter-spacing: 0.02em;
 }
 
 .tagline {
-  margin: 0 0 18px;
+  margin: 0 0 8px;
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.8rem;
 }
 
 .tagline em {
@@ -51,42 +52,14 @@ header h1 {
   font-style: normal;
 }
 
-.dropzone {
-  border: 2px dashed var(--border);
-  border-radius: var(--radius);
-  background: var(--panel);
-  padding: 28px 20px;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.dropzone:hover,
-.dropzone.drag,
-.dropzone:focus-visible {
-  border-color: var(--accent);
-  background: var(--panel-2);
-  outline: none;
-}
-
-.dz-title {
-  margin: 0 0 6px;
-  font-size: 1.05rem;
-}
-
-.dz-hint {
-  margin: 2px 0;
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
 button {
   font: inherit;
   color: var(--text);
   background: var(--panel-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 14px;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
   cursor: pointer;
   transition: border-color 0.15s ease;
 }
@@ -103,28 +76,29 @@ button:focus-visible {
 .info {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin: 18px 0;
+  gap: 8px;
+  margin: 8px 0;
 }
 
 .facts,
 .status {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 14px;
-  min-height: 1.6em;
+  border-radius: 6px;
+  padding: 6px 10px;
+  min-height: 1.4em;
+  font-size: 0.8rem;
 }
 
 .facts {
-  flex: 1 1 320px;
+  flex: 1 1 200px;
 }
 
 .facts div {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
-  padding: 2px 0;
+  gap: 10px;
+  padding: 1px 0;
 }
 
 .facts .label {
@@ -132,18 +106,18 @@ button:focus-visible {
 }
 
 .status {
-  flex: 2 1 320px;
+  flex: 2 1 200px;
   color: var(--muted);
   align-self: center;
 }
 
 .progress {
-  height: 8px;
+  height: 6px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 4px;
   overflow: hidden;
-  margin: 10px 0;
+  margin: 8px 0;
 }
 
 .progress-bar {
@@ -154,18 +128,19 @@ button:focus-visible {
 }
 
 .verdict {
-  font-size: 1.08rem;
-  min-height: 1.6em;
-  padding: 6px 0;
+  font-size: 0.85rem;
+  min-height: 1.4em;
+  padding: 4px 0;
 }
 
 .canvas-wrap {
   position: relative;
-  margin: 12px 0;
+  margin: 8px 0;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
   background: #000;
+  max-height: 200px;
 }
 
 #canvas {
@@ -189,13 +164,13 @@ button:focus-visible {
 .controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 14px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .privacy {
-  margin-top: 28px;
+  margin-top: 12px;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.7rem;
   text-align: center;
 }
