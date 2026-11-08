@@ -1,6 +1,6 @@
 // Dev launcher: start Vite, wait for it, then open the Electron shell
 // against it (hot reload). Cross-platform replacement for shell env syntax.
-// Usage: npm run preview
+// Usage: npm run dev (npm run preview is an alias)
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 

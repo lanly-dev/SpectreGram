@@ -73,9 +73,9 @@
     },
     "scripts": {
         "start": "npm run build && electron .",
-        "dev": "npm start",
+        "dev": "node scripts/electron-dev.mjs",
         "build": "tsc --noEmit && vite build",
-        "preview": "node scripts/electron-dev.mjs",
+        "preview": "npm run dev",
         "dist": "npm run build && electron-builder",
         "pack": "npm run build && electron-builder --dir",
         "web:dev": "vite",

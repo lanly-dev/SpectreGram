@@ -44,7 +44,7 @@ electron-builder for the desktop shell. Full locked requirements in
 
 ```sh
 npm install
-npm run dev     # build + launch the desktop app
+npm run dev     # launch the desktop app (dev loop with hot reload)
 ```
 
 Release installers are unsigned in v1 — Windows SmartScreen / macOS
