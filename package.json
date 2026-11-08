@@ -72,9 +72,10 @@
         "vitest": "5.1.0"
     },
     "scripts": {
-        "build": "tsc --noEmit && vite build",
         "start": "npm run build && electron .",
-        "dev": "node scripts/electron-dev.mjs",
+        "dev": "npm start",
+        "build": "tsc --noEmit && vite build",
+        "preview": "node scripts/electron-dev.mjs",
         "dist": "npm run build && electron-builder",
         "pack": "npm run build && electron-builder --dir",
         "web:dev": "vite",

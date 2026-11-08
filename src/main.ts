@@ -155,39 +155,25 @@ async function handleFile(file: File): Promise<void> {
   w.postMessage(req, [res.mono.buffer]);
 }
 
+function setupWindowDrop(): void {
+  // Whole-app drag & drop: accept a file dropped anywhere on the window.
+  window.addEventListener('dragover', (e) => e.preventDefault());
+  window.addEventListener('dragenter', (e) => e.preventDefault());
+  window.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer?.files?.[0];
+    if (file) void handleFile(file);
+  });
+}
+
 function setupIntake(): void {
-  const dropzone = $('dropzone');
   const input = el<HTMLInputElement>('file-input');
-  if (dropzone && input) {
-    dropzone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      dropzone.classList.add('drag');
-    });
-    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
-    dropzone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropzone.classList.remove('drag');
-      const file = e.dataTransfer?.files?.[0];
-      if (file) void handleFile(file);
-    });
-    // Keyboard: open the picker from the drop zone.
-    dropzone.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        input.click();
-      }
-    });
-    dropzone.addEventListener('click', (e) => {
-      // Avoid double-triggering when the Pick button itself is clicked.
-      if ((e.target as HTMLElement).closest('button')) return;
-      input.click();
-    });
-    input.addEventListener('change', () => {
-      const file = input.files?.[0];
-      if (file) void handleFile(file);
-      input.value = ''; // allow re-picking the same file
-    });
-  }
+  if (!input) return;
+  input.addEventListener('change', () => {
+    const file = input.files?.[0];
+    if (file) void handleFile(file);
+    input.value = ''; // allow re-picking the same file
+  });
 }
 
 // --- Controls ---------------------------------------------------------------
@@ -352,6 +338,7 @@ function init(): void {
   setupMenuSave();
   setupPlay();
   setupDesktopOpenFile();
+  setupWindowDrop();
   setStatus('Drop an audio file or pick one to begin.');
   window.addEventListener('beforeunload', () => {
     teardownWorker();
