@@ -35,6 +35,7 @@ main {
   margin: 0;
   padding: 6px 8px;
   font-size: 0.85rem;
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -221,10 +222,16 @@ button:focus-visible {
   right: 200px;
 }
 
+/* When folder panel is open, keep header and controls clear of it. */
+main.folder-open #verdict,
+main.folder-open .controls {
+  margin-right: 200px;
+}
+
 .folder-panel {
   position: absolute;
   top: 0;
-  bottom: 16px;
+  bottom: 0;
   right: 0;
   width: 200px;
   border-left: 1px solid var(--border);

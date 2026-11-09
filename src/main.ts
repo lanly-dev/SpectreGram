@@ -368,6 +368,7 @@ function setupFolderPanel(): void {
     }
     panel.hidden = false;
     box.classList.add('folder-open');
+    document.querySelector('main')?.classList.add('folder-open');
     setStatus(`Folder "${folderName}" — ${files.length} audio file${files.length !== 1 ? 's' : ''}`);
   });
 }
