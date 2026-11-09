@@ -180,11 +180,8 @@ button:focus-visible {
   left: 2px;
   right: 2px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 1px;
-  margin-bottom: 2px;
+  /* No border/padding: the label is centered on its value via an inline
+     transform, so box decorations would sit off-value and mislead. */
 }
 
 .ruler-bottom {
@@ -200,13 +197,9 @@ button:focus-visible {
 
 .ruler-bottom .tick {
   position: absolute;
-  top: 1px;
-  bottom: 1px;
+  top: 2px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  border-left: 1px solid var(--border);
-  padding: 0 3px;
+  /* Centered on its value via an inline transform (see the left ruler). */
 }
 
 .canvas-wrap {

@@ -8,13 +8,25 @@ import { renderSpectrogram, setActivePalette, exportPng, getActivePaletteName, t
 import { DEFAULT_STFT, type DbGrid } from './audio/stft';
 import type { AnalyzeRequest, WorkerMessage } from './audio/stft-worker';
 
-// Frequency tick labels for the left ruler (low -> high, displayed top->bottom).
-const FREQ_TICKS = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
-// Time tick labels for the bottom ruler (seconds).
-const TIME_TICKS = [5, 10, 30, 60, 120, 300, 600];
+// Tick step candidates for the rulers. The spectrogram's frequency axis is
+// LINEAR, so frequency ticks must be evenly spaced in Hz: log-spaced values
+// (100/200/500/…) pile a dozen labels into the bottom tenth of the ruler.
+// Steps are picked per file so the label count stays small and readable.
+const FREQ_STEPS = [500, 1000, 2000, 2500, 5000, 10000, 20000];
+// Time tick step candidates (seconds) for the bottom ruler.
+const TIME_STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600];
+
+/** Smallest step whose label count over `span` stays at or below `max`. */
+function pickStep(steps: number[], span: number, max: number): number {
+  for (const s of steps) {
+    if (span / s <= max) return s;
+  }
+  return steps[steps.length - 1];
+}
 
 function fmtFreq(hz: number): string {
-  if (hz >= 1000) return `${(hz / 1000).toFixed(hz >= 10000 ? 0 : 1)} k`;
+  // Number(...) drops a trailing ".0", so 5000 reads "5 k", not "5.0 k".
+  if (hz >= 1000) return `${Number((hz / 1000).toFixed(hz >= 10000 ? 0 : 1))} k`;
   return String(Math.round(hz));
 }
 
@@ -29,20 +41,24 @@ function setFreqRuler(sampleRate: number): void {
   const ruler = $('ruler-left');
   if (!ruler) return;
   const nyq = sampleRate / 2;
-  const ticks: { f: number; pct: number }[] = [];
-  for (const f of FREQ_TICKS) {
-    if (f > nyq) break;
-    // Frequency axis is linear: top = Nyquist, bottom = 0.
-    ticks.push({ f, pct: ((nyq - f) / nyq) * 100 });
+  if (!(nyq > 0)) {
+    ruler.innerHTML = '';
+    return;
   }
-  // Always include Nyquist at the very top.
-  if (ticks.length === 0 || ticks[0].f !== nyq) {
-    ticks.unshift({ f: nyq, pct: 0 });
-  }
-  const html = ticks
-    .map(
-      (t) => `<div class="tick" style="top:${t.pct}%;">${fmtFreq(t.f)}</div>`
-    )
+  // Evenly spaced ticks on the linear axis: 0, step, 2·step, …, plus
+  // Nyquist always labelled at the very top.
+  const step = pickStep(FREQ_STEPS, nyq, 5);
+  const values: number[] = [];
+  for (let f = 0; f < nyq; f += step) values.push(f);
+  values.push(nyq);
+  const html = values
+    .map((f) => {
+      const pct = ((nyq - f) / nyq) * 100;
+      // Center the label on its value; clamp the two edge labels fully
+      // inside the ruler so they never overflow top/bottom.
+      const ty = pct <= 0 ? '0' : pct >= 100 ? '-100%' : '-50%';
+      return `<div class="tick" style="top:${pct}%;transform:translateY(${ty});">${fmtFreq(f)}</div>`;
+    })
     .join('');
   ruler.innerHTML = html;
 }
@@ -51,19 +67,26 @@ function setFreqRuler(sampleRate: number): void {
 function setTimeRuler(duration: number): void {
   const ruler = $('ruler-bottom');
   if (!ruler) return;
-  let step = TIME_TICKS[TIME_TICKS.length - 1];
-  for (const s of TIME_TICKS) {
-    if (duration / s > 6) { step = s; break; }
+  if (!(duration > 0)) {
+    ruler.innerHTML = '';
+    return;
   }
-  const count = Math.floor(duration / step);
-  const html = [];
-  for (let i = 0; i <= count; i++) {
-    const t = i * step;
-    if (t > duration) break;
-    const pct = (t / duration) * 100;
-    html.push(`<div class="tick" style="left:${pct}%;">${fmtTime(t)}</div>`);
-  }
-  ruler.innerHTML = html.join('');
+  const step = pickStep(TIME_STEPS, duration, 6);
+  const values: number[] = [];
+  for (let t = 0; t < duration; t += step) values.push(t);
+  // Always label the total duration at the right edge — unless it would
+  // crowd the last step tick.
+  if (duration - values[values.length - 1] >= step * 0.5) values.push(duration);
+  const html = values
+    .map((t) => {
+      const pct = (t / duration) * 100;
+      // Center the label on its value; clamp the two edge labels fully
+      // inside the ruler so they never overflow left/right.
+      const tx = pct <= 0 ? '0' : pct >= 100 ? '-100%' : '-50%';
+      return `<div class="tick" style="left:${pct}%;transform:translateX(${tx});">${fmtTime(t)}</div>`;
+    })
+    .join('');
+  ruler.innerHTML = html;
 }
 
 // Module-level state so a palette switch can re-render without recomputing.
