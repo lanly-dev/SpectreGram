@@ -7,7 +7,7 @@
 import type { DbGrid } from './audio/stft';
 import { DEFAULT_STFT } from './audio/stft';
 
-export type PaletteName = 'hellfire' | 'ectoplasm';
+export type PaletteName = 'hellfire' | 'ectoplasm' | 'spectrum';
 
 // Fixed rendering buffer size — never changes with window or STFT params.
 const FIXED_W = 1024;
@@ -37,6 +37,24 @@ const ECTO_STOPS: ReadonlyArray<readonly [number, number, number]> = [
   [232, 255, 238], // pale
 ];
 
+// The classic acoustic-analyser look (Spek is the reference): a full
+// spectral sweep, so different energy levels read as genuinely different
+// colors — quiet passages sit in indigo/purple, mid energy runs magenta →
+// red → orange, and the loudest peaks hit yellow-white. Because low
+// frequencies usually carry the most energy, the bands separate by color
+// across the frequency axis instead of shading a single hue. Our own stop
+// values (clean-room — not Spek's table).
+const SPECTRUM_STOPS: ReadonlyArray<readonly [number, number, number]> = [
+  [4, 4, 10], // near-black blue
+  [30, 14, 92], // indigo
+  [102, 30, 166], // purple
+  [196, 42, 128], // magenta
+  [240, 84, 40], // red-orange
+  [252, 178, 30], // amber
+  [250, 238, 118], // pale yellow
+  [255, 255, 255], // white
+];
+
 function interpolateStops(
   stops: ReadonlyArray<readonly [number, number, number]>,
   t: number,
@@ -56,9 +74,10 @@ function interpolateStops(
   ];
 }
 
-/** Build a 256x4 RGBA lookup table for the named palette. Unknown -> hellfire. */
+/** Build a 256x4 RGBA lookup table for the named palette. Unknown -> spectrum. */
 export function buildPalette(name: PaletteName): Uint8ClampedArray {
-  const stops = name === 'ectoplasm' ? ECTO_STOPS : HELLFIRE_STOPS;
+  const stops =
+    name === 'ectoplasm' ? ECTO_STOPS : name === 'hellfire' ? HELLFIRE_STOPS : SPECTRUM_STOPS;
   const lut = new Uint8ClampedArray(256 * 4);
   for (let i = 0; i < 256; i++) {
     const [r, g, b] = interpolateStops(stops, i / 255);
@@ -80,8 +99,8 @@ function dbToIndex(db: number): number {
 
 // Module-level state so a palette switch can re-render from the last grid
 // without recomputing the STFT or re-analyzing.
-let activePalette: Uint8ClampedArray = buildPalette('hellfire');
-let activePaletteName: PaletteName = 'hellfire';
+let activePalette: Uint8ClampedArray = buildPalette('spectrum');
+let activePaletteName: PaletteName = 'spectrum';
 let lastCtx: CanvasRenderingContext2D | null = null;
 let lastGrid: DbGrid | null = null;
 
@@ -132,9 +151,9 @@ export function renderSpectrogram(ctx: CanvasRenderingContext2D, grid: DbGrid): 
 /** Switch palette and re-render from the last grid (no recompute). */
 export function setActivePalette(name: PaletteName): void {
   let resolved = name;
-  if (resolved !== 'hellfire' && resolved !== 'ectoplasm') {
-    console.warn(`Unknown palette "${name}", falling back to hellfire`);
-    resolved = 'hellfire';
+  if (resolved !== 'hellfire' && resolved !== 'ectoplasm' && resolved !== 'spectrum') {
+    console.warn(`Unknown palette "${name}", falling back to spectrum`);
+    resolved = 'spectrum';
   }
   activePalette = buildPalette(resolved);
   activePaletteName = resolved;

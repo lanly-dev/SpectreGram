@@ -261,13 +261,20 @@ function setupIntake(): void {
 
 // --- Controls ---------------------------------------------------------------
 
+const PALETTE_CYCLE: ReadonlyArray<{ name: PaletteName; label: string }> = [
+  { name: 'spectrum', label: 'Palette: Spectrum' },
+  { name: 'hellfire', label: 'Palette: Hellfire' },
+  { name: 'ectoplasm', label: 'Palette: Ectoplasm' },
+];
+
 function setupPaletteToggle(): void {
   const btn = $('palette-toggle');
   if (!btn) return;
   btn.addEventListener('click', () => {
-    const next: PaletteName = getActivePaletteName() === 'hellfire' ? 'ectoplasm' : 'hellfire';
-    setActivePalette(next);
-    btn.textContent = next === 'hellfire' ? 'Palette: Hellfire' : 'Palette: Ectoplasm';
+    const idx = PALETTE_CYCLE.findIndex((p) => p.name === getActivePaletteName());
+    const next = PALETTE_CYCLE[(idx + 1) % PALETTE_CYCLE.length];
+    setActivePalette(next.name);
+    btn.textContent = next.label;
   });
 }
 
