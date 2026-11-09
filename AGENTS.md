@@ -96,5 +96,7 @@ Legend: `[x]` done · `[~]` automated/partial · `[ ]` pending manual (real brow
 
 - **Ruler practicality fix (2026-11-08):** the first ruler pass put log-spaced frequency values (20…20k) on the spectrogram's LINEAR axis — seven labels piled into the bottom tenth and clipped — and the time-ruler step logic was inverted (a 65 s file got 14 labels at 5 s steps; a 25 s file got one). Now both rulers pick an evenly-spaced step targeting ≤5–6 labels (frequency: 0…Nyquist in round Hz steps, Nyquist always labelled; time: step ticks plus the total duration when it doesn't crowd), labels are centered on their value with the edge labels clamped fully inside the ruler, and the tick borders that sat off-value were removed. Verified by DOM geometry (no overflow, no overlap) + screenshots in the Electron harness on 65 s / 25 s cases.
 
+- **App icon (2026-11-08, maintainer's ask — pulled forward from the deferred flair pass):** AI-generated ghost mark — white sheet ghost dissolving into glowing hellfire-orange spectrogram bars on black — installed as `build/icon.png` (512×512, wired explicitly as the electron-builder `icon`) and `public/icon.png` (256×256, the web build's favicon). Replaces the placeholder icon from the shell commit.
+
 ## How we work
 Plan → Work → Assess → Compound. Lessons earned go into this file immediately. Decisions land in Open decisions the same session. This is the smallest, safest entry — its job in the portfolio is to be *finished early and submitted-ready*; resist every urge to grow it.

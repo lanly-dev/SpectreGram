@@ -6,6 +6,7 @@
     "build": {
         "appId": "dev.lanly.spectregram",
         "productName": "SpectreGram",
+        "icon": "build/icon.png",
         "directories": {
             "output": "release"
         },
