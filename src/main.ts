@@ -237,12 +237,9 @@ async function handleFile(file: File): Promise<void> {
   setStatus('Analyzing…');
   setFreqRuler(sampleRate);
   setTimeRuler(res.facts.durationSec);
-  const fileNode = el<HTMLDivElement>('current-file');
-  if (fileNode) {
-    const name = file.name;
-    fileNode.textContent = name.length > 40 ? name.slice(0, 37) + '…' : name;
-    fileNode.hidden = false;
-  }
+  // Show the current file in the window title bar.
+  const shortName = file.name.length > 40 ? file.name.slice(0, 37) + '…' : file.name;
+  document.title = `SpectreGram — ${shortName}`;
 
   const w = ensureWorker();
   const req: AnalyzeRequest = { type: 'analyze', samples: res.mono, params: DEFAULT_STFT };
