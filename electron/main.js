@@ -26,6 +26,8 @@ let pendingOpenPath = null;
 // Remember the directory of the last file the user picked via File > Open so
 // the dialog reopens there next time.
 let lastOpenDir = '';
+// Whether the renderer currently has a spectrogram to export. Gates Save as PNG.
+let hasSpectrogram = false;
 
 // Test-only hooks (used by the headless smoke run; inert otherwise).
 const SMOKE_FILE = process.env.SPECTREGRAM_SMOKE_FILE || '';
@@ -120,6 +122,14 @@ function registerIpc() {
     queueOpenFile(filePath);
     return true;
   });
+
+  // Renderer reports whether a spectrogram is present, gating Save as PNG.
+  ipcMain.handle('sg:spectrogram-state', (_event, present) => {
+    hasSpectrogram = Boolean(present);
+    const item = Menu.getApplicationMenu()?.getMenuItemById('save-png');
+    if (item) item.enabled = hasSpectrogram;
+    return true;
+  });
 }
 
 // --- Native menu (File / Help) --------------------------------------------
@@ -175,10 +185,11 @@ function menuOpenFolder() {
 
 
 function menuSave() {
+  if (!hasSpectrogram) return;
   if (mainWindow) mainWindow.webContents.send('sg:save-png');
 }
 
-function menuQuit() {
+function menuExit() {
   app.quit();
 }
 
@@ -212,26 +223,27 @@ function buildMenu() {
       label: 'File',
       submenu: [
         {
-          label: 'Open...',
+          label: 'Open',
           accelerator: process.platform === 'darwin' ? 'Cmd+O' : 'Ctrl+O',
           click: menuOpen,
         },
         {
-          label: 'Save',
-          accelerator: process.platform === 'darwin' ? 'Cmd+S' : 'Ctrl+S',
-          click: menuSave,
-        },
-        { type: 'separator' },
-        { type: 'separator' },
-        {
-          label: 'Open Folder...',
+          label: 'Open Folder',
           accelerator: process.platform === 'darwin' ? 'Cmd+Shift+O' : 'Ctrl+Shift+O',
           click: menuOpenFolder,
         },
         {
-          label: 'Quit',
+          id: 'save-png',
+          label: 'Save as PNG',
+          accelerator: process.platform === 'darwin' ? 'Cmd+S' : 'Ctrl+S',
+          enabled: false,
+          click: menuSave,
+        },
+        { type: 'separator' },
+        {
+          label: 'Exit',
           accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
-          click: menuQuit,
+          click: menuExit,
         },
       ],
     },
@@ -243,7 +255,7 @@ function buildMenu() {
         { type: 'separator' },
         {
           label: 'Developer Tools',
-          accelerator: process.platform === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I',
+          accelerator: process.platform === 'darwin' ? 'Alt+Command+I' : 'F12',
           click: menuDevTools,
         },
       ],

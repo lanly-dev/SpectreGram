@@ -29,4 +29,7 @@ contextBridge.exposeInMainWorld('spectregramDesktop', {
   },
   /** Folder panel: ask main to grant read access + open a file from the folder. */
   openFolderFile: (filePath) => ipcRenderer.invoke('sg:open-folder-file', filePath),
+  /** Report whether a spectrogram is present (gates Save as PNG in the menu). */
+  reportSpectrogramState: (present) =>
+    ipcRenderer.invoke('sg:spectrogram-state', present),
 });

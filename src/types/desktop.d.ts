@@ -16,6 +16,8 @@ export interface SpectreGramDesktop {
   onFolderLoaded(callback: (data: { folderPath: string; folderName: string; files: Array<{ path: string; name: string }> }) => void): () => void;
   /** Folder panel: grant read access + open a file from the folder. */
   openFolderFile(filePath: string): Promise<boolean>;
+  /** Report whether a spectrogram is present (gates Save as PNG in the menu). */
+  reportSpectrogramState(present: boolean): Promise<boolean>;
 }
 
 declare global {

@@ -188,6 +188,8 @@ function onWorkerMessage(msg: WorkerMessage): void {
   } else if (msg.type === 'result') {
     const grid: DbGrid = { data: msg.data, frames: msg.frames, bins: msg.bins };
     lastGrid = grid;
+    const desktop = window.spectregramDesktop;
+    if (desktop) void desktop.reportSpectrogramState(true);
     setProgress(1);
     const { cutoff, verdict } = analyze(grid, sampleRate, claimedFormat);
     setVerdict(verdict);
@@ -200,6 +202,8 @@ function onWorkerMessage(msg: WorkerMessage): void {
   } else if (msg.type === 'error') {
     console.error('analysis error:', msg.message);
     setStatus(`Analysis error: ${msg.message}`);
+    const desktop = window.spectregramDesktop;
+    if (desktop) void desktop.reportSpectrogramState(false);
     teardownWorker();
   }
 }
@@ -215,6 +219,8 @@ async function handleFile(file: File): Promise<void> {
   setVerdict('');
   setProgress(0);
   setStatus('Decoding…');
+  const desktop = window.spectregramDesktop;
+  if (desktop) void desktop.reportSpectrogramState(false);
 
   const res: DecodeResult = await decodeFile(file);
   if (!res.ok) {
