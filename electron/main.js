@@ -13,7 +13,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, '..', 'dist');
 const DEV_URL = process.env.SPECTREGRAM_DEV_URL || '';
 
-const AUDIO_EXTS = new Set(['.mp3', '.flac', '.wav', '.ogg', '.oga', '.opus', '.m4a', '.aac']);
+const AUDIO_EXTS = new Set(['.mp3', '.flac', '.wav', '.ogg', '.oga', '.opus', '.m4a', '.aac', '.wma']);
 
 // The renderer may only read files the shell itself handed it (open-with /
 // second-instance argv). There is no path input in the UI, so nothing else
@@ -23,6 +23,9 @@ const allowedReadPaths = new Set();
 let mainWindow = null;
 let rendererReady = false;
 let pendingOpenPath = null;
+// Remember the directory of the last file the user picked via File > Open so
+// the dialog reopens there next time.
+let lastOpenDir = '';
 
 // Test-only hooks (used by the headless smoke run; inert otherwise).
 const SMOKE_FILE = process.env.SPECTREGRAM_SMOKE_FILE || '';
@@ -118,13 +121,21 @@ function registerIpc() {
 
 function menuOpen() {
   if (!mainWindow) return;
-  void dialog.showOpenDialog(mainWindow, {
-    properties: ['openFile'],
-    filters: [{ name: 'Audio files', extensions: [...AUDIO_EXTS].sort() }],
-  }).then((result) => {
-    if (result.canceled || !result.filePaths.length) return;
-    queueOpenFile(result.filePaths[0]);
-  });
+  // Electron expects extensions WITHOUT leading dots; AUDIO_EXTS stores them
+  // with dots for path.extname comparison elsewhere.
+  const audioFilters = [...AUDIO_EXTS].map((ext) => ext.slice(1)).sort();
+  void dialog
+    .showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      defaultPath: lastOpenDir,
+      filters: [{ name: 'Audio files', extensions: audioFilters }],
+    })
+    .then((result) => {
+      if (result.canceled || !result.filePaths.length) return;
+      // Remember the directory for next time.
+      lastOpenDir = path.dirname(result.filePaths[0]);
+      queueOpenFile(result.filePaths[0]);
+    });
 }
 
 function menuSave() {

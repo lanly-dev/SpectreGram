@@ -1,13 +1,17 @@
-// Canvas 2D spectrogram rendering. Pixels come straight from the worker's
-// magnitude grid (1 pixel per frame/bin); CSS scales the canvas to the display
-// area, so the exported PNG is the exact spectrogram content at native
-// resolution. Haunted palettes are functional color lookup tables for now
-// (polish is a later pass).
+// Canvas 2D spectrogram rendering. The canvas keeps a FIXED internal resolution
+// (1024x512) so the rendering size box never changes with window size or STFT
+// parameters; the magnitude grid is scaled into it. CSS scales the canvas to the
+// display area, and the exported PNG matches the on-screen pixels. Haunted
+// palettes are functional color lookup tables for now (polish is a later pass).
 
 import type { DbGrid } from './audio/stft';
 import { DEFAULT_STFT } from './audio/stft';
 
 export type PaletteName = 'hellfire' | 'ectoplasm';
+
+// Fixed rendering buffer size — never changes with window or STFT params.
+const FIXED_W = 1024;
+const FIXED_H = 512;
 
 // dBFS floor for palette mapping. Grids are produced by the default STFT, so
 // the floor matches DEFAULT_STFT.dynRangeDb.
@@ -84,24 +88,25 @@ let lastGrid: DbGrid | null = null;
 function drawGrid(ctx: CanvasRenderingContext2D, grid: DbGrid, palette: Uint8ClampedArray): void {
   const { frames, bins, data } = grid;
   if (frames === 0 || bins === 0) {
-    ctx.canvas.width = ctx.canvas.width || 1;
-    ctx.canvas.height = ctx.canvas.height || 1;
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.clearRect(0, 0, FIXED_W, FIXED_H);
     ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.fillRect(0, 0, FIXED_W, FIXED_H);
     return;
   }
 
-  // Size the canvas to exactly one pixel per frame/bin; CSS scales it to view.
-  ctx.canvas.width = frames;
-  ctx.canvas.height = bins;
+  // Keep the canvas buffer at the fixed size; never resample to frames/bins.
+  ctx.canvas.width = FIXED_W;
+  ctx.canvas.height = FIXED_H;
 
-  const img = ctx.createImageData(frames, bins);
+  // Paint the grid into an offscreen canvas at native frames×bins, then scale
+  // it into the fixed buffer. Low frequency at the bottom (conventional).
+  const off = new OffscreenCanvas(frames, bins);
+  const octx = off.getContext('2d')!;
+  const img = octx.createImageData(frames, bins);
   const px = img.data;
   for (let t = 0; t < frames; t++) {
     for (let k = 0; k < bins; k++) {
       const idx = dbToIndex(data[t * bins + k]);
-      // Low frequency at the bottom (conventional): invert the bin row.
       const row = bins - 1 - k;
       const p = (row * frames + t) * 4;
       const ci = idx * 4;
@@ -111,7 +116,10 @@ function drawGrid(ctx: CanvasRenderingContext2D, grid: DbGrid, palette: Uint8Cla
       px[p + 3] = 255;
     }
   }
-  ctx.putImageData(img, 0, 0);
+  octx.putImageData(img, 0, 0);
+
+  ctx.clearRect(0, 0, FIXED_W, FIXED_H);
+  ctx.drawImage(off, 0, 0, FIXED_W, FIXED_H);
 }
 
 /** Render the spectrogram and remember the grid + context for palette re-renders. */

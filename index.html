@@ -10,9 +10,13 @@
     <main>
       <section id="verdict" class="verdict" aria-live="polite"></section>
 
-      <section id="canvas-wrap" class="canvas-wrap">
-        <canvas id="canvas" width="1024" height="512" aria-label="Spectrogram"></canvas>
-        <div id="playhead" class="playhead" aria-hidden="true"></div>
+      <section id="spectrogram-box" class="spectrogram-box">
+        <div id="ruler-left" class="ruler ruler-left" aria-hidden="true"></div>
+        <section id="canvas-wrap" class="canvas-wrap">
+          <canvas id="canvas" width="1024" height="512" aria-label="Spectrogram"></canvas>
+          <div id="playhead" class="playhead" aria-hidden="true"></div>
+        </section>
+        <div id="ruler-bottom" class="ruler ruler-bottom" aria-hidden="true"></div>
       </section>
 
       <section class="controls">

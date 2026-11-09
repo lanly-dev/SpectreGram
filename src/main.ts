@@ -8,6 +8,64 @@ import { renderSpectrogram, setActivePalette, exportPng, getActivePaletteName, t
 import { DEFAULT_STFT, type DbGrid } from './audio/stft';
 import type { AnalyzeRequest, WorkerMessage } from './audio/stft-worker';
 
+// Frequency tick labels for the left ruler (low -> high, displayed top->bottom).
+const FREQ_TICKS = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+// Time tick labels for the bottom ruler (seconds).
+const TIME_TICKS = [5, 10, 30, 60, 120, 300, 600];
+
+function fmtFreq(hz: number): string {
+  if (hz >= 1000) return `${(hz / 1000).toFixed(hz >= 10000 ? 0 : 1)} k`;
+  return String(Math.round(hz));
+}
+
+function fmtTime(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}s`;
+}
+
+/** Paint frequency tick labels on the left ruler (major marks only). */
+function setFreqRuler(sampleRate: number): void {
+  const ruler = $('ruler-left');
+  if (!ruler) return;
+  const nyq = sampleRate / 2;
+  const ticks: { f: number; pct: number }[] = [];
+  for (const f of FREQ_TICKS) {
+    if (f > nyq) break;
+    // Frequency axis is linear: top = Nyquist, bottom = 0.
+    ticks.push({ f, pct: ((nyq - f) / nyq) * 100 });
+  }
+  // Always include Nyquist at the very top.
+  if (ticks.length === 0 || ticks[0].f !== nyq) {
+    ticks.unshift({ f: nyq, pct: 0 });
+  }
+  const html = ticks
+    .map(
+      (t) => `<div class="tick" style="top:${t.pct}%;">${fmtFreq(t.f)}</div>`
+    )
+    .join('');
+  ruler.innerHTML = html;
+}
+
+/** Paint time tick labels on the bottom ruler (major marks only). */
+function setTimeRuler(duration: number): void {
+  const ruler = $('ruler-bottom');
+  if (!ruler) return;
+  let step = TIME_TICKS[TIME_TICKS.length - 1];
+  for (const s of TIME_TICKS) {
+    if (duration / s > 6) { step = s; break; }
+  }
+  const count = Math.floor(duration / step);
+  const html = [];
+  for (let i = 0; i <= count; i++) {
+    const t = i * step;
+    if (t > duration) break;
+    const pct = (t / duration) * 100;
+    html.push(`<div class="tick" style="left:${pct}%;">${fmtTime(t)}</div>`);
+  }
+  ruler.innerHTML = html.join('');
+}
+
 // Module-level state so a palette switch can re-render without recomputing.
 let worker: Worker | null = null;
 let audioBuffer: AudioBuffer | null = null;
@@ -148,6 +206,8 @@ async function handleFile(file: File): Promise<void> {
   claimedFormat = res.facts.format;
   setFacts(res.facts);
   setStatus('Analyzing…');
+  setFreqRuler(sampleRate);
+  setTimeRuler(res.facts.durationSec);
 
   const w = ensureWorker();
   const req: AnalyzeRequest = { type: 'analyze', samples: res.mono, params: DEFAULT_STFT };

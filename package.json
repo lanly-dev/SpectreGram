@@ -44,6 +44,11 @@
                 "ext": "aac",
                 "name": "AAC audio",
                 "role": "Viewer"
+            },
+            {
+                "ext": "wma",
+                "name": "WMA audio",
+                "role": "Viewer"
             }
         ],
         "files": [
