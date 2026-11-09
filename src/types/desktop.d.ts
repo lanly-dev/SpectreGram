@@ -12,6 +12,10 @@ export interface SpectreGramDesktop {
   onOpenFile(callback: (filePath: string) => void): () => void;
   /** File > Save menu: renderer paints the spectrogram PNG and saves it. */
   onSavePng(callback: () => void): () => void;
+  /** Folder panel: fires when the shell has loaded an audio folder. */
+  onFolderLoaded(callback: (data: { folderPath: string; folderName: string; files: Array<{ path: string; name: string }> }) => void): () => void;
+  /** Folder panel: grant read access + open a file from the folder. */
+  openFolderFile(filePath: string): Promise<boolean>;
 }
 
 declare global {

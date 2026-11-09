@@ -324,6 +324,41 @@ function setupMenuSave(): void {
   });
 }
 
+/** Folder panel: list audio files from an opened folder; clicking one opens it. */
+function setupFolderPanel(): void {
+  const desktop = window.spectregramDesktop;
+  if (!desktop) return;
+  const box = el<HTMLElement>('spectrogram-box');
+  const panel = el<HTMLElement>('folder-panel');
+  const list = el<HTMLUListElement>('folder-list');
+  const nameNode = el<HTMLSpanElement>('folder-name');
+  if (!box || !panel || !list || !nameNode) return;
+
+  desktop.onFolderLoaded(({ folderName, files }) => {
+    nameNode.textContent = folderName;
+    list.replaceChildren();
+    for (const { path: filePath, name } of files) {
+      const li = document.createElement('li');
+      li.textContent = name;
+      li.title = filePath;
+      li.tabIndex = 0;
+      li.addEventListener('click', () => {
+        void desktop.openFolderFile(filePath);
+      });
+      li.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          void desktop.openFolderFile(filePath);
+        }
+      });
+      list.appendChild(li);
+    }
+    panel.hidden = false;
+    box.classList.add('folder-open');
+    setStatus(`Folder "${folderName}" — ${files.length} audio file${files.length !== 1 ? 's' : ''}`);
+  });
+}
+
 // Desktop only: files opened with / passed to the app arrive as paths. Read
 // the bytes through the bridge and hand them to the exact same handleFile
 // path as a drop or pick (wrapped in a File), so analysis is identical.
@@ -419,6 +454,7 @@ function init(): void {
   setupPaletteToggle();
   setupPng();
   setupMenuSave();
+  setupFolderPanel();
   setupPlay();
   setupDesktopOpenFile();
   setupWindowDrop();

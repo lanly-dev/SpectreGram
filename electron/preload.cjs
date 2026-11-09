@@ -21,4 +21,12 @@ contextBridge.exposeInMainWorld('spectregramDesktop', {
     ipcRenderer.on('sg:save-png', listener);
     return () => ipcRenderer.removeListener('sg:save-png', listener);
   },
+  /** Folder panel: fires when the shell has loaded an audio folder. */
+  onFolderLoaded: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('sg:folder-loaded', listener);
+    return () => ipcRenderer.removeListener('sg:folder-loaded', listener);
+  },
+  /** Folder panel: ask main to grant read access + open a file from the folder. */
+  openFolderFile: (filePath) => ipcRenderer.invoke('sg:open-folder-file', filePath),
 });

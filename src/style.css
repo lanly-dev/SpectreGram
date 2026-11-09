@@ -216,6 +216,70 @@ button:focus-visible {
   background: #000;
 }
 
+.spectrogram-box.folder-open .canvas-wrap,
+.spectrogram-box.folder-open .ruler-bottom {
+  right: 200px;
+}
+
+.folder-panel {
+  position: absolute;
+  top: 0;
+  bottom: 16px;
+  right: 0;
+  width: 200px;
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  z-index: 1;
+}
+
+.folder-panel[hidden] {
+  display: none;
+}
+
+.folder-panel-header {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.folder-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.folder-list li {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folder-list li:hover {
+  background: var(--panel-2);
+  border-color: var(--accent);
+}
+
+.folder-list li:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 #canvas {
   display: block;
   width: 100%;

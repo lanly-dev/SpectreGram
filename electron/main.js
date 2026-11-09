@@ -115,6 +115,11 @@ function registerIpc() {
     const data = await fs.promises.readFile(resolved);
     return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
   });
+
+  ipcMain.handle('sg:open-folder-file', async (_event, filePath) => {
+    queueOpenFile(filePath);
+    return true;
+  });
 }
 
 // --- Native menu (File / Help) --------------------------------------------
@@ -137,6 +142,37 @@ function menuOpen() {
       queueOpenFile(result.filePaths[0]);
     });
 }
+
+function menuOpenFolder() {
+  if (!mainWindow) return;
+  void dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] }).then(async (result) => {
+    if (result.canceled || !result.filePaths.length) return;
+    const folderPath = path.resolve(result.filePaths[0]);
+    try {
+      const entries = await fs.promises.readdir(folderPath, { withFileTypes: true });
+      const audioFiles = entries
+        .filter(
+          (entry) =>
+            entry.isFile() && AUDIO_EXTS.has(path.extname(entry.name).toLowerCase()),
+        )
+        .map((entry) => ({
+          path: path.join(folderPath, entry.name),
+          name: entry.name,
+        }));
+      // Grant the renderer read access to every audio file in the folder.
+      audioFiles.forEach((f) => allowedReadPaths.add(f.path));
+      mainWindow.webContents.send('sg:folder-loaded', {
+        folderPath,
+        folderName: path.basename(folderPath),
+        files: audioFiles,
+      });
+    } catch (e) {
+      console.error('read folder failed:', e);
+      setStatusUnavailable('Could not read that folder.');
+    }
+  });
+}
+
 
 function menuSave() {
   if (mainWindow) mainWindow.webContents.send('sg:save-png');
@@ -186,6 +222,12 @@ function buildMenu() {
           click: menuSave,
         },
         { type: 'separator' },
+        { type: 'separator' },
+        {
+          label: 'Open Folder...',
+          accelerator: process.platform === 'darwin' ? 'Cmd+Shift+O' : 'Ctrl+Shift+O',
+          click: menuOpenFolder,
+        },
         {
           label: 'Quit',
           accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
