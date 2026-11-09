@@ -259,6 +259,10 @@ function createWindow() {
     minWidth: 320,
     minHeight: 240,
     title: 'SpectreGram',
+    // Window/taskbar icon for unpackaged runs (start/dev). The packaged
+    // installer/exe icon comes from electron-builder's build/icon.png —
+    // without this option, a running window falls back to Electron's.
+    icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
