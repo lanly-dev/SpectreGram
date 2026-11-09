@@ -265,6 +265,24 @@ main.folder-open .controls {
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+/* Transparent scrollbar for the folder file list (WebKit/Chromium). */
+.folder-list::-webkit-scrollbar {
+  width: 6px;
+  background: transparent;
+}
+.folder-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.folder-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+.folder-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
 }
 
 .folder-list li {
