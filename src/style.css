@@ -155,59 +155,60 @@ button:focus-visible {
   color: var(--muted);
   pointer-events: none;
   user-select: none;
-  border: 1px solid var(--border);
-  background: var(--panel);
   box-sizing: border-box;
   z-index: 2;
   overflow: hidden;
+  background: transparent;
+  border: none;
 }
 
 .ruler-left {
   left: 0;
   top: 0;
-  bottom: 18px;
-  width: 34px;
-  padding: 2px;
-  border-right: none;
-  border-top-left-radius: 6px;
-  border-bottom-left-radius: 6px;
+  bottom: 16px;
+  width: 28px;
+  padding: 0;
   text-align: right;
   line-height: 1;
 }
 
 .ruler-left .tick {
   position: absolute;
-  left: 2px;
-  right: 2px;
+  left: 0;
+  right: 0;
   white-space: nowrap;
-  /* No border/padding: the label is centered on its value via an inline
-     transform, so box decorations would sit off-value and mislead. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1px;
+  margin-bottom: 4px;
 }
 
 .ruler-bottom {
-  left: 34px;
+  left: 28px;
   right: 0;
   bottom: 0;
-  height: 18px;
-  border-top: none;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 6px;
+  height: 16px;
   line-height: 1;
 }
 
 .ruler-bottom .tick {
   position: absolute;
-  top: 2px;
+  top: 0;
+  bottom: 0;
   white-space: nowrap;
-  /* Centered on its value via an inline transform (see the left ruler). */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-left: 1px solid var(--border);
+  padding: 0 2px;
 }
 
 .canvas-wrap {
   position: absolute;
-  left: 34px;
+  left: 28px;
   top: 0;
   right: 0;
-  bottom: 18px;
+  bottom: 16px;
   margin: 0;
   border: 1px solid var(--border);
   border-radius: 6px;
