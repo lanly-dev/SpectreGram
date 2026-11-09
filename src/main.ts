@@ -237,6 +237,12 @@ async function handleFile(file: File): Promise<void> {
   setStatus('Analyzing…');
   setFreqRuler(sampleRate);
   setTimeRuler(res.facts.durationSec);
+  const fileNode = el<HTMLDivElement>('current-file');
+  if (fileNode) {
+    const name = file.name;
+    fileNode.textContent = name.length > 40 ? name.slice(0, 37) + '…' : name;
+    fileNode.hidden = false;
+  }
 
   const w = ensureWorker();
   const req: AnalyzeRequest = { type: 'analyze', samples: res.mono, params: DEFAULT_STFT };
@@ -347,24 +353,34 @@ function setupFolderPanel(): void {
   const nameNode = el<HTMLSpanElement>('folder-name');
   if (!box || !panel || !list || !nameNode) return;
 
+  let selectedLi: HTMLElement | null = null;
   desktop.onFolderLoaded(({ folderName, files }) => {
     nameNode.textContent = folderName;
     list.replaceChildren();
+    selectedLi = null;
     for (const { path: filePath, name } of files) {
       const li = document.createElement('li');
       li.textContent = name;
-      li.title = filePath;
       li.tabIndex = 0;
+      const open = () => void desktop.openFolderFile(filePath);
       li.addEventListener('click', () => {
-        void desktop.openFolderFile(filePath);
+        selectLi(li);
+        open();
       });
       li.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          void desktop.openFolderFile(filePath);
+          selectLi(li);
+          open();
         }
       });
       list.appendChild(li);
+    }
+
+    function selectLi(li: HTMLElement): void {
+      if (selectedLi) selectedLi.classList.remove('selected');
+      selectedLi = li;
+      li.classList.add('selected');
     }
     panel.hidden = false;
     box.classList.add('folder-open');

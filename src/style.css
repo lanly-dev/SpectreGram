@@ -217,6 +217,23 @@ button:focus-visible {
   background: #000;
 }
 
+.current-file {
+  margin: 4px 0 2px;
+  font-size: 0.7rem;
+  color: var(--muted);
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100% - 16px);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
 .spectrogram-box.folder-open .canvas-wrap,
 .spectrogram-box.folder-open .ruler-bottom {
   right: 200px;
@@ -297,6 +314,12 @@ main.folder-open .controls {
 
 .folder-list li:hover {
   background: var(--panel-2);
+  border-color: var(--accent);
+}
+
+.folder-list li.selected {
+  background: var(--accent);
+  color: #15151c;
   border-color: var(--accent);
 }
 
