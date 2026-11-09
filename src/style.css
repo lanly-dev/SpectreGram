@@ -209,7 +209,7 @@ button:focus-visible {
   left: 28px;
   top: 0;
   right: 0;
-  bottom: 16px;
+  bottom: 20px;
   margin: 0;
   border: 1px solid var(--border);
   border-radius: 6px;

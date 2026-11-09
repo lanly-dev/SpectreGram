@@ -104,9 +104,69 @@ let activePaletteName: PaletteName = 'spectrum';
 let lastCtx: CanvasRenderingContext2D | null = null;
 let lastGrid: DbGrid | null = null;
 
-function drawGrid(ctx: CanvasRenderingContext2D, grid: DbGrid, palette: Uint8ClampedArray): void {
+// --- Progressive left-to-right draw animation ------------------------------
+
+let animSource: OffscreenCanvas | null = null;
+let animCtx: CanvasRenderingContext2D | null = null;
+let animStart = 0;
+let animId: number | null = null;
+const ANIM_DURATION_MS = 700;
+
+function stopAnim(): void {
+  if (animId !== null) {
+    cancelAnimationFrame(animId);
+    animId = null;
+  }
+  animSource = null;
+  animCtx = null;
+}
+
+function onAnimFrame(now: number): void {
+  if (!animSource || !animCtx) return;
+  const elapsed = now - animStart;
+  let progress = Math.min(elapsed / ANIM_DURATION_MS, 1);
+  // Ease-out cubic: starts fast, decelerates smoothly to the end.
+  progress = 1 - Math.pow(1 - progress, 3);
+
+  animCtx.clearRect(0, 0, FIXED_W, FIXED_H);
+  if (progress > 0) {
+    const srcW = animSource.width * progress;
+    const dstW = FIXED_W * progress;
+    animCtx.drawImage(
+      animSource,
+      0, 0, srcW, animSource.height,
+      0, 0, dstW, FIXED_H,
+    );
+  }
+
+  if (progress < 1) {
+    animId = requestAnimationFrame(onAnimFrame);
+  } else {
+    animId = null;
+    animSource = null;
+    animCtx = null;
+  }
+}
+
+function startAnim(ctx: CanvasRenderingContext2D, source: OffscreenCanvas): void {
+  stopAnim();
+  animCtx = ctx;
+  animSource = source;
+  animStart = performance.now();
+  animId = requestAnimationFrame(onAnimFrame);
+}
+
+// ---------------------------------------------------------------------------
+
+function drawGrid(
+  ctx: CanvasRenderingContext2D,
+  grid: DbGrid,
+  palette: Uint8ClampedArray,
+  animate: boolean,
+): void {
   const { frames, bins, data } = grid;
   if (frames === 0 || bins === 0) {
+    stopAnim();
     ctx.clearRect(0, 0, FIXED_W, FIXED_H);
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, FIXED_W, FIXED_H);
@@ -137,15 +197,20 @@ function drawGrid(ctx: CanvasRenderingContext2D, grid: DbGrid, palette: Uint8Cla
   }
   octx.putImageData(img, 0, 0);
 
-  ctx.clearRect(0, 0, FIXED_W, FIXED_H);
-  ctx.drawImage(off, 0, 0, FIXED_W, FIXED_H);
+  if (animate) {
+    startAnim(ctx, off);
+  } else {
+    stopAnim();
+    ctx.clearRect(0, 0, FIXED_W, FIXED_H);
+    ctx.drawImage(off, 0, 0, FIXED_W, FIXED_H);
+  }
 }
 
 /** Render the spectrogram and remember the grid + context for palette re-renders. */
 export function renderSpectrogram(ctx: CanvasRenderingContext2D, grid: DbGrid): void {
   lastCtx = ctx;
   lastGrid = grid;
-  drawGrid(ctx, grid, activePalette);
+  drawGrid(ctx, grid, activePalette, true);
 }
 
 /** Switch palette and re-render from the last grid (no recompute). */
@@ -158,7 +223,7 @@ export function setActivePalette(name: PaletteName): void {
   activePalette = buildPalette(resolved);
   activePaletteName = resolved;
   if (lastCtx && lastGrid) {
-    drawGrid(lastCtx, lastGrid, activePalette);
+    drawGrid(lastCtx, lastGrid, activePalette, false);
   }
 }
 
