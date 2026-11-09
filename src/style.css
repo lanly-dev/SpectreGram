@@ -320,6 +320,41 @@ main.folder-open .controls {
   image-rendering: pixelated;
 }
 
+.crosshair {
+  position: absolute;
+  background: #00ffff;
+  opacity: 0.7;
+  pointer-events: none;
+  display: none;
+  z-index: 4;
+}
+
+.crosshair-v {
+  width: 1px;
+  top: 0;
+  bottom: 0;
+}
+
+.crosshair-h {
+  height: 1px;
+  left: 0;
+  right: 0;
+}
+
+.cursor-label {
+  position: absolute;
+  background: rgba(21, 21, 28, 0.9);
+  color: #fff;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  pointer-events: none;
+  display: none;
+  z-index: 5;
+  white-space: nowrap;
+}
+
 .playhead {
   position: absolute;
   top: 0;

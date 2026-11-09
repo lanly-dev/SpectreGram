@@ -406,6 +406,45 @@ function setupDesktopOpenFile(): void {
   });
 }
 
+// --- Cursor crosshair + live readout over the spectrogram --------------------
+
+function setupCrosshair(): void {
+  const wrap = el<HTMLElement>('canvas-wrap');
+  const v = el<HTMLDivElement>('crosshair-v');
+  const h = el<HTMLDivElement>('crosshair-h');
+  const label = el<HTMLDivElement>('cursor-label');
+  if (!wrap || !v || !h || !label) return;
+
+  wrap.addEventListener('mousemove', (e) => {
+    const rect = wrap.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const px = Math.max(0, Math.min(1, x / rect.width));
+    const py = Math.max(0, Math.min(1, y / rect.height));
+
+    const nyq = sampleRate / 2;
+    const time = px * (audioBuffer ? audioBuffer.duration : 0);
+    const freq = nyq * (1 - py);
+
+    const tStr = time > 60 ? `${Math.floor(time / 60)}:${Math.floor(time % 60).toString().padStart(2, '0')}` : `${time.toFixed(1)}s`;
+    const fStr = freq >= 1000 ? `${(freq / 1000).toFixed(freq >= 10000 ? 0 : 1)} k` : `${Math.round(freq)} Hz`;
+
+    v.style.display = 'block';
+    h.style.display = 'block';
+    v.style.left = `${x}px`;
+    h.style.top = `${y}px`;
+    label.textContent = `${tStr} · ${fStr}`;
+    label.style.display = 'block';
+    label.style.left = `${Math.min(x + 10, rect.width - 140)}px`;
+    label.style.top = `${Math.max(y - 26, 4)}px`;
+  });
+  wrap.addEventListener('mouseleave', () => {
+    v.style.display = 'none';
+    h.style.display = 'none';
+    label.style.display = 'none';
+  });
+}
+
 // --- Playhead (optional, guardrailed) ---------------------------------------
 
 function playbackCtor(): typeof AudioContext | null {
@@ -484,6 +523,7 @@ function init(): void {
   setupFolderPanel();
   setupPlay();
   setupDesktopOpenFile();
+  setupCrosshair();
   setupWindowDrop();
   setStatus('Drop an audio file or pick one to begin.');
   window.addEventListener('beforeunload', () => {
