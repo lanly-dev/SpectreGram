@@ -206,6 +206,8 @@ function setFacts(facts: FileFacts | null): void {
   }
 }
 
+// The on-screen status line was removed (progress is the top-edge line), so
+// this is a no-op unless a #status element is added back.
 function setStatus(text: string): void {
   const node = $('status');
   if (node) node.textContent = text;
@@ -219,9 +221,34 @@ function setVerdict(text: string): void {
   if (node) node.textContent = text;
 }
 
+// Top-of-window progress line: shown while decoding/analyzing, fades out
+// shortly after reaching 100%.
+let progressHideTimer = 0;
+
 function setProgress(fraction: number): void {
   const bar = $('progress-bar');
-  if (bar) bar.style.width = `${Math.round(fraction * 100)}%`;
+  if (!bar) return;
+  clearTimeout(progressHideTimer);
+  if (fraction <= 0) {
+    // Jump back to 0 instantly (no backwards slide), then show the line.
+    bar.classList.add('reset');
+    bar.style.width = '0%';
+    void bar.offsetWidth; // flush so the reset applies before re-enabling transitions
+    bar.classList.remove('reset');
+    bar.classList.add('active');
+    return;
+  }
+  bar.classList.add('active');
+  bar.style.width = `${Math.round(fraction * 100)}%`;
+  if (fraction >= 1) {
+    progressHideTimer = window.setTimeout(() => bar.classList.remove('active'), 400);
+  }
+}
+
+/** Hide the progress line without filling it (decode/analysis failed). */
+function hideProgress(): void {
+  clearTimeout(progressHideTimer);
+  $('progress-bar')?.classList.remove('active');
 }
 
 // --- Worker -----------------------------------------------------------------
@@ -236,6 +263,7 @@ function ensureWorker(): Worker {
   worker.onerror = (e) => {
     console.error('worker error:', e.message);
     setStatus(`Analysis error: ${e.message}`);
+    hideProgress();
     teardownWorker();
   };
   return worker;
@@ -273,6 +301,7 @@ function onWorkerMessage(msg: WorkerMessage): void {
   } else if (msg.type === 'error') {
     console.error('analysis error:', msg.message);
     setStatus(`Analysis error: ${msg.message}`);
+    hideProgress();
     const desktop = window.spectregramDesktop;
     if (desktop) void desktop.reportSpectrogramState(false);
     teardownWorker();
@@ -298,6 +327,7 @@ async function handleFile(file: File): Promise<void> {
     console.warn('decode failed:', res.message);
     setFacts(null);
     setStatus(res.message);
+    hideProgress();
     return;
   }
 

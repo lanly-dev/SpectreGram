@@ -8,15 +8,11 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
+    <div class="top-progress" aria-hidden="true">
+      <div id="progress-bar" class="progress-bar"></div>
+    </div>
     <main>
       <section id="verdict" class="verdict" aria-live="polite"></section>
-
-      <section class="status-line">
-        <div class="progress" aria-hidden="true">
-          <div id="progress-bar" class="progress-bar"></div>
-        </div>
-        <div id="status" class="status-text" role="status" aria-live="polite"></div>
-      </section>
 
       <section id="facts" class="facts" aria-label="File facts"></section>
 

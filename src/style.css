@@ -109,51 +109,38 @@ button:focus-visible {
   color: var(--muted);
 }
 
-.progress {
-  height: 6px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  overflow: hidden;
-  margin: 8px 0;
+/* Thin progress line pinned to the top edge of the window, right under the
+   native menu bar. Takes no layout space; visible only while work runs. */
+.top-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 20;
+  pointer-events: none;
 }
 
 .progress-bar {
   height: 100%;
   width: 0%;
   background: var(--accent);
-  transition: width 0.1s linear;
+  box-shadow: 0 0 6px var(--accent);
+  opacity: 0;
+  transition: width 0.1s linear, opacity 0.4s ease;
 }
 
-/* Decode/analysis status line: thin progress track plus the current step.
-   Kept on one row and out of the spectrogram's way — it only ever replaces
-   the space it occupies, so the graph keeps all remaining height. */
-.status-line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  min-height: 14px;
-  font-size: 0.72rem;
-  color: var(--muted);
+.progress-bar.active {
+  opacity: 1;
 }
 
-.status-line .progress {
-  width: 96px;
-  height: 4px;
-  margin: 0;
-  flex-shrink: 0;
-}
-
-.status-text {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* Reset to 0 without animating backwards from the previous run. */
+.progress-bar.reset {
+  transition: none;
 }
 
 .verdict {
-  font-size: 0.85rem;
+  font-size: 0.70rem;
   min-height: 1.4em;
   padding: 4px 0;
   flex-shrink: 0;
