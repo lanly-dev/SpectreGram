@@ -135,6 +135,33 @@ button:focus-visible {
   transition: width 0.1s linear;
 }
 
+/* Decode/analysis status line: thin progress track plus the current step.
+   Kept on one row and out of the spectrogram's way — it only ever replaces
+   the space it occupies, so the graph keeps all remaining height. */
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-height: 14px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.status-line .progress {
+  width: 96px;
+  height: 4px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.status-text {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .verdict {
   font-size: 0.85rem;
   min-height: 1.4em;

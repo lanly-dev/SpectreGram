@@ -3,7 +3,6 @@
 // DOM — no framework. Privacy invariant: no fetch/XHR/WebSocket anywhere.
 
 import { decodeFile, type DecodeResult, type FileFacts } from './audio/decode';
-import { analyze } from './audio/cutoff';
 import {
   renderSpectrogram,
   setActivePalette,
@@ -146,8 +145,6 @@ function setupDbRangeKeys(): void {
 let worker: Worker | null = null;
 let audioBuffer: AudioBuffer | null = null;
 let sampleRate = 0;
-let claimedFormat = 'Unknown';
-let lastGrid: DbGrid | null = null;
 // Base name (no extension) of the file being analyzed — names the PNG export.
 let currentBaseName = 'spectregram';
 
@@ -240,18 +237,22 @@ function onWorkerMessage(msg: WorkerMessage): void {
     setStatus(`Analyzing… ${Math.round(msg.fraction * 100)}%`);
   } else if (msg.type === 'result') {
     const grid: DbGrid = { data: msg.data, frames: msg.frames, bins: msg.bins };
-    lastGrid = grid;
     const desktop = window.spectregramDesktop;
     if (desktop) void desktop.reportSpectrogramState(true);
     setProgress(1);
-    const { cutoff, verdict } = analyze(grid, sampleRate, claimedFormat);
-    setVerdict(verdict);
-    setStatus(`Cutoff estimate ≈ ${(cutoff.cutoffHz / 1000).toFixed(1)} kHz`);
+    // Paint immediately: the grid is already computed, so the pixels land in the
+    // same task its result arrived in. The cutoff pass runs in the worker and
+    // arrives as its own message, so it never delays the graph and never blocks
+    // the UI thread (its per-bin percentile sort measures ~160 ms).
     const canvas = el<HTMLCanvasElement>('canvas');
     if (canvas) {
       const ctx = canvas.getContext('2d');
       if (ctx) renderSpectrogram(ctx, grid);
     }
+    setStatus('Estimating cutoff…');
+  } else if (msg.type === 'verdict') {
+    setVerdict(msg.verdict);
+    setStatus(`Cutoff estimate ≈ ${(msg.cutoffHz / 1000).toFixed(1)} kHz`);
   } else if (msg.type === 'error') {
     console.error('analysis error:', msg.message);
     setStatus(`Analysis error: ${msg.message}`);
@@ -285,7 +286,6 @@ async function handleFile(file: File): Promise<void> {
 
   audioBuffer = res.buffer;
   sampleRate = res.facts.sampleRate;
-  claimedFormat = res.facts.format;
   setFacts(res.facts);
   setStatus('Analyzing…');
   setFreqRuler(sampleRate);
@@ -307,7 +307,13 @@ async function handleFile(file: File): Promise<void> {
   const params = { ...DEFAULT_STFT, hopSize };
 
   const w = ensureWorker();
-  const req: AnalyzeRequest = { type: 'analyze', samples: res.mono, params };
+  const req: AnalyzeRequest = {
+    type: 'analyze',
+    samples: res.mono,
+    params,
+    sampleRate: res.facts.sampleRate,
+    claimedFormat: res.facts.format,
+  };
   // Transfer the mono buffer (we keep the AudioBuffer for playback separately).
   w.postMessage(req, [res.mono.buffer]);
 }
