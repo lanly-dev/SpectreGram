@@ -101,5 +101,7 @@ Legend: `[x]` done · `[~]` automated/partial · `[ ]` pending manual (real brow
 
 - **Spectrum palette (2026-11-08, maintainer's ask — "different colors, take Spek as reference"):** third palette `spectrum` added to `src/render.ts` and made the DEFAULT — a full spectral sweep (near-black indigo → purple → magenta → red-orange → amber → yellow-white) in the classic acoustic-analyser family, own stop values (clean-room, not Spek's table). Since color encodes energy and low frequencies usually carry the most, bands now separate by color across the axis instead of shading one hue. The palette button cycles Spectrum → Hellfire → Ectoplasm.
 
+- **Idle screensaver (2026-11-10, maintainer's ask):** after 60 s without input (mouse/keyboard/wheel/touch/drop), a full-window overlay plays `public/screensaver.mp4` — his spectrogram-ghost artwork reframed to landscape and animated (gentle bob/sway, rippling sheet, drifting particles), encoded 1332×732 (2× the 666×366 window), muted, no audio track, faststart. Any input hides it and re-arms the timer (`setupScreensaver()` in `src/main.ts`, `IDLE_MS`). The video lives in `public/` so it ships in `dist/` for both the desktop `app://` build and the web demo.
+
 ## How we work
 Plan → Work → Assess → Compound. Lessons earned go into this file immediately. Decisions land in Open decisions the same session. This is the smallest, safest entry — its job in the portfolio is to be *finished early and submitted-ready*; resist every urge to grow it.

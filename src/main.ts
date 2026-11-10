@@ -579,6 +579,41 @@ function setupPlay(): void {
   $('stop-btn')?.addEventListener('click', stopPlayback);
 }
 
+// --- Screensaver --------------------------------------------------------------
+
+// Idle screensaver: after this long with no user input, the ghost takes
+// over the whole window (screensaver.mp4, reframed to the window's aspect)
+// until the next input arrives.
+const IDLE_MS = 60_000;
+
+function setupScreensaver(): void {
+  const overlay = $('screensaver');
+  const video = el<HTMLVideoElement>('screensaver-video');
+  if (!overlay || !video) return;
+  let timer = 0;
+  const show = (): void => {
+    overlay.hidden = false;
+    void video.play().catch(() => undefined);
+  };
+  const hide = (): void => {
+    if (overlay.hidden) return;
+    overlay.hidden = true;
+    video.pause();
+  };
+  const arm = (): void => {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(show, IDLE_MS);
+  };
+  const onActivity = (): void => {
+    hide();
+    arm();
+  };
+  for (const evt of ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart', 'drop']) {
+    window.addEventListener(evt, onActivity, { passive: true });
+  }
+  arm();
+}
+
 // --- Init -------------------------------------------------------------------
 
 function init(): void {
@@ -592,6 +627,7 @@ function init(): void {
   setupCrosshair();
   setupWindowDrop();
   setupDbRangeKeys();
+  setupScreensaver();
   updateLegend();
   setStatus('Drop an audio file or pick one to begin.');
   window.addEventListener('beforeunload', () => {

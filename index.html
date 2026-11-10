@@ -45,6 +45,18 @@
         <button id="play-btn" type="button">Play</button>
         <button id="stop-btn" type="button">Stop</button>
       </section>
+
+      <div id="screensaver" class="screensaver" hidden>
+        <video
+          id="screensaver-video"
+          src="screensaver.mp4"
+          loop
+          muted
+          playsinline
+          preload="auto"
+          aria-hidden="true"
+        ></video>
+      </div>
     </main>
 
     <script type="module" src="/src/main.ts"></script>

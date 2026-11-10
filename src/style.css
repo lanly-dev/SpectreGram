@@ -422,3 +422,21 @@ main.folder-open .controls {
   text-align: center;
   flex-shrink: 0;
 }
+
+/* Idle screensaver: full-window ghost loop, shown by setupScreensaver()
+   after IDLE_MS without input. Covers everything, takes no clicks of its
+   own (any input dismisses it via the window listeners). */
+.screensaver {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000;
+  cursor: none;
+}
+
+.screensaver video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
