@@ -223,15 +223,25 @@ function toast(text: string, kind: 'info' | 'error' = 'info'): void {
   }, kind === 'error' ? 5000 : 2500);
 }
 
-// The verdict line only ever holds a real estimate verdict (or is empty while
-// working). Transient status and errors go to #status so the "estimate"
-// invariant on the verdict line is never muddied.
+// The verdict line holds a real estimate verdict (generated only in
+// cutoff.ts), or — while a file loads — a dimmed progress note set via
+// setVerdictPending. Errors go to toasts, never here.
 function setVerdict(text: string): void {
   const node = $('verdict');
   if (!node) return;
+  node.classList.remove('pending');
   node.textContent = text;
   // Full verdict on hover when the one-line slot ellipsizes it.
   node.title = text;
+}
+
+/** Show a loading note ("Decoding…", "Analyzing… 42%") in the verdict slot. */
+function setVerdictPending(text: string): void {
+  const node = $('verdict');
+  if (!node) return;
+  node.classList.add('pending');
+  node.textContent = text;
+  node.title = '';
 }
 
 // Top-of-window progress line: shown while decoding/analyzing, fades out
@@ -277,6 +287,7 @@ function ensureWorker(): Worker {
     console.error('worker error:', e.message);
     toast(`Analysis error: ${e.message}`, 'error');
     hideProgress();
+    setVerdict('');
     teardownWorker();
   };
   return worker;
@@ -292,11 +303,13 @@ function teardownWorker(): void {
 function onWorkerMessage(msg: WorkerMessage): void {
   if (msg.type === 'progress') {
     setProgress(msg.fraction);
+    setVerdictPending(`Analyzing… ${Math.round(msg.fraction * 100)}%`);
   } else if (msg.type === 'result') {
     const grid: DbGrid = { data: msg.data, frames: msg.frames, bins: msg.bins };
     const desktop = window.spectregramDesktop;
     if (desktop) void desktop.reportSpectrogramState(true);
     setProgress(1);
+    setVerdictPending('Estimating cutoff…');
     // Paint immediately: the grid is already computed, so the pixels land in the
     // same task its result arrived in. The cutoff pass runs in the worker and
     // arrives as its own message, so it never delays the graph and never blocks
@@ -312,6 +325,7 @@ function onWorkerMessage(msg: WorkerMessage): void {
     console.error('analysis error:', msg.message);
     toast(`Analysis error: ${msg.message}`, 'error');
     hideProgress();
+    setVerdict('');
     const desktop = window.spectregramDesktop;
     if (desktop) void desktop.reportSpectrogramState(false);
     teardownWorker();
@@ -326,7 +340,7 @@ async function handleFile(file: File): Promise<void> {
   stopPlayback();
   const dot = file.name.lastIndexOf('.');
   currentBaseName = dot > 0 ? file.name.slice(0, dot) : file.name || 'spectregram';
-  setVerdict('');
+  setVerdictPending('Decoding…');
   setProgress(0);
   const desktop = window.spectregramDesktop;
   if (desktop) void desktop.reportSpectrogramState(false);
@@ -337,12 +351,14 @@ async function handleFile(file: File): Promise<void> {
     setFacts(null);
     toast(res.message, 'error');
     hideProgress();
+    setVerdict('');
     return;
   }
 
   audioBuffer = res.buffer;
   sampleRate = res.facts.sampleRate;
   setFacts(res.facts);
+  setVerdictPending('Analyzing… 0%');
   setFreqRuler(sampleRate);
   setTimeRuler(res.facts.durationSec);
   // Show the current file in the window title bar.
@@ -647,11 +663,24 @@ function setupPlay(): void {
 // until the next input arrives.
 const IDLE_MS = 60_000;
 
-function setupScreensaver(): void {
+// After a manual "Show Screensaver", ignore input this long so the mouse
+// movement from closing the menu doesn't dismiss it instantly.
+const MANUAL_SHOW_GRACE_MS = 800;
+
+interface ScreensaverControls {
+  /** Turn the idle timer on/off (Options > Disable Screensaver). */
+  setEnabled(enabled: boolean): void;
+  /** Show it right now, even when the idle timer is disabled. */
+  showNow(): void;
+}
+
+function setupScreensaver(): ScreensaverControls | null {
   const overlay = $('screensaver');
   const video = el<HTMLVideoElement>('screensaver-video');
-  if (!overlay || !video) return;
+  if (!overlay || !video) return null;
   let timer = 0;
+  let enabled = true;
+  let ignoreUntil = 0;
   const show = (): void => {
     overlay.hidden = false;
     void video.play().catch(() => undefined);
@@ -663,9 +692,10 @@ function setupScreensaver(): void {
   };
   const arm = (): void => {
     window.clearTimeout(timer);
-    timer = window.setTimeout(show, IDLE_MS);
+    if (enabled) timer = window.setTimeout(show, IDLE_MS);
   };
   const onActivity = (): void => {
+    if (performance.now() < ignoreUntil) return;
     hide();
     arm();
   };
@@ -673,6 +703,35 @@ function setupScreensaver(): void {
     window.addEventListener(evt, onActivity, { passive: true });
   }
   arm();
+  return {
+    setEnabled(next) {
+      enabled = next;
+      if (!enabled) hide();
+      arm();
+    },
+    showNow() {
+      ignoreUntil = performance.now() + MANUAL_SHOW_GRACE_MS;
+      window.clearTimeout(timer);
+      show();
+    },
+  };
+}
+
+/** Desktop Options menu: screensaver toggle + development helpers. */
+function setupMenuActions(screensaver: ScreensaverControls | null): void {
+  const desktop = window.spectregramDesktop;
+  if (!desktop) return;
+  desktop.onMenuAction((action, value) => {
+    if (action === 'screensaver-enabled') {
+      screensaver?.setEnabled(value === true);
+      toast(value === true ? 'Screensaver enabled' : 'Screensaver disabled');
+    } else if (action === 'show-screensaver') {
+      screensaver?.showNow();
+    } else if (action === 'toast') {
+      const v = value as { message?: unknown; kind?: unknown } | undefined;
+      if (typeof v?.message === 'string') toast(v.message, v.kind === 'error' ? 'error' : 'info');
+    }
+  });
 }
 
 // --- Init -------------------------------------------------------------------
@@ -688,7 +747,7 @@ function init(): void {
   setupCrosshair();
   setupWindowDrop();
   setupDbRangeKeys();
-  setupScreensaver();
+  setupMenuActions(setupScreensaver());
   updateLegend();
   window.addEventListener('beforeunload', () => {
     teardownWorker();

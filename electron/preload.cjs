@@ -32,4 +32,10 @@ contextBridge.exposeInMainWorld('spectregramDesktop', {
   /** Report whether a spectrogram is present (gates Save as PNG in the menu). */
   reportSpectrogramState: (present) =>
     ipcRenderer.invoke('sg:spectrogram-state', present),
+  /** Options menu actions (screensaver toggle, development helpers, toasts). */
+  onMenuAction: (callback) => {
+    const listener = (_event, action, value) => callback(action, value);
+    ipcRenderer.on('sg:menu-action', listener);
+    return () => ipcRenderer.removeListener('sg:menu-action', listener);
+  },
 });

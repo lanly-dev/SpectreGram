@@ -153,34 +153,84 @@ function menuOpen() {
     });
 }
 
+/** Send a menu-driven action to the renderer (see onMenuAction in preload). */
+function sendMenuAction(action, value) {
+  if (mainWindow && rendererReady) mainWindow.webContents.send('sg:menu-action', action, value);
+}
+
+/** Show a toast in the renderer. kind: 'info' | 'error'. */
+function sendToast(message, kind = 'info') {
+  sendMenuAction('toast', { message, kind });
+}
+
+/**
+ * List the audio files in `folderPath` (optionally only the first `limit`,
+ * by name), grant the renderer read access to them, and show them in the
+ * folder panel under `displayName`.
+ */
+async function loadFolder(folderPath, { limit = Infinity, displayName } = {}) {
+  if (!mainWindow) return;
+  try {
+    const entries = await fs.promises.readdir(folderPath, { withFileTypes: true });
+    const audioFiles = entries
+      .filter(
+        (entry) => entry.isFile() && AUDIO_EXTS.has(path.extname(entry.name).toLowerCase()),
+      )
+      .map((entry) => ({ path: path.join(folderPath, entry.name), name: entry.name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, limit);
+    if (!audioFiles.length) {
+      sendToast('No audio files in that folder.', 'error');
+      return;
+    }
+    // Grant the renderer read access to every listed audio file.
+    audioFiles.forEach((f) => allowedReadPaths.add(f.path));
+    mainWindow.webContents.send('sg:folder-loaded', {
+      folderPath,
+      folderName: displayName || path.basename(folderPath),
+      files: audioFiles,
+    });
+  } catch (e) {
+    console.error('read folder failed:', e);
+    sendToast('Could not read that folder.', 'error');
+  }
+}
+
 function menuOpenFolder() {
   if (!mainWindow) return;
-  void dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] }).then(async (result) => {
+  void dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] }).then((result) => {
     if (result.canceled || !result.filePaths.length) return;
-    const folderPath = path.resolve(result.filePaths[0]);
-    try {
-      const entries = await fs.promises.readdir(folderPath, { withFileTypes: true });
-      const audioFiles = entries
-        .filter(
-          (entry) =>
-            entry.isFile() && AUDIO_EXTS.has(path.extname(entry.name).toLowerCase()),
-        )
-        .map((entry) => ({
-          path: path.join(folderPath, entry.name),
-          name: entry.name,
-        }));
-      // Grant the renderer read access to every audio file in the folder.
-      audioFiles.forEach((f) => allowedReadPaths.add(f.path));
-      mainWindow.webContents.send('sg:folder-loaded', {
-        folderPath,
-        folderName: path.basename(folderPath),
-        files: audioFiles,
-      });
-    } catch (e) {
-      console.error('read folder failed:', e);
-      setStatusUnavailable('Could not read that folder.');
-    }
+    void loadFolder(path.resolve(result.filePaths[0]));
   });
+}
+
+// --- Options menu -----------------------------------------------------------
+
+// Local sample tracks for development: the repo's lab/ folder (gitignored —
+// it holds personal test audio, so it is absent from clones and packaged
+// builds). Resolved relative to this file, never hard-coded.
+const SAMPLE_DIR = path.join(__dirname, '..', 'lab');
+const SAMPLE_LIMIT = 10;
+
+function menuToggleScreensaver(item) {
+  // Checkbox reads "Disable Screensaver": checked = screensaver off.
+  sendMenuAction('screensaver-enabled', !item.checked);
+}
+
+function menuShowScreensaver() {
+  sendMenuAction('show-screensaver');
+}
+
+function menuTestErrorToast() {
+  sendToast('Test error: this is what an error toast looks like.', 'error');
+}
+
+function menuLoadSampleFolder() {
+  if (!fs.existsSync(SAMPLE_DIR)) {
+    sendToast('No sample folder: lab/ is missing (it is local-only, not in the repo).', 'error');
+    return;
+  }
+  void loadFolder(SAMPLE_DIR, { limit: SAMPLE_LIMIT, displayName: 'Sample tracks' });
 }
 
 
@@ -244,6 +294,26 @@ function buildMenu() {
           label: 'Exit',
           accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
           click: menuExit,
+        },
+      ],
+    },
+    {
+      label: 'Options',
+      submenu: [
+        {
+          id: 'disable-screensaver',
+          label: 'Disable Screensaver',
+          type: 'checkbox',
+          checked: false,
+          click: menuToggleScreensaver,
+        },
+        {
+          label: 'Development',
+          submenu: [
+            { label: 'Show Screensaver', click: menuShowScreensaver },
+            { label: 'Show Error Toast', click: menuTestErrorToast },
+            { label: 'Load Sample Folder', click: menuLoadSampleFolder },
+          ],
         },
       ],
     },

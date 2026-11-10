@@ -182,6 +182,12 @@ button:focus-visible {
   text-overflow: ellipsis;
 }
 
+/* Loading note in the verdict slot — dimmed so it never reads as a verdict. */
+.verdict.pending {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .spectrogram-box {
   position: relative;
   margin: 0;

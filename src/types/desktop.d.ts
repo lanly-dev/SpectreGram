@@ -18,7 +18,12 @@ export interface SpectreGramDesktop {
   openFolderFile(filePath: string): Promise<boolean>;
   /** Report whether a spectrogram is present (gates Save as PNG in the menu). */
   reportSpectrogramState(present: boolean): Promise<boolean>;
+  /** Options menu actions; returns an unsubscribe function. */
+  onMenuAction(callback: (action: MenuAction, value?: unknown) => void): () => void;
 }
+
+/** Actions the Options menu sends to the renderer. */
+export type MenuAction = 'screensaver-enabled' | 'show-screensaver' | 'toast';
 
 declare global {
   interface Window {
