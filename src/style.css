@@ -139,11 +139,47 @@ button:focus-visible {
   transition: none;
 }
 
+/* Brief floating message: errors, save results, dB range changes. */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 52px;
+  transform: translateX(-50%);
+  max-width: min(520px, 90vw);
+  padding: 6px 12px;
+  background: rgba(21, 21, 28, 0.95);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.toast[hidden] {
+  display: none;
+}
+
+.toast.error {
+  border-color: #e0524a;
+  color: #ffd6d2;
+}
+
+/* Fixed one-line slot: the same height whether empty (while a new file is
+   analyzed) or holding a long verdict, so the spectrogram below never shifts.
+   Overflow is ellipsized; the full text is in the element's title tooltip. */
 .verdict {
   font-size: 0.70rem;
-  min-height: 1.4em;
+  line-height: 1.45;
+  height: calc(1.45em + 8px);
   padding: 4px 0;
   flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .spectrogram-box {

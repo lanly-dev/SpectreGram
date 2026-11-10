@@ -134,7 +134,7 @@ function setupDbRangeKeys(): void {
     const after = adjustDbRange(which, delta);
     updateLegend();
     const changed = before.lower !== after.lower || before.upper !== after.upper;
-    setStatus(
+    toast(
       `${changed ? 'dB range' : 'dB range limit reached'}: ${after.lower} … ${after.upper} dBFS ` +
         '(u/U upper, l/L lower)',
     );
@@ -206,11 +206,21 @@ function setFacts(facts: FileFacts | null): void {
   }
 }
 
-// The on-screen status line was removed (progress is the top-edge line), so
-// this is a no-op unless a #status element is added back.
-function setStatus(text: string): void {
-  const node = $('status');
-  if (node) node.textContent = text;
+// Brief floating message for things the user should notice: errors, save
+// results, dB range changes. Progress is the top-edge line and the verdict
+// line holds only estimates, so neither is used for these.
+let toastTimer = 0;
+
+function toast(text: string, kind: 'info' | 'error' = 'info'): void {
+  const node = $('toast');
+  if (!node) return;
+  clearTimeout(toastTimer);
+  node.textContent = text;
+  node.classList.toggle('error', kind === 'error');
+  node.hidden = false;
+  toastTimer = window.setTimeout(() => {
+    node.hidden = true;
+  }, kind === 'error' ? 5000 : 2500);
 }
 
 // The verdict line only ever holds a real estimate verdict (or is empty while
@@ -218,7 +228,10 @@ function setStatus(text: string): void {
 // invariant on the verdict line is never muddied.
 function setVerdict(text: string): void {
   const node = $('verdict');
-  if (node) node.textContent = text;
+  if (!node) return;
+  node.textContent = text;
+  // Full verdict on hover when the one-line slot ellipsizes it.
+  node.title = text;
 }
 
 // Top-of-window progress line: shown while decoding/analyzing, fades out
@@ -262,7 +275,7 @@ function ensureWorker(): Worker {
   };
   worker.onerror = (e) => {
     console.error('worker error:', e.message);
-    setStatus(`Analysis error: ${e.message}`);
+    toast(`Analysis error: ${e.message}`, 'error');
     hideProgress();
     teardownWorker();
   };
@@ -279,7 +292,6 @@ function teardownWorker(): void {
 function onWorkerMessage(msg: WorkerMessage): void {
   if (msg.type === 'progress') {
     setProgress(msg.fraction);
-    setStatus(`Analyzing… ${Math.round(msg.fraction * 100)}%`);
   } else if (msg.type === 'result') {
     const grid: DbGrid = { data: msg.data, frames: msg.frames, bins: msg.bins };
     const desktop = window.spectregramDesktop;
@@ -294,13 +306,11 @@ function onWorkerMessage(msg: WorkerMessage): void {
       const ctx = canvas.getContext('2d');
       if (ctx) renderSpectrogram(ctx, grid);
     }
-    setStatus('Estimating cutoff…');
   } else if (msg.type === 'verdict') {
     setVerdict(msg.verdict);
-    setStatus(`Cutoff estimate ≈ ${(msg.cutoffHz / 1000).toFixed(1)} kHz`);
   } else if (msg.type === 'error') {
     console.error('analysis error:', msg.message);
-    setStatus(`Analysis error: ${msg.message}`);
+    toast(`Analysis error: ${msg.message}`, 'error');
     hideProgress();
     const desktop = window.spectregramDesktop;
     if (desktop) void desktop.reportSpectrogramState(false);
@@ -318,7 +328,6 @@ async function handleFile(file: File): Promise<void> {
   currentBaseName = dot > 0 ? file.name.slice(0, dot) : file.name || 'spectregram';
   setVerdict('');
   setProgress(0);
-  setStatus('Decoding…');
   const desktop = window.spectregramDesktop;
   if (desktop) void desktop.reportSpectrogramState(false);
 
@@ -326,7 +335,7 @@ async function handleFile(file: File): Promise<void> {
   if (!res.ok) {
     console.warn('decode failed:', res.message);
     setFacts(null);
-    setStatus(res.message);
+    toast(res.message, 'error');
     hideProgress();
     return;
   }
@@ -334,7 +343,6 @@ async function handleFile(file: File): Promise<void> {
   audioBuffer = res.buffer;
   sampleRate = res.facts.sampleRate;
   setFacts(res.facts);
-  setStatus('Analyzing…');
   setFreqRuler(sampleRate);
   setTimeRuler(res.facts.durationSec);
   // Show the current file in the window title bar.
@@ -436,10 +444,10 @@ function setupPng(): void {
   btn.addEventListener('click', async () => {
     try {
       const saved = await savePngFromCanvas();
-      setStatus(saved ? `Saved ${currentBaseName}-spectrogram.png` : 'Save cancelled.');
+      toast(saved ? `Saved ${currentBaseName}-spectrogram.png` : 'Save cancelled.');
     } catch (e) {
       console.error('export failed:', e);
-      setStatus('Export failed.');
+      toast('Export failed.', 'error');
     }
   });
 }
@@ -451,10 +459,10 @@ function setupMenuSave(): void {
   desktop.onSavePng(async () => {
     try {
       const saved = await savePngFromCanvas();
-      setStatus(saved ? `Saved ${currentBaseName}-spectrogram.png` : 'Save cancelled.');
+      toast(saved ? `Saved ${currentBaseName}-spectrogram.png` : 'Save cancelled.');
     } catch (e) {
       console.error('export failed:', e);
-      setStatus('Export failed.');
+      toast('Export failed.', 'error');
     }
   });
 }
@@ -501,7 +509,7 @@ function setupFolderPanel(): void {
     panel.hidden = false;
     box.classList.add('folder-open');
     document.querySelector('main')?.classList.add('folder-open');
-    setStatus(`Folder "${folderName}" — ${files.length} audio file${files.length !== 1 ? 's' : ''}`);
+    toast(`Folder "${folderName}" — ${files.length} audio file${files.length !== 1 ? 's' : ''}`);
   });
 }
 
@@ -519,7 +527,7 @@ function setupDesktopOpenFile(): void {
         await handleFile(new File([buffer], name));
       } catch (e) {
         console.error('open-file failed:', e);
-        setStatus('Could not open that file.');
+        toast('Could not open that file.', 'error');
       }
     })();
   });
@@ -682,7 +690,6 @@ function init(): void {
   setupDbRangeKeys();
   setupScreensaver();
   updateLegend();
-  setStatus('Drop an audio file or pick one to begin.');
   window.addEventListener('beforeunload', () => {
     teardownWorker();
     stopPlayback();
