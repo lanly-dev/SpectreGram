@@ -165,6 +165,23 @@ function el<T extends HTMLElement>(id: string): T | null {
 
 // --- UI helpers -------------------------------------------------------------
 
+/** 182.48 s -> "3:02"; under a minute keeps a decimal so it can't read as 0:00. */
+function fmtDuration(sec: number): string {
+  if (sec < 60) return `${sec.toFixed(2)} s`;
+  const total = Math.round(sec);
+  return `${Math.floor(total / 60)}:${(total % 60).toString().padStart(2, '0')}`;
+}
+
+/** 48000 -> "48 kHz", 44100 -> "44.1 kHz". */
+function fmtSampleRate(hz: number): string {
+  return `${Number((hz / 1000).toFixed(1))} kHz`;
+}
+
+/** "mono" / "stereo" / "N ch" — the strip is one row, so spell out the common cases. */
+function fmtChannels(n: number): string {
+  return n === 1 ? 'mono' : n === 2 ? 'stereo' : `${n} ch`;
+}
+
 function setFacts(facts: FileFacts | null): void {
   const node = $('facts');
   if (!node) return;
@@ -172,9 +189,9 @@ function setFacts(facts: FileFacts | null): void {
   if (!facts) return;
   const rows: Array<[string, string]> = [
     ['Format', facts.format],
-    ['Duration', `${facts.durationSec.toFixed(2)} s`],
-    ['Sample rate', `${facts.sampleRate} Hz`],
-    ['Channels', String(facts.channels)],
+    ['Duration', fmtDuration(facts.durationSec)],
+    ['Sample rate', fmtSampleRate(facts.sampleRate)],
+    ['Channels', fmtChannels(facts.channels)],
   ];
   for (const [label, value] of rows) {
     const row = document.createElement('div');
