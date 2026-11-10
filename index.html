@@ -21,6 +21,16 @@
           <div id="cursor-label" class="cursor-label" aria-hidden="true"></div>
         </section>
         <div id="ruler-bottom" class="ruler ruler-bottom" aria-hidden="true"></div>
+        <div
+          id="legend"
+          class="legend"
+          role="img"
+          aria-label="dBFS color scale"
+          title="dBFS scale — u / U: lower / raise upper limit, l / L: lower / raise lower limit"
+        >
+          <canvas id="legend-canvas" class="legend-canvas" width="10" height="256"></canvas>
+          <div id="legend-ticks" class="legend-ticks" aria-hidden="true"></div>
+        </div>
       </section>
       <section id="folder-panel" class="folder-panel" hidden>
         <div class="folder-panel-header">

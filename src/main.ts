@@ -4,7 +4,17 @@
 
 import { decodeFile, type DecodeResult, type FileFacts } from './audio/decode';
 import { analyze } from './audio/cutoff';
-import { renderSpectrogram, setActivePalette, exportPng, getActivePaletteName, type PaletteName } from './render';
+import {
+  renderSpectrogram,
+  setActivePalette,
+  exportPng,
+  getActivePaletteName,
+  getDbRange,
+  adjustDbRange,
+  paintLegend,
+  DB_STEP,
+  type PaletteName,
+} from './render';
 import { DEFAULT_STFT, type DbGrid } from './audio/stft';
 import type { AnalyzeRequest, WorkerMessage } from './audio/stft-worker';
 
@@ -87,6 +97,49 @@ function setTimeRuler(duration: number): void {
     })
     .join('');
   ruler.innerHTML = html;
+}
+
+/** Repaint the dBFS color bar and its labels for the active palette + range. */
+function updateLegend(): void {
+  const canvas = el<HTMLCanvasElement>('legend-canvas');
+  if (canvas) paintLegend(canvas);
+  const ticks = $('legend-ticks');
+  if (!ticks) return;
+  const { lower, upper } = getDbRange();
+  const span = upper - lower;
+  const step = span > 60 ? 20 : 10;
+  const values: number[] = [];
+  for (let db = upper; db > lower; db -= step) values.push(db);
+  values.push(lower);
+  ticks.innerHTML = values
+    .map((db) => {
+      const pct = ((upper - db) / span) * 100;
+      const ty = pct <= 0 ? '0' : pct >= 100 ? '-100%' : '-50%';
+      return `<div class="tick" style="top:${pct}%;transform:translateY(${ty});">${db} dB</div>`;
+    })
+    .join('');
+}
+
+/** Spek-style keys: u/U lower/raise the upper limit, l/L lower/raise the lower limit. */
+function setupDbRangeKeys(): void {
+  window.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target as HTMLElement | null;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    let which: 'lower' | 'upper';
+    if (e.key === 'u' || e.key === 'U') which = 'upper';
+    else if (e.key === 'l' || e.key === 'L') which = 'lower';
+    else return;
+    const delta = e.key === e.key.toUpperCase() ? DB_STEP : -DB_STEP;
+    const before = getDbRange();
+    const after = adjustDbRange(which, delta);
+    updateLegend();
+    const changed = before.lower !== after.lower || before.upper !== after.upper;
+    setStatus(
+      `${changed ? 'dB range' : 'dB range limit reached'}: ${after.lower} … ${after.upper} dBFS ` +
+        '(u/U upper, l/L lower)',
+    );
+  });
 }
 
 // Module-level state so a palette switch can re-render without recomputing.
@@ -241,8 +294,20 @@ async function handleFile(file: File): Promise<void> {
   const shortName = file.name.length > 40 ? file.name.slice(0, 37) + '…' : file.name;
   document.title = `SpectreGram — ${shortName}`;
 
+  // Adaptive hop: cap the frame count near the display width (1024 px) so long
+  // tracks don't waste FFTs on columns that get downscaled away. Short tracks
+  // keep the default 50% overlap for time resolution.
+  const TARGET_FRAMES = 1024;
+  const baseHop = DEFAULT_STFT.hopSize;
+  const fftSize = DEFAULT_STFT.fftSize;
+  const framesAtBase = Math.floor((res.mono.length - fftSize) / baseHop) + 1;
+  const hopSize = framesAtBase > TARGET_FRAMES
+    ? Math.max(baseHop, Math.ceil((res.mono.length - fftSize) / (TARGET_FRAMES - 1)))
+    : baseHop;
+  const params = { ...DEFAULT_STFT, hopSize };
+
   const w = ensureWorker();
-  const req: AnalyzeRequest = { type: 'analyze', samples: res.mono, params: DEFAULT_STFT };
+  const req: AnalyzeRequest = { type: 'analyze', samples: res.mono, params };
   // Transfer the mono buffer (we keep the AudioBuffer for playback separately).
   w.postMessage(req, [res.mono.buffer]);
 }
@@ -283,6 +348,7 @@ function setupPaletteToggle(): void {
     const idx = PALETTE_CYCLE.findIndex((p) => p.name === getActivePaletteName());
     const next = PALETTE_CYCLE[(idx + 1) % PALETTE_CYCLE.length];
     setActivePalette(next.name);
+    updateLegend();
     btn.textContent = next.label;
   });
 }
@@ -525,6 +591,8 @@ function init(): void {
   setupDesktopOpenFile();
   setupCrosshair();
   setupWindowDrop();
+  setupDbRangeKeys();
+  updateLegend();
   setStatus('Drop an audio file or pick one to begin.');
   window.addEventListener('beforeunload', () => {
     teardownWorker();

@@ -187,7 +187,7 @@ button:focus-visible {
 
 .ruler-bottom {
   left: 28px;
-  right: 0;
+  right: 58px;
   bottom: 0;
   height: 16px;
   line-height: 1;
@@ -208,7 +208,7 @@ button:focus-visible {
   position: absolute;
   left: 28px;
   top: 0;
-  right: 0;
+  right: 58px;
   bottom: 20px;
   margin: 0;
   border: 1px solid var(--border);
@@ -221,7 +221,48 @@ button:focus-visible {
 
 .spectrogram-box.folder-open .canvas-wrap,
 .spectrogram-box.folder-open .ruler-bottom {
+  right: 258px;
+}
+
+.spectrogram-box.folder-open .legend {
   right: 200px;
+}
+
+/* dBFS color scale to the right of the spectrogram. */
+.legend {
+  position: absolute;
+  top: 0;
+  bottom: 20px;
+  right: 0;
+  width: 54px;
+  font-size: 0.6rem;
+  color: var(--muted);
+  user-select: none;
+}
+
+.legend-canvas {
+  position: absolute;
+  left: 4px;
+  top: 0;
+  width: 10px;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+.legend-ticks {
+  position: absolute;
+  left: 18px;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  line-height: 1;
+}
+
+.legend-ticks .tick {
+  position: absolute;
+  left: 0;
+  white-space: nowrap;
 }
 
 /* When folder panel is open, keep header and controls clear of it. */
