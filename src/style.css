@@ -188,6 +188,41 @@ button:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+/* Verdict stamps: a tilted rubber-stamp chip after the verdict text, with a
+   matching glow — ectoplasm green for genuine, jack-o'-lantern orange for
+   a file caught wearing a costume. */
+.verdict.stamp-genuine {
+  color: #a9f5cd;
+  text-shadow: 0 0 12px rgba(80, 255, 165, 0.45);
+}
+
+.verdict.stamp-fake {
+  color: #ffab5e;
+  text-shadow: 0 0 12px rgba(255, 110, 20, 0.55);
+}
+
+.verdict.stamp-genuine::after,
+.verdict.stamp-fake::after {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 0 7px;
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  vertical-align: 2px;
+  transform: rotate(-4deg);
+}
+
+.verdict.stamp-genuine::after {
+  content: '👻 GENUINE';
+}
+
+.verdict.stamp-fake::after {
+  content: '🎃 COSTUME';
+}
+
 .spectrogram-box {
   position: relative;
   margin: 0;
@@ -494,9 +529,23 @@ main.folder-open .controls {
   bottom: 0;
   left: 0;
   width: 2px;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 0 8px rgba(190, 200, 255, 0.8),
+    0 0 2px rgba(255, 255, 255, 0.9);
   display: none;
   pointer-events: none;
+}
+
+/* The little ghost that rides the playhead. */
+.playhead-ghost {
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  line-height: 1;
+  filter: drop-shadow(0 0 4px rgba(200, 210, 255, 0.9));
 }
 
 .controls {
@@ -586,4 +635,107 @@ main.folder-open .controls {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* --- Halloween dressing ---------------------------------------------------- */
+
+/* Cobwebs in the spectrogram frame's top corners (pure decoration). */
+.spectrogram-box::before,
+.spectrogram-box::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 84px;
+  height: 84px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='white' stroke-opacity='0.13'%3E%3Cpath d='M0 0 L84 16 M0 0 L68 46 M0 0 L38 76 M0 0 L10 84'/%3E%3Cpath d='M14 82 Q18 52 42 34 M8 56 Q12 32 30 16 M3 30 Q6 14 16 5'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.spectrogram-box::before {
+  left: 0;
+}
+
+.spectrogram-box::after {
+  right: 0;
+  transform: scaleX(-1);
+}
+
+/* Haunted empty state: covers the canvas area until the first analysis.
+   A floating ghost over two slow fog banks. */
+.empty-state {
+  position: absolute;
+  left: 28px;
+  right: 58px;
+  top: 0;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.empty-state[hidden] {
+  display: none;
+}
+
+.empty-ghost {
+  font-size: 56px;
+  line-height: 1;
+  opacity: 0.92;
+  filter: drop-shadow(0 6px 14px rgba(140, 120, 255, 0.35));
+  animation: ghost-float 3.6s ease-in-out infinite;
+}
+
+.empty-text {
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.empty-state::before,
+.empty-state::after {
+  content: '';
+  position: absolute;
+  bottom: -14%;
+  width: 72%;
+  height: 40%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(165, 165, 195, 0.13), transparent 70%);
+  filter: blur(6px);
+  animation: fog-drift 11s ease-in-out infinite alternate;
+}
+
+.empty-state::before {
+  left: -18%;
+}
+
+.empty-state::after {
+  right: -18%;
+  animation-delay: -5.5s;
+}
+
+@keyframes ghost-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes fog-drift {
+  from {
+    transform: translateX(-4%);
+  }
+  to {
+    transform: translateX(6%);
+  }
 }

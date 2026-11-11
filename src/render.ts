@@ -7,7 +7,7 @@
 import type { DbGrid } from './audio/stft';
 import { DEFAULT_STFT } from './audio/stft';
 
-export type PaletteName = 'hellfire' | 'ectoplasm' | 'spectrum';
+export type PaletteName = 'hellfire' | 'ectoplasm' | 'spectrum' | 'pumpkin';
 
 // Fixed rendering buffer size — never changes with window or STFT params.
 const FIXED_W = 1024;
@@ -64,6 +64,18 @@ const SPECTRUM_STOPS: ReadonlyArray<readonly [number, number, number]> = [
   [255, 255, 255], // white
 ];
 
+// Jack-o'-lantern ramp: candlelight in a pumpkin — near-black brown through
+// burnt orange to a pale cream flame.
+const PUMPKIN_STOPS: ReadonlyArray<readonly [number, number, number]> = [
+  [10, 5, 2], // near-black brown
+  [64, 22, 4], // deep brown
+  [136, 54, 6], // burnt orange
+  [204, 96, 10], // pumpkin orange
+  [244, 152, 30], // candle amber
+  [255, 216, 122], // pale flame
+  [255, 246, 224], // cream white
+];
+
 function interpolateStops(
   stops: ReadonlyArray<readonly [number, number, number]>,
   t: number,
@@ -84,7 +96,13 @@ function interpolateStops(
 }
 
 function stopsFor(name: PaletteName): ReadonlyArray<readonly [number, number, number]> {
-  return name === 'ectoplasm' ? ECTO_STOPS : name === 'hellfire' ? HELLFIRE_STOPS : SPECTRUM_STOPS;
+  return name === 'ectoplasm'
+    ? ECTO_STOPS
+    : name === 'hellfire'
+      ? HELLFIRE_STOPS
+      : name === 'pumpkin'
+        ? PUMPKIN_STOPS
+        : SPECTRUM_STOPS;
 }
 
 /**
@@ -197,7 +215,12 @@ export function renderSpectrogram(ctx: CanvasRenderingContext2D, grid: DbGrid): 
 /** Switch palette and re-render from the last grid (no recompute). */
 export function setActivePalette(name: PaletteName): void {
   let resolved = name;
-  if (resolved !== 'hellfire' && resolved !== 'ectoplasm' && resolved !== 'spectrum') {
+  if (
+    resolved !== 'hellfire' &&
+    resolved !== 'ectoplasm' &&
+    resolved !== 'spectrum' &&
+    resolved !== 'pumpkin'
+  ) {
     console.warn(`Unknown palette "${name}", falling back to spectrum`);
     resolved = 'spectrum';
   }

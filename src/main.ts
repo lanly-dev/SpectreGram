@@ -239,7 +239,8 @@ function toast(text: string, kind: 'info' | 'error' = 'info'): void {
   const node = $('toast');
   if (!node) return;
   clearTimeout(toastTimer);
-  node.textContent = text;
+  // Halloween dressing: the ghost delivers good news, the pumpkin bad news.
+  node.textContent = `${kind === 'error' ? '🎃' : '👻'} ${text}`;
   node.classList.toggle('error', kind === 'error');
   node.hidden = false;
   toastTimer = window.setTimeout(() => {
@@ -253,7 +254,11 @@ function toast(text: string, kind: 'info' | 'error' = 'info'): void {
 function setVerdict(text: string): void {
   const node = $('verdict');
   if (!node) return;
-  node.classList.remove('pending');
+  node.classList.remove('pending', 'stamp-genuine', 'stamp-fake');
+  // Verdict stamps: genuine files get the ghost's seal of approval, fakes
+  // get branded a costume. Inconclusive verdicts stay unstamped.
+  if (text.includes('genuine lossless')) node.classList.add('stamp-genuine');
+  else if (text.includes('costume')) node.classList.add('stamp-fake');
   node.textContent = text;
   // Full verdict on hover when the one-line slot ellipsizes it.
   node.title = text;
@@ -264,8 +269,16 @@ function setVerdictPending(text: string): void {
   const node = $('verdict');
   if (!node) return;
   node.classList.add('pending');
+  node.classList.remove('stamp-genuine', 'stamp-fake');
   node.textContent = text;
   node.title = '';
+  hideEmptyState();
+}
+
+/** The haunted empty state haunts only until the first file is analyzed. */
+function hideEmptyState(): void {
+  const node = $('empty-state');
+  if (node) node.hidden = true;
 }
 
 // Top-of-window progress line: shown while decoding/analyzing, fades out
@@ -445,6 +458,7 @@ const PALETTE_CYCLE: ReadonlyArray<{ name: PaletteName; label: string }> = [
   { name: 'spectrum', label: 'Palette: Spectrum' },
   { name: 'hellfire', label: 'Palette: Hellfire' },
   { name: 'ectoplasm', label: 'Palette: Ectoplasm' },
+  { name: 'pumpkin', label: 'Palette: Pumpkin' },
 ];
 
 /** Palette button: gradient thumbnail of the active palette + tooltip/label. */
