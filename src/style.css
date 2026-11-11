@@ -442,6 +442,55 @@ main.folder-open .controls {
   white-space: nowrap;
 }
 
+/* --- Zoom ------------------------------------------------------------------ */
+
+/* Drag-to-zoom: the spectrogram reads as a selectable surface. */
+.canvas-wrap {
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* Highlight while dragging out a time segment. */
+.zoom-select {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: none;
+  background: rgba(255, 255, 255, 0.14);
+  border-left: 1px solid rgba(255, 255, 255, 0.7);
+  border-right: 1px solid rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Where the zoomed view sits within the whole track (bottom edge). */
+.zoom-thumb {
+  position: absolute;
+  bottom: 0;
+  height: 3px;
+  background: var(--accent);
+  opacity: 0.8;
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.zoom-thumb[hidden],
+.zoom-reset[hidden] {
+  display: none;
+}
+
+.zoom-reset {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 6;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  background: rgba(21, 21, 28, 0.85);
+  cursor: pointer;
+}
+
 .playhead {
   position: absolute;
   top: 0;

@@ -137,3 +137,44 @@ export function computeStft(
 
   return { data, frames, bins };
 }
+
+/**
+ * STFT of one time segment, sized for display (the zoomed view): about
+ * `columns` frames whose window centers are evenly spaced from `startSample`
+ * to `endSample`. The hop shrinks with the segment, so a zoomed view gets
+ * fresh detail instead of a stretched overview. Windows reaching past either
+ * end of the signal are zero-padded, so the first and last columns sit
+ * exactly on the segment edges.
+ */
+export function computeStftSegment(
+  samples: Float32Array,
+  startSample: number,
+  endSample: number,
+  columns: number,
+  params?: Partial<StftParams>,
+): DbGrid {
+  const p: StftParams = { ...DEFAULT_STFT, ...params };
+  const N = p.fftSize;
+  const half = Math.floor(N / 2);
+  const start = Math.max(0, Math.min(samples.length, Math.round(startSample)));
+  const end = Math.max(0, Math.min(samples.length, Math.round(endSample)));
+  const span = end - start;
+  if (span <= 0 || columns < 1) {
+    return { data: new Float32Array(0), frames: 0, bins: half + 1 };
+  }
+
+  // Window f covers [lo + f·hop, lo + f·hop + N), so its center is start + f·hop.
+  const lo = start - half;
+  const hi = end + half;
+  let seg: Float32Array;
+  if (lo >= 0 && hi <= samples.length) {
+    seg = samples.subarray(lo, hi); // no copy in the common (interior) case
+  } else {
+    seg = new Float32Array(hi - lo);
+    const a = Math.max(0, lo);
+    const b = Math.min(samples.length, hi);
+    if (b > a) seg.set(samples.subarray(a, b), a - lo);
+  }
+  const hopSize = Math.max(1, Math.ceil(span / columns));
+  return computeStft(seg, { ...p, hopSize });
+}

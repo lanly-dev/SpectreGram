@@ -15,15 +15,18 @@ import {
   type PaletteName,
 } from './render';
 import { DEFAULT_STFT, type DbGrid } from './audio/stft';
-import type { AnalyzeRequest, WorkerMessage } from './audio/stft-worker';
+import type { AnalyzeRequest, WorkerMessage, ZoomRequest } from './audio/stft-worker';
 
 // Tick step candidates for the rulers. The spectrogram's frequency axis is
 // LINEAR, so frequency ticks must be evenly spaced in Hz: log-spaced values
 // (100/200/500/…) pile a dozen labels into the bottom tenth of the ruler.
 // Steps are picked per file so the label count stays small and readable.
 const FREQ_STEPS = [500, 1000, 2000, 2500, 5000, 10000, 20000];
-// Time tick step candidates (seconds) for the bottom ruler.
-const TIME_STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600];
+// Time tick step candidates (seconds) for the bottom ruler. The sub-second
+// steps are for zoomed views (the minimum zoom is about one second).
+const TIME_STEPS = [
+  0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600,
+];
 
 /** Smallest step whose label count over `span` stays at or below `max`. */
 function pickStep(steps: number[], span: number, max: number): number {
@@ -39,10 +42,21 @@ function fmtFreq(hz: number): string {
   return String(Math.round(hz));
 }
 
-function fmtTime(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}s`;
+/** "1:05" / "42s", or with `decimals` "1:05.25" / "42.25s". */
+function fmtTime(sec: number, decimals = 0): string {
+  const f = 10 ** decimals;
+  const t = Math.round(Math.max(0, sec) * f) / f; // round first so 59.99 can't print "60"
+  const m = Math.floor(t / 60);
+  const s = t - m * 60;
+  const sStr = decimals > 0 ? s.toFixed(decimals) : String(Math.floor(s));
+  if (m > 0) return `${m}:${sStr.padStart(decimals > 0 ? 3 + decimals : 2, '0')}`;
+  return `${sStr}s`;
+}
+
+/** Decimal places that keep adjacent tick labels at `step` apart distinct. */
+function decimalsForStep(step: number): number {
+  if (step >= 1) return 0;
+  return step >= 0.1 && Number.isInteger(step * 10) ? 1 : 2;
 }
 
 /** Paint frequency tick labels on the left ruler (major marks only). */
@@ -72,27 +86,36 @@ function setFreqRuler(sampleRate: number): void {
   ruler.innerHTML = html;
 }
 
-/** Paint time tick labels on the bottom ruler (major marks only). */
-function setTimeRuler(duration: number): void {
+/**
+ * Paint time tick labels on the bottom ruler (major marks only) for the
+ * visible range [start, end] seconds. The full view also labels the total
+ * duration at the right edge; a zoomed view labels only round step ticks.
+ */
+function setTimeRuler(start: number, end: number, labelEnd = true): void {
   const ruler = $('ruler-bottom');
   if (!ruler) return;
-  if (!(duration > 0)) {
+  const span = end - start;
+  if (!(span > 0)) {
     ruler.innerHTML = '';
     return;
   }
-  const step = pickStep(TIME_STEPS, duration, 6);
+  const step = pickStep(TIME_STEPS, span, 6);
+  const decimals = decimalsForStep(step);
   const values: number[] = [];
-  for (let t = 0; t < duration; t += step) values.push(t);
-  // Always label the total duration at the right edge — unless it would
-  // crowd the last step tick.
-  if (duration - values[values.length - 1] >= step * 0.5) values.push(duration);
+  // Integer multiples of the step (no float accumulation drift).
+  const first = Math.ceil(start / step - 1e-9);
+  for (let i = first; i * step < end - 1e-9; i++) values.push(i * step);
+  // Label the right edge too — unless it would crowd the last step tick.
+  if (labelEnd && (values.length === 0 || end - values[values.length - 1] >= step * 0.5)) {
+    values.push(end);
+  }
   const html = values
     .map((t) => {
-      const pct = (t / duration) * 100;
+      const pct = ((t - start) / span) * 100;
       // Center the label on its value; clamp the two edge labels fully
       // inside the ruler so they never overflow left/right.
       const tx = pct <= 0 ? '0' : pct >= 100 ? '-100%' : '-50%';
-      return `<div class="tick" style="left:${pct}%;transform:translateX(${tx});">${fmtTime(t)}</div>`;
+      return `<div class="tick" style="left:${pct}%;transform:translateX(${tx});">${fmtTime(t, decimals)}</div>`;
     })
     .join('');
   ruler.innerHTML = html;
@@ -314,13 +337,17 @@ function onWorkerMessage(msg: WorkerMessage): void {
     // same task its result arrived in. The cutoff pass runs in the worker and
     // arrives as its own message, so it never delays the graph and never blocks
     // the UI thread (its per-bin percentile sort measures ~160 ms).
-    const canvas = el<HTMLCanvasElement>('canvas');
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) renderSpectrogram(ctx, grid);
-    }
+    fullGrid = grid;
+    const ctx = spectrogramCtx();
+    if (ctx) renderSpectrogram(ctx, grid);
   } else if (msg.type === 'verdict') {
     setVerdict(msg.verdict);
+  } else if (msg.type === 'zoom-result') {
+    onZoomResult(msg.id, { data: msg.data, frames: msg.frames, bins: msg.bins });
+  } else if (msg.type === 'zoom-error') {
+    console.error('zoom error:', msg.message);
+    onZoomResult(msg.id, null);
+    toast(`Zoom failed: ${msg.message}`, 'error');
   } else if (msg.type === 'error') {
     console.error('analysis error:', msg.message);
     toast(`Analysis error: ${msg.message}`, 'error');
@@ -338,6 +365,7 @@ async function handleFile(file: File): Promise<void> {
   // Cancel any in-flight analysis and playback before starting fresh.
   teardownWorker();
   stopPlayback();
+  resetZoomState();
   const dot = file.name.lastIndexOf('.');
   currentBaseName = dot > 0 ? file.name.slice(0, dot) : file.name || 'spectregram';
   setVerdictPending('Decoding…');
@@ -360,7 +388,7 @@ async function handleFile(file: File): Promise<void> {
   setFacts(res.facts);
   setVerdictPending('Analyzing… 0%');
   setFreqRuler(sampleRate);
-  setTimeRuler(res.facts.durationSec);
+  setTimeRuler(0, res.facts.durationSec);
   // Show the current file in the window title bar.
   const shortName = file.name.length > 40 ? file.name.slice(0, 37) + '…' : file.name;
   document.title = `SpectreGram — ${shortName}`;
@@ -566,10 +594,13 @@ function setupCrosshair(): void {
     const py = Math.max(0, Math.min(1, y / rect.height));
 
     const nyq = sampleRate / 2;
-    const time = px * (audioBuffer ? audioBuffer.duration : 0);
+    const r = viewRange();
+    const span = r.end - r.start;
+    const time = r.start + px * span;
     const freq = nyq * (1 - py);
 
-    const tStr = time > 60 ? `${Math.floor(time / 60)}:${Math.floor(time % 60).toString().padStart(2, '0')}` : `${time.toFixed(1)}s`;
+    // Finer readout as the view narrows (≈1 ms per pixel at the minimum zoom).
+    const tStr = fmtTime(time, span <= 2 ? 3 : span <= 20 ? 2 : 1);
     const fStr = freq >= 1000 ? `${(freq / 1000).toFixed(freq >= 10000 ? 0 : 1)} k` : `${Math.round(freq)} Hz`;
 
     v.style.display = 'block';
@@ -585,6 +616,256 @@ function setupCrosshair(): void {
     v.style.display = 'none';
     h.style.display = 'none';
     label.style.display = 'none';
+  });
+}
+
+// --- Zoom: drag across the spectrogram to view a time segment ----------------
+//
+// The zoomed view is re-analyzed in the worker (computeStftSegment) at about
+// one column per canvas pixel, so it shows real detail rather than a
+// stretched overview. Frequency stays full-range; only time zooms.
+
+/**
+ * Minimum zoom span, in STFT windows. Detail shorter than one window
+ * (2048 samples ≈ 46 ms at 44.1 kHz) cannot be resolved, so zooming further
+ * only widens the smear. At 20 windows each one spans ≤ 5% of the view:
+ * ≈ 0.93 s at 44.1 kHz, ≈ 0.85 s at 48 kHz. TUNABLE.
+ */
+const MIN_ZOOM_WINDOWS = 20;
+/** Columns computed for a zoomed view — matches render.ts's canvas width. */
+const ZOOM_COLUMNS = 1024;
+/** A drag narrower than this many pixels is treated as a click, not a zoom. */
+const DRAG_MIN_PX = 4;
+
+interface TimeView {
+  start: number;
+  end: number;
+}
+
+/** The full-track grid, kept so "Reset zoom" can redraw without recomputing. */
+let fullGrid: DbGrid | null = null;
+/** Visible time range in seconds; null = the whole track. */
+let view: TimeView | null = null;
+let zoomReqId = 0;
+let zoomBusy = false;
+let zoomQueued = false;
+
+function trackDuration(): number {
+  return audioBuffer ? audioBuffer.duration : 0;
+}
+
+function viewRange(): TimeView {
+  return view ?? { start: 0, end: trackDuration() };
+}
+
+function minZoomSec(): number {
+  return sampleRate > 0 ? (MIN_ZOOM_WINDOWS * DEFAULT_STFT.fftSize) / sampleRate : 1;
+}
+
+function spectrogramCtx(): CanvasRenderingContext2D | null {
+  const canvas = el<HTMLCanvasElement>('canvas');
+  return canvas ? canvas.getContext('2d') : null;
+}
+
+/** Forget any zoom (a new file is loading). */
+function resetZoomState(): void {
+  fullGrid = null;
+  view = null;
+  zoomReqId++;
+  zoomBusy = false;
+  zoomQueued = false;
+  updateZoomChrome();
+}
+
+/** Show/hide the reset button and position the scroll indicator. */
+function updateZoomChrome(): void {
+  const btn = el<HTMLButtonElement>('zoom-reset');
+  const thumb = $('zoom-thumb');
+  const dur = trackDuration();
+  if (btn) {
+    btn.hidden = view === null;
+    if (view) btn.title = `Showing ${fmtTime(view.start, 2)} – ${fmtTime(view.end, 2)}. Esc also resets.`;
+  }
+  if (thumb) {
+    thumb.hidden = view === null || !(dur > 0);
+    if (view && dur > 0) {
+      thumb.style.left = `${(view.start / dur) * 100}%`;
+      thumb.style.width = `${((view.end - view.start) / dur) * 100}%`;
+    }
+  }
+}
+
+/** Switch the visible range: rulers and chrome update now, pixels when the worker answers. */
+function applyView(next: TimeView | null): void {
+  view = next;
+  const r = viewRange();
+  setTimeRuler(r.start, r.end, view === null);
+  updateZoomChrome();
+  if (view) {
+    requestZoomGrid();
+  } else {
+    zoomReqId++; // drop any in-flight zoom result
+    zoomQueued = false;
+    const ctx = spectrogramCtx();
+    if (ctx && fullGrid) renderSpectrogram(ctx, fullGrid);
+  }
+}
+
+/**
+ * Ask the worker for the current view's grid. At most one request is in
+ * flight; scrolling while one is busy just marks the view dirty, and the
+ * latest view is requested when the current one lands.
+ */
+function requestZoomGrid(): void {
+  if (!view || !worker || !(sampleRate > 0)) return;
+  if (zoomBusy) {
+    zoomQueued = true;
+    return;
+  }
+  zoomBusy = true;
+  const req: ZoomRequest = {
+    type: 'zoom',
+    id: ++zoomReqId,
+    startSample: view.start * sampleRate,
+    endSample: view.end * sampleRate,
+    columns: ZOOM_COLUMNS,
+  };
+  worker.postMessage(req);
+}
+
+function onZoomResult(id: number, grid: DbGrid | null): void {
+  zoomBusy = false;
+  // Paint even if a newer view is queued: during continuous scrolling this
+  // keeps the picture moving instead of freezing until the wheel stops.
+  if (grid && id === zoomReqId && view) {
+    const ctx = spectrogramCtx();
+    if (ctx) renderSpectrogram(ctx, grid);
+  }
+  if (zoomQueued) {
+    zoomQueued = false;
+    requestZoomGrid();
+  }
+}
+
+/** Zoom to [t0, t1] seconds, widened to the minimum span if needed. */
+function zoomTo(t0: number, t1: number): void {
+  const dur = trackDuration();
+  const min = minZoomSec();
+  if (!fullGrid || !(dur > 0)) return;
+  if (dur <= min) {
+    toast(`Track is shorter than the ${fmtTime(min, 2)} minimum zoom.`);
+    return;
+  }
+  let a = Math.max(0, Math.min(t0, t1));
+  let b = Math.min(dur, Math.max(t0, t1));
+  // Already at the minimum span: a smaller selection can't zoom further, so
+  // keep the view where it is (re-centering here would read as a jump).
+  if (view && view.end - view.start <= min * 1.001 && b - a < view.end - view.start) {
+    toast(`That's the minimum zoom (${fmtTime(min, 2)})`);
+    return;
+  }
+  if (b - a < min) {
+    const c = (a + b) / 2;
+    a = c - min / 2;
+    b = c + min / 2;
+    if (a < 0) {
+      b -= a;
+      a = 0;
+    }
+    if (b > dur) {
+      a -= b - dur;
+      b = dur;
+    }
+    a = Math.max(0, a);
+    toast(`Zoomed to the ${fmtTime(min, 2)} minimum`);
+  }
+  // A selection covering (almost) the whole track is just the full view.
+  if (b - a >= dur * 0.999) {
+    applyView(null);
+    return;
+  }
+  applyView({ start: a, end: b });
+}
+
+/** Scroll the zoomed view by `dt` seconds, clamped to the track. */
+function panBy(dt: number): void {
+  if (!view) return;
+  const dur = trackDuration();
+  const span = view.end - view.start;
+  const start = Math.max(0, Math.min(dur - span, view.start + dt));
+  if (start === view.start) return;
+  applyView({ start, end: start + span });
+}
+
+function setupZoom(): void {
+  const wrap = el<HTMLElement>('canvas-wrap');
+  const sel = el<HTMLDivElement>('zoom-select');
+  const btn = el<HTMLButtonElement>('zoom-reset');
+  if (!wrap || !sel || !btn) return;
+
+  let dragX0 = -1;
+  let dragId = -1;
+  const xIn = (e: PointerEvent): number => {
+    const rect = wrap.getBoundingClientRect();
+    return Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+  };
+  const endDrag = (): void => {
+    if (dragId >= 0 && wrap.hasPointerCapture(dragId)) wrap.releasePointerCapture(dragId);
+    dragX0 = -1;
+    dragId = -1;
+    sel.style.display = 'none';
+  };
+
+  wrap.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || !fullGrid) return;
+    if ((e.target as HTMLElement).closest('#zoom-reset')) return;
+    e.preventDefault();
+    dragX0 = xIn(e);
+    dragId = e.pointerId;
+    wrap.setPointerCapture(e.pointerId);
+    sel.style.left = `${dragX0}px`;
+    sel.style.width = '0px';
+    sel.style.display = 'block';
+  });
+  wrap.addEventListener('pointermove', (e) => {
+    if (dragX0 < 0 || e.pointerId !== dragId) return;
+    const x = xIn(e);
+    sel.style.left = `${Math.min(dragX0, x)}px`;
+    sel.style.width = `${Math.abs(x - dragX0)}px`;
+  });
+  wrap.addEventListener('pointerup', (e) => {
+    if (dragX0 < 0 || e.pointerId !== dragId) return;
+    const x0 = dragX0;
+    const x1 = xIn(e);
+    const width = wrap.getBoundingClientRect().width;
+    endDrag();
+    if (Math.abs(x1 - x0) < DRAG_MIN_PX || !(width > 0)) return; // a click, not a drag
+    const r = viewRange();
+    const span = r.end - r.start;
+    zoomTo(r.start + (x0 / width) * span, r.start + (x1 / width) * span);
+  });
+  wrap.addEventListener('pointercancel', endDrag);
+
+  // Mouse wheel / trackpad scrolls the zoomed view horizontally.
+  wrap.addEventListener(
+    'wheel',
+    (e) => {
+      if (!view) return;
+      e.preventDefault();
+      const width = wrap.getBoundingClientRect().width;
+      if (!(width > 0)) return;
+      const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      const px = e.deltaMode === 1 ? d * 16 : e.deltaMode === 2 ? d * width : d;
+      panBy((px / width) * (view.end - view.start));
+    },
+    { passive: false },
+  );
+
+  btn.addEventListener('click', () => applyView(null));
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (dragX0 >= 0) endDrag();
+    else if (view) applyView(null);
   });
 }
 
@@ -634,21 +915,24 @@ function stopPlayback(): void {
 function rafLoop(): void {
   if (!isPlaying || !playCtx || !audioBuffer) return;
   const elapsed = playCtx.currentTime - playStartCtxTime;
-  const frac = Math.min(1, elapsed / audioBuffer.duration);
-  movePlayhead(frac, true);
-  if (frac >= 1) {
+  if (elapsed >= audioBuffer.duration) {
     stopPlayback();
     return;
   }
+  movePlayhead(elapsed, true);
   rafId = requestAnimationFrame(rafLoop);
 }
 
-function movePlayhead(frac: number, visible: boolean): void {
+/** Place the playhead at `timeSec`; hidden when outside the visible range. */
+function movePlayhead(timeSec: number, visible: boolean): void {
   const ph = $('playhead');
   const wrap = $('canvas-wrap');
   if (!ph || !wrap) return;
-  ph.style.display = visible ? 'block' : 'none';
-  ph.style.left = `${(frac * wrap.clientWidth).toFixed(1)}px`;
+  const r = viewRange();
+  const span = r.end - r.start;
+  const inView = span > 0 && timeSec >= r.start && timeSec <= r.end;
+  ph.style.display = visible && inView ? 'block' : 'none';
+  if (inView) ph.style.left = `${(((timeSec - r.start) / span) * wrap.clientWidth).toFixed(1)}px`;
 }
 
 function setupPlay(): void {
@@ -745,6 +1029,7 @@ function init(): void {
   setupPlay();
   setupDesktopOpenFile();
   setupCrosshair();
+  setupZoom();
   setupWindowDrop();
   setupDbRangeKeys();
   setupMenuActions(setupScreensaver());
