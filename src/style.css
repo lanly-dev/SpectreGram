@@ -485,10 +485,7 @@ main.folder-open .controls {
   top: 6px;
   right: 6px;
   z-index: 6;
-  padding: 2px 8px;
-  font-size: 0.7rem;
   background: rgba(21, 21, 28, 0.85);
-  cursor: pointer;
 }
 
 .playhead {
@@ -505,9 +502,64 @@ main.folder-open .controls {
 .controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   margin: 0;
+  /* Breathing room above the window's bottom edge. */
+  padding-bottom: 6px;
   flex-shrink: 0;
+}
+
+/* Compact square icon buttons (controls row + reset zoom). The visible
+   label is the icon; the name is in aria-label and the title tooltip. */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  border-radius: 5px;
+  color: var(--muted);
+  line-height: 0;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.icon-btn:hover {
+  color: var(--text);
+}
+
+.icon-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Play/stop toggle: one icon at a time. */
+.play-btn .icon-stop,
+.play-btn.playing .icon-play {
+  display: none;
+}
+
+.play-btn.playing .icon-stop {
+  display: block;
+}
+
+.play-btn.playing {
+  color: var(--accent);
+}
+
+/* Palette button: a small thumbnail of the active palette's gradient. */
+.palette-btn {
+  width: 34px;
+  padding: 3px;
+}
+
+.palette-swatch {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
 }
 
 .privacy {

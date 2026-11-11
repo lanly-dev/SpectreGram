@@ -11,6 +11,7 @@ import {
   getDbRange,
   adjustDbRange,
   paintLegend,
+  paletteGradientCss,
   DB_STEP,
   type PaletteName,
 } from './render';
@@ -446,6 +447,20 @@ const PALETTE_CYCLE: ReadonlyArray<{ name: PaletteName; label: string }> = [
   { name: 'ectoplasm', label: 'Palette: Ectoplasm' },
 ];
 
+/** Palette button: gradient thumbnail of the active palette + tooltip/label. */
+function updatePaletteButton(): void {
+  const btn = $('palette-toggle');
+  const swatch = $('palette-swatch');
+  const active = getActivePaletteName();
+  const entry = PALETTE_CYCLE.find((p) => p.name === active) ?? PALETTE_CYCLE[0];
+  const label = `${entry.label} (click to change)`;
+  if (btn) {
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+  }
+  if (swatch) swatch.style.background = paletteGradientCss(active);
+}
+
 function setupPaletteToggle(): void {
   const btn = $('palette-toggle');
   if (!btn) return;
@@ -454,8 +469,9 @@ function setupPaletteToggle(): void {
     const next = PALETTE_CYCLE[(idx + 1) % PALETTE_CYCLE.length];
     setActivePalette(next.name);
     updateLegend();
-    btn.textContent = next.label;
+    updatePaletteButton();
   });
+  updatePaletteButton();
 }
 
 function savePngFromCanvas(): Promise<boolean> {
@@ -684,7 +700,9 @@ function updateZoomChrome(): void {
   const dur = trackDuration();
   if (btn) {
     btn.hidden = view === null;
-    if (view) btn.title = `Showing ${fmtTime(view.start, 2)} – ${fmtTime(view.end, 2)}. Esc also resets.`;
+    if (view) {
+      btn.title = `Reset zoom (showing ${fmtTime(view.start, 2)} – ${fmtTime(view.end, 2)}) · Esc`;
+    }
   }
   if (thumb) {
     thumb.hidden = view === null || !(dur > 0);
@@ -891,6 +909,7 @@ function startPlayback(): void {
   playStartCtxTime = playCtx.currentTime;
   playSource.start();
   isPlaying = true;
+  updatePlayButton();
   rafLoop();
 }
 
@@ -909,6 +928,7 @@ function stopPlayback(): void {
     rafId = 0;
   }
   isPlaying = false;
+  updatePlayButton();
   movePlayhead(0, false);
 }
 
@@ -935,9 +955,22 @@ function movePlayhead(timeSec: number, visible: boolean): void {
   if (inView) ph.style.left = `${(((timeSec - r.start) / span) * wrap.clientWidth).toFixed(1)}px`;
 }
 
+/** Play/stop toggle: icon, tooltip and label follow the playback state. */
+function updatePlayButton(): void {
+  const btn = $('play-btn');
+  if (!btn) return;
+  const label = isPlaying ? 'Stop' : 'Play';
+  btn.classList.toggle('playing', isPlaying);
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+}
+
 function setupPlay(): void {
-  $('play-btn')?.addEventListener('click', startPlayback);
-  $('stop-btn')?.addEventListener('click', stopPlayback);
+  $('play-btn')?.addEventListener('click', () => {
+    if (isPlaying) stopPlayback();
+    else startPlayback();
+  });
+  updatePlayButton();
 }
 
 // --- Screensaver --------------------------------------------------------------

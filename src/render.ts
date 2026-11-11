@@ -83,10 +83,25 @@ function interpolateStops(
   ];
 }
 
+function stopsFor(name: PaletteName): ReadonlyArray<readonly [number, number, number]> {
+  return name === 'ectoplasm' ? ECTO_STOPS : name === 'hellfire' ? HELLFIRE_STOPS : SPECTRUM_STOPS;
+}
+
+/**
+ * CSS gradient of the named palette, quiet (left) to loud (right) — used for
+ * the palette button's thumbnail, so it always matches the real colors.
+ */
+export function paletteGradientCss(name: PaletteName): string {
+  const stops = stopsFor(name);
+  const parts = stops.map(
+    ([r, g, b], i) => `rgb(${r}, ${g}, ${b}) ${((i / (stops.length - 1)) * 100).toFixed(1)}%`,
+  );
+  return `linear-gradient(90deg, ${parts.join(', ')})`;
+}
+
 /** Build a 256x4 RGBA lookup table for the named palette. Unknown -> spectrum. */
 export function buildPalette(name: PaletteName): Uint8ClampedArray {
-  const stops =
-    name === 'ectoplasm' ? ECTO_STOPS : name === 'hellfire' ? HELLFIRE_STOPS : SPECTRUM_STOPS;
+  const stops = stopsFor(name);
   const lut = new Uint8ClampedArray(256 * 4);
   for (let i = 0; i < 256; i++) {
     const [r, g, b] = interpolateStops(stops, i / 255);
