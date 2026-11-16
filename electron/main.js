@@ -392,11 +392,15 @@ async function runSmoke() {
       const raw = await mainWindow.webContents.executeJavaScript(`JSON.stringify({
         bridge: !!window.spectregramDesktop,
         verdict: (document.getElementById('verdict') || {}).textContent || '',
-        status: (document.getElementById('status') || {}).textContent || '',
+        verdictClass: (document.getElementById('verdict') || {}).className || '',
         canvasW: (document.getElementById('canvas') || {}).width || 0
       })`);
       const state = JSON.parse(raw);
-      if (state.verdict.trim().length > 0) {
+      // A real verdict, not the loading note ("Decoding…" / "Analyzing… N%"),
+      // which also lives in #verdict (with the 'pending' class). Every real
+      // verdict carries "(estimate)" — guaranteed by cutoff.ts and its tests.
+      const done = !/\bpending\b/.test(state.verdictClass) && state.verdict.includes('(estimate)');
+      if (done) {
         console.log('SMOKE_ANALYSIS_OK', JSON.stringify(state));
         if (SMOKE_SAVE_DIR) {
           await mainWindow.webContents.executeJavaScript(`document.getElementById('png-btn').click()`);
