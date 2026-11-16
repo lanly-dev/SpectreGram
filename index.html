@@ -20,7 +20,7 @@
         <div id="ruler-left" class="ruler ruler-left" aria-hidden="true"></div>
         <section id="canvas-wrap" class="canvas-wrap">
           <canvas id="canvas" width="1024" height="512" aria-label="Spectrogram"></canvas>
-          <div id="playhead" class="playhead" aria-hidden="true"></div>
+          <div id="playhead" class="playhead" aria-hidden="true"><span class="playhead-ghost">👻</span></div>
           <div id="crosshair-v" class="crosshair crosshair-v" aria-hidden="true"></div>
           <div id="crosshair-h" class="crosshair crosshair-h" aria-hidden="true"></div>
           <div id="cursor-label" class="cursor-label" aria-hidden="true"></div>
@@ -38,6 +38,10 @@
             </svg>
           </button>
         </section>
+        <div id="empty-state" class="empty-state" aria-hidden="true">
+          <div class="empty-ghost">👻</div>
+          <div class="empty-text">Drop a file… if you dare</div>
+        </div>
         <div id="ruler-bottom" class="ruler ruler-bottom" aria-hidden="true"></div>
         <div
           id="legend"
