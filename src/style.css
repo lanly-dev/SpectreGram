@@ -363,7 +363,8 @@ main.folder-open .controls {
   display: flex;
   flex-direction: column;
   font-size: 0.75rem;
-  z-index: 1;
+  /* Above the full-window empty state (10), so files stay pickable. */
+  z-index: 11;
 }
 
 .folder-panel[hidden] {
@@ -662,22 +663,23 @@ main.folder-open .controls {
   transform: scaleX(-1);
 }
 
-/* Haunted empty state: covers the canvas area until the first analysis.
-   A floating ghost over two slow fog banks. */
+/* Haunted empty state: blacks out the whole window until the first file is
+   dropped (hidden as soon as decoding starts). A floating ghost over two slow
+   fog banks. It takes clicks so the controls hidden underneath can't be hit;
+   drops still bubble to the window's drop handler. The progress line (20),
+   toasts (30) and screensaver (100) stay above it; the folder panel is raised
+   above it so a freshly opened folder's files can be picked. */
 .empty-state {
-  position: absolute;
-  left: 28px;
-  right: 58px;
-  top: 0;
-  bottom: 20px;
+  position: fixed;
+  inset: 0;
+  background: #000;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
   overflow: hidden;
-  pointer-events: none;
-  z-index: 1;
+  z-index: 10;
 }
 
 .empty-state[hidden] {
