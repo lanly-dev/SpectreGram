@@ -1,0 +1,65 @@
+# Submission Readiness — Design
+
+Part of the `submission-readiness` Kiro spec. Requirements: `./requirements.md` · Tasks: `./tasks.md`.
+
+## Approach per requirement
+
+**R1 (PR #1 merge).** Diff `feat/halloween-flair` against current `main`
+first. Both sides touched `AGENTS.md` (the PR marks open decision #6 done;
+main added the compliance section) — the expected resolution keeps **both**
+edits; anything beyond that is a stop-and-report per the work-trail rules.
+Verify the merged tree (build + tests + a real analysis run), then merge
+on GitHub so the PR records the merge.
+
+**R2 (Pages).** A GitHub Actions workflow (`.github/workflows/pages.yml`):
+checkout → Node 20 → `npm ci` (note: `package-lock.json` is gitignored in
+this repo — use `npm install`) → `npm run build` → upload `dist/` →
+deploy-pages. `vite.config.ts` already uses `base: './'`, so subpath
+serving works. Enable Pages with source = GitHub Actions. Verify the live
+URL in a real browser session: page loads, a test file analyzes, verdict
+renders. Record the URL in `README.md` and the `AGENTS.md` packaging
+checklist.
+
+**R3 (Release).** electron-builder config already exists (`npm run dist`).
+Build on the maintainer's Windows machine for the NSIS installer; verify
+by installing the artifact and running the packaged smoke (open-file →
+verdict, network off). Create the GitHub Release (`v1.0.0`) with the
+installer(s) attached and notes covering: what it is, the unsigned-app
+first-run notes (SmartScreen / Gatekeeper), and the web demo URL.
+
+**R4 (B1 + calibration).** B1: inspect the local working tree and stash
+for the uncommitted `estimateCutoff` final-run fix + its 2 regression
+tests. The committed `cutoff.ts` already contains a post-loop flush
+assigning `bestLen`/`bestEnd` — diff carefully; land only what adds value
+(at minimum the tests, if they cover behavior the committed tests miss),
+as its own commit. Calibration: one real CD-ripped FLAC (known genuine)
+and one real MP3→FLAC transcode of the same track if available, else two
+different tracks. Run both through the app, record the measured cutoffs
+in the status section. Thresholds change ONLY if the pair misclassifies,
+and any change ships with Vitest cases encoding the measured evidence.
+
+**R5 (Drafts).** All drafts live in `docs/submission/` (tracked, so the
+trail shows them). The Kiro write-up is assembled from evidence — `git
+log`, `/.kiro/specs/`, steering, hooks — and states plainly which parts
+were built spec-first in Kiro and which later work used other tools
+(disclosure required by the compliance section). The demo script is a
+shot list timed to <3:00 total: hook (a "FLAC" that isn't), drop → fake
+verdict with the COSTUME stamp, drop → genuine verdict, palette cycle,
+screensaver beat, close on the tagline ("files never leave your machine").
+
+**R7 (Sweep).** Walk the `AGENTS.md` compliance section top to bottom and
+check each hard item against reality (repo contents, live URLs, release,
+drafts). Record the result as a checklist in the status section; any
+unchecked item becomes either a fix in this spec or an explicit
+maintainer action, named as such.
+
+## Risks
+
+- **Pages + worker:** the STFT worker must load from the Pages subpath —
+  the R2 live verification catches this; relative base is already set.
+- **No lockfile:** CI installs may drift; pin by building once and
+  confirming the deployed page actually analyzes (the R2 check), not just
+  that the workflow is green.
+- **Time:** every task here is hours, not days. If anything balloons,
+  cut scope in this order: macOS DMG → blog draft polish → calibration
+  depth. Never cut R2, R6, or R7.
