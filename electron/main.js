@@ -393,6 +393,7 @@ async function runSmoke() {
         bridge: !!window.spectregramDesktop,
         verdict: (document.getElementById('verdict') || {}).textContent || '',
         verdictClass: (document.getElementById('verdict') || {}).className || '',
+        facts: (document.getElementById('facts') || {}).textContent || '',
         canvasW: (document.getElementById('canvas') || {}).width || 0
       })`);
       const state = JSON.parse(raw);
