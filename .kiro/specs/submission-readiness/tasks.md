@@ -58,8 +58,8 @@ behalf, any change to `cutoff.ts` beyond tasks 1 and 5.
 
 ## Implementation status (2026-11-16)
 
-- ⏳ **0** — not started.
-- ⏳ **1** — not started. (B1 still recorded open in `AGENTS.md` Status.)
+- ✅ **0** — 2026-11-16. Read `AGENTS.md` (incl. compliance section) and this spec. `git fetch`: `origin/main` head `8e6b87e` ("Merge pull request #1 from lanly-dev/feat/halloween-flair"); local `main` equal; working tree clean; `git stash list` empty.
+- ✅ **1** — 2026-11-16. B1 closed with evidence, no code change: fix + 2 regression tests already committed in `1fb2f9a` (found via `git log -S`). Mutation check: with `bestLen = curLen;` removed, Vitest → 1 failed / 9 passed (the Nyquist regression test); restored → 10/10. `AGENTS.md` Status + decision #5 updated.
 - ⏳ **2** — not started. (PR #1 open, verified unmerged 2026-11-16.)
 - ⏳ **3** — not started. (Pages 404 verified 2026-11-16.)
 - ⏳ **4** — not started. (Zero GitHub Releases verified 2026-11-16.)
