@@ -34,10 +34,15 @@ of the user's files.
   sorted into one class: Genuine lossless · Costume (lossy disguised as
   lossless) · Inconclusive · Normal lossy · No call (ambiguous/unknown
   format, no clear cutoff, too short) · Could not decode.
-- **R4 — Drumroll reveal.** When the scan finishes, a modal plays a short
-  drumroll, then reveals a themed collector rating (from true collector to
-  noob) with a one-line explanation and the count per class. The rating is
-  labelled an **estimate**, like every verdict.
+- **R4 — Drumroll reveal.** When the scan finishes, a modal presents the
+  drumroll screen with a **Reveal** button and waits. Clicking Reveal plays
+  a drumroll **sound** with the drum animation, ending on a crash, and the
+  themed collector rating (from true collector to noob) is revealed on the
+  crash, with a one-line explanation and the count per class. The sound is
+  synthesized in the app (no audio file, so nothing to license). The rating
+  is labelled an **estimate**, like every verdict. *(Amended 2026-11-16 at
+  the maintainer's request: originally the drumroll played automatically
+  and silently.)*
 - **R5 — Save report.** **Save report** opens the save dialog **in the
   opened folder**, defaulting to `spectregram-report.md`. Nothing is written
   without that dialog; nothing is overwritten silently. The report holds the

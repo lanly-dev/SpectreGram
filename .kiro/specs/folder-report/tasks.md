@@ -18,6 +18,10 @@ before every commit.
 5. **Verify + document** — real scan of `lab/` in the desktop app, saved
    report checked; `DEV.md` section; `AGENTS.md` build-log entry.
 
+6. **Reveal button + drumroll sound** (R4, amended) — drumroll screen waits
+   for **Reveal**; `src/drumroll.ts` synthesizes the roll + crash; reveal on
+   the crash; Esc/Close stops the sound; docs updated.
+
 Out of scope: see `requirements.md` → Non-goals.
 
 ---
@@ -29,3 +33,4 @@ Out of scope: see `requirements.md` → Non-goals.
 - ✅ **3** — 2026-11-16. `src/report.ts`: `classifyRow` / `countClasses` (classes from the verdict text; read failures → "Could not decode"), `rateCollection` (six tiers; costume share = costume ÷ (genuine + costume), so Inconclusive is neutral; thresholds `AVID_MAX_COSTUME_SHARE` 0.2 / `HOARDER_MAX_COSTUME_SHARE` 0.5, TUNABLE; every blurb ends "(estimate)"), `buildReportMarkdown` (header, rating, class counts, per-file table, caveats incl. decode rate) with `mdCell` escaping. Checked with a temporary Vitest file (deleted after; Vitest's locked scope is `cutoff.ts`): 3/3 passed — all 9 `buildVerdict` branches map to the intended class, all 6 tiers reached (incl. 1 genuine + 99 inconclusive → top tier), `|`/newline/backslash escaped. Build ✓, Vitest 10/10 ✓.
 - ✅ **4** — 2026-11-16. Folder panel header = folder name + **Scan** button (`Cancel · n/total` while scanning, "Stopping…" after a cancel click; returns to idle when any scan ends). Report modal (`role="dialog"`, z 25 — above panels/progress, below toasts so save results show, below the screensaver): drumroll stage (🥁 shake, "Drumroll… judging n files", `DRUMROLL_MS` 2.2 s, 0.3 s with reduced motion) → reveal (rating emoji/title/blurb, non-zero class chips, files-judged or stopped-early note), **Save report** (bridge `saveReport`, default `spectregram-report.md`, toast on saved/cancelled/failed) and **Close**. While open, a capture-phase key handler owns the keyboard (Esc closes; u/l dB keys and Esc-zoom don't leak through). Loading another folder mid-scan cancels the scan and drops its result. `CLASS_INFO` gained short chip labels. Build ✓ (still one worker chunk), Vitest 10/10 ✓. Real run in task 5.
 - ✅ **5** — 2026-11-16. Added a test-only folder smoke (`SPECTREGRAM_SMOKE_FOLDER`, env-gated in `electron/main.js`). Real desktop run on a temp folder built from `lab/` copies: `Chocolate (lossless).flac` (123 kbps MP3), `Album A/01 Chocolate.mp3`, `Album A/broken.flac` (4 KB of junk), `Album A/Disc 2/02 Camelia.m4a`, `Album A/Disc 2/03 Decade.flac` (309 kbps MP3), plus `.hidden/skip-me.mp3` and `notes.txt`. Listed exactly the 5 audio files, as relative paths (hidden folder and `.txt` skipped). Classes: Costume · Lossy · Could not decode · No call · Inconclusive respectively → rating "Costume Party Noob" (1 costume, 0 genuine). Report saved via the smoke path: 1,966 bytes, all five rows + caveats, decode rate 48000 Hz, no absolute paths. Exit 0, ~7 s wall incl. app start-up. Docs: `DEV.md` "Folder report", `AGENTS.md` build log. **Not verified:** the real Save dialog (smoke writes without it) and a 1,000-file scan.
+- ⏳ **6** — not started (R4 amended 2026-11-16).

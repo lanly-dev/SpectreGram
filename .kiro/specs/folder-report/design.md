@@ -67,10 +67,23 @@ checked between files; the worker is terminated on finish or cancel.
 **UI (`src/main.ts`, `index.html`, `src/style.css`) — R2, R4.**
 - Folder panel header: folder name + **Scan** button (becomes
   `Cancel · n / total` while scanning).
-- Report modal (`role="dialog"`): stage 1 drumroll (🥁 shaking, "Judging n
-  files…", ~2 s), stage 2 reveal (rating emoji + title + blurb + class
-  counts + "(estimate)"), buttons **Save report** and **Close**; Esc closes.
-  Sits below the screensaver, above everything else.
+- Report modal (`role="dialog"`): stage 1 drumroll screen (🥁 still, "n
+  files judged", **Reveal** button, focused). Reveal → the drum shakes and
+  `src/drumroll.ts` plays the sound; stage 2 reveal (rating emoji + title +
+  blurb + class counts + "(estimate)") appears on the crash, with buttons
+  **Save report** and **Close**; Esc closes and stops the sound. Sits below
+  the screensaver, above everything else.
+
+**Drumroll sound (`src/drumroll.ts`) — R4, amended.** Synthesized with Web
+Audio, no asset: a snare roll of short band-passed white-noise hits with a
+small tonal body, ~18 hits/s with a crescendo over ~2.2 s, then a crash
+(long high-passed noise decay + a low thump). `playDrumroll()` returns
+`{ done, stop }`: `done` resolves at the crash, so the reveal lands on it;
+`stop()` silences and closes the context. Its own short-lived
+`AudioContext`, created on the Reveal click (a user gesture, so autoplay
+rules allow it) and closed after the crash rings out. Without Web Audio the
+reveal still happens after the same delay. Reduced motion: the roll
+shortens to ~0.6 s.
 
 ## Verification
 
