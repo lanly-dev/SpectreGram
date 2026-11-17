@@ -1,0 +1,31 @@
+# Folder Report — Tasks
+
+Part of the `folder-report` Kiro spec. Requirements: `./requirements.md` ·
+Design: `./design.md`. Branch: `feat/folder-report`. Trail rules:
+`/.kiro/steering/work-trail.md`. `npm run build` + `npm run test` green
+before every commit.
+
+1. **Recursive listing + save IPC** (R1, R5) — `walkAudioFiles`, recursive
+   `loadFolder` with cap and `truncated`, `currentFolderPath`,
+   `sg:save-report`, preload + types; folder panel shows relative paths and
+   a capped-list notice.
+2. **Classify path** (R3) — `stftParamsFor` in `stft.ts` (used by
+   `handleFile` too), worker `classify` request, `src/scan.ts`.
+3. **Report logic** (R3, R4, R5, R6) — `src/report.ts`: classes, rating
+   tiers, Markdown builder; temporary Vitest check, deleted after.
+4. **Scan UI + drumroll** (R2, R4, R5) — Scan/Cancel button, report modal
+   with drumroll and reveal, Save report, Esc to close.
+5. **Verify + document** — real scan of `lab/` in the desktop app, saved
+   report checked; `DEV.md` section; `AGENTS.md` build-log entry.
+
+Out of scope: see `requirements.md` → Non-goals.
+
+---
+
+## Implementation status
+
+- ⏳ **1** — not started.
+- ⏳ **2** — not started.
+- ⏳ **3** — not started.
+- ⏳ **4** — not started.
+- ⏳ **5** — not started.
