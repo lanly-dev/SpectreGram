@@ -32,6 +32,8 @@ let hasSpectrogram = false;
 // Test-only hooks (used by the headless smoke run; inert otherwise).
 const SMOKE_FILE = process.env.SPECTREGRAM_SMOKE_FILE || '';
 const SMOKE_SAVE_DIR = process.env.SPECTREGRAM_SMOKE_SAVE_DIR || '';
+// Folder-report smoke: open this folder, Scan, wait for the reveal, save.
+const SMOKE_FOLDER = process.env.SPECTREGRAM_SMOKE_FOLDER || '';
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -431,6 +433,7 @@ function createWindow() {
       mainWindow.webContents.send('sg:open-file', p);
     }
     if (SMOKE_FILE) void runSmoke();
+    else if (SMOKE_FOLDER) void runFolderSmoke();
   });
 
   mainWindow.on('closed', () => {
@@ -495,6 +498,57 @@ async function runSmoke() {
     setTimeout(poll, 500);
   };
   void poll();
+}
+
+// Folder-report smoke (env-gated, test-only): loads SMOKE_FOLDER through the
+// real recursive listing, clicks Scan, waits for the drumroll reveal, prints
+// the listing + rating, then saves the report via the smoke save path.
+async function runFolderSmoke() {
+  const js = (code) => mainWindow.webContents.executeJavaScript(code);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const started = Date.now();
+  await loadFolder(path.resolve(SMOKE_FOLDER));
+  try {
+    // Wait for the panel to list the files, then start the scan.
+    for (;;) {
+      const n = await js(`document.querySelectorAll('#folder-list li').length`);
+      if (n > 0) break;
+      if (Date.now() - started > 15000) throw new Error('folder never listed');
+      await sleep(200);
+    }
+    const listed = JSON.parse(
+      await js(`JSON.stringify([...document.querySelectorAll('#folder-list li')].map((li) => li.textContent))`),
+    );
+    console.log('SMOKE_FOLDER_LISTED', JSON.stringify(listed));
+    await js(`document.getElementById('scan-btn').click()`);
+    for (;;) {
+      const raw = await js(`JSON.stringify({
+        revealed: !document.getElementById('report-reveal').hidden,
+        title: document.getElementById('report-title').textContent,
+        blurb: document.getElementById('report-blurb').textContent,
+        counts: [...document.querySelectorAll('#report-counts li')].map((li) => li.textContent),
+        note: document.getElementById('report-note').textContent
+      })`);
+      const state = JSON.parse(raw);
+      if (state.revealed) {
+        console.log('SMOKE_REPORT_OK', JSON.stringify(state));
+        break;
+      }
+      if (Date.now() - started > 180000) throw new Error('scan never revealed');
+      await sleep(300);
+    }
+    if (SMOKE_SAVE_DIR) {
+      await js(`document.getElementById('report-save').click()`);
+      await sleep(1000);
+      const saved = path.join(SMOKE_SAVE_DIR, 'spectregram-report.md');
+      if (!fs.existsSync(saved)) throw new Error('report not saved');
+      console.log('SMOKE_REPORT_SAVED', saved, fs.statSync(saved).size);
+    }
+    app.exit(0);
+  } catch (e) {
+    console.log('SMOKE_FOLDER_FAIL', e.message);
+    app.exit(2);
+  }
 }
 
 app.whenReady().then(() => {

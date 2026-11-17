@@ -113,6 +113,57 @@ them for zoom requests without analyzing anything.
 hashing or decoding) drops its result instead of replacing the file you
 opened after it.
 
+## Folder report
+
+Desktop only. Spec: `.kiro/specs/folder-report/`. Open a folder (File ›
+Open Folder), click **Scan** in the folder panel, and every audio file in
+the folder **and its subfolders** is judged; a drumroll then reveals a
+collector rating, and **Save report** writes a Markdown report into that
+folder.
+
+| Piece | Where |
+| --- | --- |
+| Recursive listing (`walkAudioFiles`), save-report IPC | `electron/main.js` |
+| Sequential scan on its own worker | `src/scan.ts` |
+| Classes, rating tiers, Markdown builder (pure) | `src/report.ts` |
+| `classify` worker request | `src/audio/stft-worker.ts` |
+| Shared full-track STFT params (`stftParamsFor`) | `src/audio/stft.ts` |
+| Scan button, drumroll modal, save | `src/main.ts`, `index.html`, `src/style.css` |
+
+**Listing.** Hidden entries (`.name`) are skipped, symbolic links are not
+followed, unreadable subfolders are skipped, and the list stops at 1,000
+files (`MAX_FOLDER_FILES`; the user gets a "list capped" toast). Panel rows
+show the path relative to the opened folder.
+
+**Scan.** Nothing runs until Scan is clicked. Files are processed one at a
+time (read → `decodeFile` → `classify` in the worker), so only one decoded
+file is in memory at once, and a scanned file gets exactly the verdict a
+single open would give (same `stftParamsFor`, same `cutoff.ts`). The scan
+has its own worker, so the spectrogram on screen and its zoom are not
+disturbed. Cancel stops after the current file; loading another folder
+cancels too.
+
+**Classes and rating.** `classifyRow` sorts each verdict into Genuine ·
+Costume · Inconclusive · Normal lossy · No call · Could not decode.
+`rateCollection` judges only files that claim lossless, by costume share =
+costume ÷ (genuine + costume): 0 → 👑 Crypt Keeper, ≤ 20% → 🧛 Avid
+Collector, ≤ 50% → 🧟 Haunted Hoarder, more → 🎃 Costume Party Noob; no
+lossless claims → 🦇 Lossy Lurker; only inconclusive → 🌫️ Lost in the Fog.
+Inconclusive is deliberately neutral (genuine 44.1 kHz files can read
+inconclusive on 48 kHz devices — AGENTS.md #3). The share thresholds are
+TUNABLE constants in `report.ts`. Every rating ends with "(estimate)".
+
+**Report.** `spectregram-report.md`: folder name (not its full path), scan
+time, rating, class counts, one row per file (relative path, claimed
+format, duration, cutoff, class, verdict) and the caveats, including the
+decode sample rate. Saving always goes through the save dialog, opened in
+the scanned folder; nothing is written or overwritten without it.
+
+**Smoke test.** `SPECTREGRAM_SMOKE=1 SPECTREGRAM_SMOKE_FOLDER=<folder>
+SPECTREGRAM_SMOKE_SAVE_DIR=<dir> npx electron .` loads the folder, clicks
+Scan, prints the listing and the revealed rating, and saves the report into
+`<dir>` without a dialog. Test-only; inert in normal use.
+
 ## Packaging
 
 electron-builder configuration lives in the `build` key of
