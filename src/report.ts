@@ -11,13 +11,13 @@ import type { ScanRow } from './scan';
 export type QualityClass = 'genuine' | 'costume' | 'inconclusive' | 'lossy' | 'nocall' | 'failed';
 
 /** Display order and labels for the classes (report table + modal chips). */
-export const CLASS_INFO: ReadonlyArray<{ cls: QualityClass; label: string }> = [
-  { cls: 'genuine', label: '👻 Genuine lossless' },
-  { cls: 'costume', label: '🎃 Costume (lossy disguised as lossless)' },
-  { cls: 'inconclusive', label: '🌫️ Inconclusive' },
-  { cls: 'lossy', label: '📼 Normal lossy' },
-  { cls: 'nocall', label: '🕯️ No call' },
-  { cls: 'failed', label: '💀 Could not decode' },
+export const CLASS_INFO: ReadonlyArray<{ cls: QualityClass; label: string; short: string }> = [
+  { cls: 'genuine', label: '👻 Genuine lossless', short: '👻 Genuine' },
+  { cls: 'costume', label: '🎃 Costume (lossy disguised as lossless)', short: '🎃 Costume' },
+  { cls: 'inconclusive', label: '🌫️ Inconclusive', short: '🌫️ Inconclusive' },
+  { cls: 'lossy', label: '📼 Normal lossy', short: '📼 Lossy' },
+  { cls: 'nocall', label: '🕯️ No call', short: '🕯️ No call' },
+  { cls: 'failed', label: '💀 Could not decode', short: '💀 Failed' },
 ];
 
 export type ClassCounts = Record<QualityClass, number>;
