@@ -15,7 +15,7 @@ import {
   DB_STEP,
   type PaletteName,
 } from './render';
-import { DEFAULT_STFT, type DbGrid, type StftParams } from './audio/stft';
+import { DEFAULT_STFT, stftParamsFor, type DbGrid, type StftParams } from './audio/stft';
 import type { AnalyzeRequest, HoldRequest, WorkerMessage, ZoomRequest } from './audio/stft-worker';
 
 // Tick step candidates for the rulers. The spectrogram's frequency axis is
@@ -581,17 +581,7 @@ async function handleFile(file: File): Promise<void> {
   showFileFacts(file, res.facts);
   setVerdictPending('Analyzing… 0%');
 
-  // Adaptive hop: cap the frame count near the display width (1024 px) so long
-  // tracks don't waste FFTs on columns that get downscaled away. Short tracks
-  // keep the default 50% overlap for time resolution.
-  const TARGET_FRAMES = 1024;
-  const baseHop = DEFAULT_STFT.hopSize;
-  const fftSize = DEFAULT_STFT.fftSize;
-  const framesAtBase = Math.floor((res.mono.length - fftSize) / baseHop) + 1;
-  const hopSize = framesAtBase > TARGET_FRAMES
-    ? Math.max(baseHop, Math.ceil((res.mono.length - fftSize) / (TARGET_FRAMES - 1)))
-    : baseHop;
-  const params = { ...DEFAULT_STFT, hopSize };
+  const params = stftParamsFor(res.mono.length);
 
   const w = ensureWorker();
   const req: AnalyzeRequest = {

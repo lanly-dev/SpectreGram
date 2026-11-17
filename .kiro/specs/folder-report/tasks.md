@@ -25,7 +25,7 @@ Out of scope: see `requirements.md` → Non-goals.
 ## Implementation status
 
 - ✅ **1** — 2026-11-16. `walkAudioFiles` (iterative; skips `.`-names; symlinks not followed; unreadable subfolders skipped; cap 1,000) + recursive `loadFolder` sending `truncated`; `currentFolderPath`; `sg:save-report` IPC (string ≤ 10 MB, dialog in the folder, Markdown filter, smoke-mode direct write); preload `saveReport`; `FolderFile`/`FolderLoaded` types; panel rows show the relative path + tooltip, capped-list toast. Checked: `node --check` on main/preload, build ✓, Vitest 10/10 ✓. Behavior on a real nested folder is checked in task 5.
-- ⏳ **2** — not started.
+- ✅ **2** — 2026-11-16. `stftParamsFor(sampleCount)` in `stft.ts` (the adaptive-hop rule, moved out of `handleFile`, which now calls it — single opens are unchanged); worker `classify` request → `classify-result` / `classify-error` (no progress, no grid transfer, held zoom samples untouched); `src/scan.ts` `runScan` (sequential read → decode → classify on its own worker; per-file failures become rows with `ok: false`; cancel checked between files; worker disposed on finish). Checked: build ✓, Vitest 10/10 ✓. A real scan is checked in task 5.
 - ⏳ **3** — not started.
 - ⏳ **4** — not started.
 - ⏳ **5** — not started.
