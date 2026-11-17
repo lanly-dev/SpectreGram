@@ -15,8 +15,8 @@ import {
   DB_STEP,
   type PaletteName,
 } from './render';
-import { DEFAULT_STFT, type DbGrid } from './audio/stft';
-import type { AnalyzeRequest, WorkerMessage, ZoomRequest } from './audio/stft-worker';
+import { DEFAULT_STFT, type DbGrid, type StftParams } from './audio/stft';
+import type { AnalyzeRequest, HoldRequest, WorkerMessage, ZoomRequest } from './audio/stft-worker';
 
 // Tick step candidates for the rulers. The spectrogram's frequency axis is
 // LINEAR, so frequency ticks must be evenly spaced in Hz: log-spaced values
@@ -169,6 +169,7 @@ function setupDbRangeKeys(): void {
 let worker: Worker | null = null;
 let audioBuffer: AudioBuffer | null = null;
 let sampleRate = 0;
+let currentDurationSec = 0;
 // Base name (no extension) of the file being analyzed — names the PNG export.
 let currentBaseName = 'spectregram';
 
@@ -352,10 +353,17 @@ function onWorkerMessage(msg: WorkerMessage): void {
     // arrives as its own message, so it never delays the graph and never blocks
     // the UI thread (its per-bin percentile sort measures ~160 ms).
     fullGrid = grid;
+    if (pendingCache) pendingCache.grid = grid;
     const ctx = spectrogramCtx();
     if (ctx) renderSpectrogram(ctx, grid);
   } else if (msg.type === 'verdict') {
     setVerdict(msg.verdict);
+    // Analysis complete: remember it so reopening this file is instant.
+    if (pendingCache?.grid) {
+      const { key, facts, params, audio, grid } = pendingCache;
+      cacheTouch(key, { facts, params, grid, verdict: msg.verdict, audio });
+      pendingCache = null;
+    }
   } else if (msg.type === 'zoom-result') {
     onZoomResult(msg.id, { data: msg.data, frames: msg.frames, bins: msg.bins });
   } else if (msg.type === 'zoom-error') {
@@ -373,21 +381,193 @@ function onWorkerMessage(msg: WorkerMessage): void {
   }
 }
 
+// --- Recent-file cache --------------------------------------------------------
+//
+// Reopening a file this session paints its spectrogram and verdict at once,
+// skipping decode + STFT + cutoff. Two tiers, because decoded audio is huge
+// (a 7-min track at 48 kHz stereo ≈ 165 MB, plus its mono mixdown) while the
+// part that makes a reopen instant is small (the grid is ≤ ~1024 frames ×
+// 1025 bins ≈ 4 MB):
+//   - analysis tier: facts + grid + verdict, kept for every file this session;
+//   - audio tier: the decoded AudioBuffer + mono mixdown (for playback and
+//     zoom), kept only for the most recent files. A reopen without it paints
+//     instantly and re-decodes in the background to bring playback/zoom back.
+// Memory only — nothing is written to disk, so "files never leave your
+// machine" stays literally true and nothing outlives the app.
+
+/** Budget for cached spectrogram grids (bytes) ≈ 50 full-length tracks. TUNABLE. */
+const GRID_CACHE_MAX_BYTES = 200 * 1024 * 1024;
+/** Budget for cached decoded audio (bytes). TUNABLE. */
+const AUDIO_CACHE_MAX_BYTES = 400 * 1024 * 1024;
+
+interface CachedAudio {
+  buffer: AudioBuffer;
+  /** Mono mixdown, kept so a fresh worker can serve zoom requests. */
+  mono: Float32Array;
+  bytes: number;
+}
+
+interface CachedAnalysis {
+  facts: FileFacts;
+  params: Partial<StftParams>;
+  grid: DbGrid;
+  verdict: string;
+  /** Present only for recently used files (see AUDIO_CACHE_MAX_BYTES). */
+  audio: CachedAudio | null;
+}
+
+/** Insertion order = recency: the first key is the least recently used. */
+const analysisCache = new Map<string, CachedAnalysis>();
+/** The analysis in flight, completed into a cache entry when its verdict lands. */
+let pendingCache: {
+  key: string;
+  facts: FileFacts;
+  params: Partial<StftParams>;
+  audio: CachedAudio;
+  grid?: DbGrid;
+} | null = null;
+/** Bumped per open; a slower, older open drops its result instead of overwriting. */
+let openGen = 0;
+
+/**
+ * Identity of a file's contents. Name + size + SHA-256 of the bytes: the
+ * desktop shell re-wraps each open in a new File (fresh lastModified), so
+ * dates can't be used, and a changed file must miss. Null when hashing is
+ * unavailable (non-secure context) — the cache is then simply skipped.
+ */
+async function fileKey(file: File): Promise<string | null> {
+  if (!globalThis.crypto?.subtle) return null;
+  try {
+    const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+    const hex = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+    return `${file.name}|${file.size}|${hex}`;
+  } catch {
+    return null;
+  }
+}
+
+function makeCachedAudio(buffer: AudioBuffer, mono: Float32Array): CachedAudio {
+  return { buffer, mono, bytes: buffer.length * buffer.numberOfChannels * 4 + mono.byteLength };
+}
+
+/**
+ * Enforce both budgets, least recently used first: drop decoded audio until
+ * the audio tier fits (the analysis stays, so a reopen is still instant),
+ * then drop whole entries until the grid tier fits. The entry for `keepKey`
+ * (the file on screen) keeps its audio even if it alone is over budget.
+ */
+function enforceCacheBudget(keepKey: string): void {
+  let audioTotal = 0;
+  let gridTotal = 0;
+  for (const e of analysisCache.values()) {
+    audioTotal += e.audio?.bytes ?? 0;
+    gridTotal += e.grid.data.byteLength;
+  }
+  for (const [k, e] of analysisCache) {
+    if (audioTotal <= AUDIO_CACHE_MAX_BYTES) break;
+    if (k !== keepKey && e.audio) {
+      audioTotal -= e.audio.bytes;
+      e.audio = null;
+    }
+  }
+  for (const [k, e] of analysisCache) {
+    if (gridTotal <= GRID_CACHE_MAX_BYTES) break;
+    if (k === keepKey) continue;
+    analysisCache.delete(k);
+    gridTotal -= e.grid.data.byteLength;
+  }
+}
+
+/** Insert or refresh `key` as the most recently used entry, then trim. */
+function cacheTouch(key: string, entry: CachedAnalysis): void {
+  analysisCache.delete(key);
+  analysisCache.set(key, entry);
+  enforceCacheBudget(key);
+}
+
+/** Give the (fresh) worker the samples it needs to serve zoom requests. */
+function holdInWorker(mono: Float32Array, params: Partial<StftParams>): void {
+  // Send a copy: transferring the cached array would detach it.
+  const samples = mono.slice();
+  const req: HoldRequest = { type: 'hold', samples, params };
+  ensureWorker().postMessage(req, [samples.buffer]);
+}
+
+/** Show the file-level facts, rulers and title for a decoded file. */
+function showFileFacts(file: File, facts: FileFacts): void {
+  sampleRate = facts.sampleRate;
+  currentDurationSec = facts.durationSec;
+  setFacts(facts);
+  setFreqRuler(sampleRate);
+  setTimeRuler(0, facts.durationSec);
+  // Show the current file in the window title bar.
+  const shortName = file.name.length > 40 ? file.name.slice(0, 37) + '…' : file.name;
+  document.title = `SpectreGram — ${shortName}`;
+}
+
+/**
+ * Repaint a cached analysis instantly. With cached audio, playback and zoom
+ * are ready at once; without it, the file is re-decoded in the background
+ * (the graph and verdict are already on screen, so nothing visibly waits).
+ */
+async function openFromCache(file: File, key: string, hit: CachedAnalysis, gen: number): Promise<void> {
+  hideEmptyState();
+  hideProgress();
+  showFileFacts(file, hit.facts);
+  fullGrid = hit.grid;
+  const ctx = spectrogramCtx();
+  if (ctx) renderSpectrogram(ctx, hit.grid);
+  setVerdict(hit.verdict);
+  const desktop = window.spectregramDesktop;
+  if (desktop) void desktop.reportSpectrogramState(true);
+
+  if (hit.audio) {
+    audioBuffer = hit.audio.buffer;
+    holdInWorker(hit.audio.mono, hit.params);
+    cacheTouch(key, hit);
+    return;
+  }
+
+  audioBuffer = null; // playback/zoom return once the background decode lands
+  cacheTouch(key, hit);
+  const res = await decodeFile(file);
+  if (gen !== openGen) return; // another file was opened meanwhile
+  if (!res.ok) {
+    toast(`Playback and zoom unavailable: ${res.message}`, 'error');
+    return;
+  }
+  audioBuffer = res.buffer;
+  hit.audio = makeCachedAudio(res.buffer, res.mono);
+  holdInWorker(res.mono, hit.params);
+  cacheTouch(key, hit);
+}
+
 // --- File intake ------------------------------------------------------------
 
 async function handleFile(file: File): Promise<void> {
+  const gen = ++openGen;
   // Cancel any in-flight analysis and playback before starting fresh.
   teardownWorker();
   stopPlayback();
   resetZoomState();
+  pendingCache = null;
   const dot = file.name.lastIndexOf('.');
   currentBaseName = dot > 0 ? file.name.slice(0, dot) : file.name || 'spectregram';
-  setVerdictPending('Decoding…');
-  setProgress(0);
   const desktop = window.spectregramDesktop;
   if (desktop) void desktop.reportSpectrogramState(false);
 
+  const key = await fileKey(file);
+  if (gen !== openGen) return; // a newer file was opened meanwhile
+  const hit = key ? analysisCache.get(key) : undefined;
+  if (key && hit) {
+    await openFromCache(file, key, hit, gen);
+    return;
+  }
+
+  setVerdictPending('Decoding…');
+  setProgress(0);
   const res: DecodeResult = await decodeFile(file);
+  if (gen !== openGen) return;
   if (!res.ok) {
     console.warn('decode failed:', res.message);
     setFacts(null);
@@ -398,14 +578,8 @@ async function handleFile(file: File): Promise<void> {
   }
 
   audioBuffer = res.buffer;
-  sampleRate = res.facts.sampleRate;
-  setFacts(res.facts);
+  showFileFacts(file, res.facts);
   setVerdictPending('Analyzing… 0%');
-  setFreqRuler(sampleRate);
-  setTimeRuler(0, res.facts.durationSec);
-  // Show the current file in the window title bar.
-  const shortName = file.name.length > 40 ? file.name.slice(0, 37) + '…' : file.name;
-  document.title = `SpectreGram — ${shortName}`;
 
   // Adaptive hop: cap the frame count near the display width (1024 px) so long
   // tracks don't waste FFTs on columns that get downscaled away. Short tracks
@@ -427,6 +601,15 @@ async function handleFile(file: File): Promise<void> {
     sampleRate: res.facts.sampleRate,
     claimedFormat: res.facts.format,
   };
+  // Keep a copy for the cache first: the transfer below detaches res.mono.
+  if (key) {
+    pendingCache = {
+      key,
+      facts: res.facts,
+      params,
+      audio: makeCachedAudio(res.buffer, res.mono.slice()),
+    };
+  }
   // Transfer the mono buffer (we keep the AudioBuffer for playback separately).
   w.postMessage(req, [res.mono.buffer]);
 }
@@ -680,8 +863,10 @@ let zoomReqId = 0;
 let zoomBusy = false;
 let zoomQueued = false;
 
+/** Duration of the file on screen — from its facts, so it is known even
+ *  while a cached file's audio is still re-decoding in the background. */
 function trackDuration(): number {
-  return audioBuffer ? audioBuffer.duration : 0;
+  return currentDurationSec;
 }
 
 function viewRange(): TimeView {
@@ -784,6 +969,11 @@ function zoomTo(t0: number, t1: number): void {
   const dur = trackDuration();
   const min = minZoomSec();
   if (!fullGrid || !(dur > 0)) return;
+  if (!audioBuffer) {
+    // A cached file's audio is still re-decoding; the worker has no samples yet.
+    toast('Audio is still loading — try again in a moment.');
+    return;
+  }
   if (dur <= min) {
     toast(`Track is shorter than the ${fmtTime(min, 2)} minimum zoom.`);
     return;
@@ -909,7 +1099,10 @@ function playbackCtor(): typeof AudioContext | null {
 }
 
 function startPlayback(): void {
-  if (!audioBuffer) return;
+  if (!audioBuffer) {
+    if (fullGrid) toast('Audio is still loading — try again in a moment.');
+    return;
+  }
   stopPlayback();
   const Ctor = playbackCtor();
   if (!Ctor) return;

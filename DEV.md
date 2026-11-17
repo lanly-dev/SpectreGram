@@ -66,6 +66,53 @@ Vitest covers `src/audio/cutoff.ts` only (locked scope — see
 `.kiro/steering/build-conventions.md`): `npm run test` for a one-shot
 run, `npm run test:watch` while tuning thresholds.
 
+## Recent-file cache
+
+Reopening a file you already opened this session paints its spectrogram
+and verdict at once, with no decode, STFT or cutoff pass. The code is the
+"Recent-file cache" section of `src/main.ts`.
+
+**Memory only.** Nothing is written to disk or browser storage. The cache
+lives in ordinary variables and is gone when the app closes, so the next
+launch analyzes every file fresh the first time.
+
+**How a file is matched.** By name + size + a SHA-256 of its bytes
+(`fileKey`). The desktop shell builds a new `File` on every open, so
+modification dates can't be used, and a file whose contents changed is
+analyzed fresh. Where `crypto.subtle` is unavailable (a non-secure
+browser context), the cache is skipped and every open analyzes normally.
+
+**Two tiers**, because decoded audio is far larger than what makes a
+reopen instant:
+
+| Tier | What it holds | Size per file | Budget (TUNABLE) |
+| --- | --- | --- | --- |
+| Analysis | facts, STFT params, full-track grid, verdict | ≤ ~4 MB (≤ ~1024 frames × 1025 bins × 4 B) | `GRID_CACHE_MAX_BYTES` = 200 MB, about 50 full-length tracks |
+| Audio | decoded `AudioBuffer` + mono mixdown, for playback and zoom | ~250 MB for a 7-min track at 48 kHz stereo | `AUDIO_CACHE_MAX_BYTES` = 400 MB |
+
+Eviction is least-recently-used. Over the audio budget, the oldest files
+lose only their audio and keep their analysis, so they still reopen
+instantly. Over the grid budget, the oldest entries are dropped entirely.
+The file on screen is never evicted.
+
+**Reopen paths** (`openFromCache`):
+
+- **Audio still cached:** graph, verdict, playback and zoom are all ready
+  at once.
+- **Audio evicted:** graph and verdict appear at once; the file re-decodes
+  in the background (usually under a second) and playback and zoom come
+  back when it lands. Pressing Play or dragging to zoom in that window
+  shows "Audio is still loading — try again in a moment."
+
+**Worker.** Zoom re-analyzes segments in the worker, which is replaced on
+every open. A cache hit therefore sends the worker a `hold` message
+(`src/audio/stft-worker.ts`) carrying a copy of the mono samples: it stores
+them for zoom requests without analyzing anything.
+
+**Stale results.** Each open bumps `openGen`. A slower, earlier open (still
+hashing or decoding) drops its result instead of replacing the file you
+opened after it.
+
 ## Packaging
 
 electron-builder configuration lives in the `build` key of

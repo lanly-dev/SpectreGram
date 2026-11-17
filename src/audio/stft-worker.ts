@@ -31,7 +31,17 @@ export type ZoomRequest = {
   columns: number;
 };
 
-export type WorkerRequest = AnalyzeRequest | ZoomRequest;
+/**
+ * Hold samples without analyzing them — used when a file is reopened from
+ * main.ts's recent-file cache, so zoom requests still have audio to work on.
+ */
+export type HoldRequest = {
+  type: 'hold';
+  samples: Float32Array;
+  params?: Partial<StftParams>;
+};
+
+export type WorkerRequest = AnalyzeRequest | ZoomRequest | HoldRequest;
 
 // Responses posted from the worker (worker -> main). The grid and the verdict are
 // separate messages: the grid is already computed when the cutoff pass starts,
@@ -123,4 +133,8 @@ scope.onmessage = (ev: MessageEvent) => {
   const msg = ev.data as WorkerRequest;
   if (msg?.type === 'analyze') handleAnalyze(msg);
   else if (msg?.type === 'zoom') handleZoom(msg);
+  else if (msg?.type === 'hold') {
+    heldSamples = msg.samples;
+    heldParams = msg.params;
+  }
 };
