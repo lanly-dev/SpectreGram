@@ -521,6 +521,20 @@ async function runFolderSmoke() {
     );
     console.log('SMOKE_FOLDER_LISTED', JSON.stringify(listed));
     await js(`document.getElementById('scan-btn').click()`);
+    // The drumroll screen waits for Reveal; click it once it shows.
+    for (;;) {
+      const ready = await js(`(() => {
+        const m = document.getElementById('report-modal');
+        const b = document.getElementById('report-reveal-btn');
+        return !!m && !m.hidden && !!b && !b.hidden;
+      })()`);
+      if (ready) break;
+      if (Date.now() - started > 180000) throw new Error('drumroll screen never shown');
+      await sleep(300);
+    }
+    console.log('SMOKE_DRUMROLL_READY', await js(`document.getElementById('report-drumroll-text').textContent`));
+    const rollStart = Date.now();
+    await js(`document.getElementById('report-reveal-btn').click()`);
     for (;;) {
       const raw = await js(`JSON.stringify({
         revealed: !document.getElementById('report-reveal').hidden,
@@ -531,7 +545,7 @@ async function runFolderSmoke() {
       })`);
       const state = JSON.parse(raw);
       if (state.revealed) {
-        console.log('SMOKE_REPORT_OK', JSON.stringify(state));
+        console.log('SMOKE_REPORT_OK', `rollMs=${Date.now() - rollStart}`, JSON.stringify(state));
         break;
       }
       if (Date.now() - started > 180000) throw new Error('scan never revealed');

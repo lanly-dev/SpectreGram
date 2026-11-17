@@ -117,9 +117,10 @@ opened after it.
 
 Desktop only. Spec: `.kiro/specs/folder-report/`. Open a folder (File ›
 Open Folder), click **Scan** in the folder panel, and every audio file in
-the folder **and its subfolders** is judged; a drumroll then reveals a
-collector rating, and **Save report** writes a Markdown report into that
-folder.
+the folder **and its subfolders** is judged. The drumroll screen then waits
+for **Reveal**: clicking it plays a drumroll sound that ends on a crash, and
+the collector rating appears on the crash. **Save report** writes a Markdown
+report into that folder.
 
 | Piece | Where |
 | --- | --- |
@@ -129,6 +130,16 @@ folder.
 | `classify` worker request | `src/audio/stft-worker.ts` |
 | Shared full-track STFT params (`stftParamsFor`) | `src/audio/stft.ts` |
 | Scan button, drumroll modal, save | `src/main.ts`, `index.html`, `src/style.css` |
+| Drumroll sound (synthesized) | `src/drumroll.ts` |
+
+**Drumroll sound.** Synthesized with Web Audio, so there is no audio file to
+license or ship: ~18 snare hits/s (band-passed white-noise bursts plus a
+short triangle "body"), a crescendo over 2.2 s (`ROLL_SEC`, 0.6 s with
+reduced motion), then a crash (high-passed noise decay + low thump).
+`playDrumroll()` returns `{ done, stop }`; the reveal waits on `done`, which
+resolves at the crash. It uses its own short-lived `AudioContext`, created on
+the Reveal click (a user gesture, so autoplay rules allow it) and closed once
+the crash has rung out. Close or Esc mid-roll stops the sound.
 
 **Listing.** Hidden entries (`.name`) are skipped, symbolic links are not
 followed, unreadable subfolders are skipped, and the list stops at 1,000
@@ -161,8 +172,10 @@ the scanned folder; nothing is written or overwritten without it.
 
 **Smoke test.** `SPECTREGRAM_SMOKE=1 SPECTREGRAM_SMOKE_FOLDER=<folder>
 SPECTREGRAM_SMOKE_SAVE_DIR=<dir> npx electron .` loads the folder, clicks
-Scan, prints the listing and the revealed rating, and saves the report into
-`<dir>` without a dialog. Test-only; inert in normal use.
+Scan, waits for the drumroll screen, clicks Reveal, prints the listing, the
+roll time and the revealed rating, and saves the report into `<dir>`
+without a dialog. Test-only; inert in normal use. Like the file smoke, it
+can't run while another SpectreGram window is open (single-instance lock).
 
 ## Packaging
 

@@ -805,7 +805,25 @@ main.folder-open .controls {
   font-size: 44px;
   line-height: 1;
   display: inline-block;
-  animation: drum-shake 0.12s ease-in-out infinite alternate;
+}
+
+/* Still until Reveal is clicked; shakes while the roll plays. */
+.drum.rolling {
+  animation: drum-shake 0.07s ease-in-out infinite alternate;
+}
+
+.reveal-btn {
+  margin-top: 12px;
+  padding: 5px 18px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 14px rgba(255, 122, 61, 0.25);
+}
+
+.reveal-btn[hidden] {
+  display: none;
 }
 
 .drumroll-text {
@@ -895,7 +913,7 @@ main.folder-open .controls {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .drum,
+  .drum.rolling,
   .report-reveal {
     animation: none;
   }

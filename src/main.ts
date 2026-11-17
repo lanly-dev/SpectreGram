@@ -20,6 +20,7 @@ import type { AnalyzeRequest, HoldRequest, WorkerMessage, ZoomRequest } from './
 import { runScan } from './scan';
 import { buildReportMarkdown, CLASS_INFO, countClasses, rateCollection } from './report';
 import type { FolderFile } from './types/desktop';
+import { playDrumroll, type Drumroll } from './drumroll';
 
 // Tick step candidates for the rulers. The spectrogram's frequency axis is
 // LINEAR, so frequency ticks must be evenly spaced in Hz: log-spaced values
@@ -774,8 +775,6 @@ function setupFolderPanel(): void {
 // Spec: .kiro/specs/folder-report/. The scan itself is src/scan.ts and the
 // rating/report text is src/report.ts; this is only the UI around them.
 
-/** How long the drumroll plays before the reveal. TUNABLE. */
-const DRUMROLL_MS = 2200;
 const REPORT_FILE_NAME = 'spectregram-report.md';
 
 let scanFolderName = '';
@@ -785,7 +784,8 @@ let scanCancelRequested = false;
 /** Bumped per folder load; a scan of an older folder drops its result. */
 let scanFolderGen = 0;
 let reportMarkdown = '';
-let drumrollTimer = 0;
+/** The drumroll playing right now, so Close/Esc can silence it. */
+let activeDrumroll: Drumroll | null = null;
 
 function scanButtonIdle(): void {
   const btn = $('scan-btn');
@@ -810,12 +810,40 @@ function reportModalOpen(): boolean {
 }
 
 function closeReportModal(): void {
-  clearTimeout(drumrollTimer);
+  activeDrumroll?.stop();
+  activeDrumroll = null;
+  $('report-drum')?.classList.remove('rolling');
   const modal = $('report-modal');
   if (modal) modal.hidden = true;
 }
 
-/** Show the modal: drumroll first, then the rating and class counts. */
+/** Reveal click: shake the drum, play the roll, reveal the rating on the crash. */
+async function rollAndReveal(): Promise<void> {
+  const drum = $('report-drum');
+  const drumStage = $('report-drumroll');
+  const drumText = $('report-drumroll-text');
+  const reveal = $('report-reveal');
+  const btn = el<HTMLButtonElement>('report-reveal-btn');
+  if (!drum || !drumStage || !drumText || !reveal || !btn || activeDrumroll) return;
+  btn.hidden = true;
+  drumText.textContent = 'Drumroll…';
+  drum.classList.add('rolling');
+  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  const roll = playDrumroll({ reducedMotion: reduced });
+  activeDrumroll = roll;
+  await roll.done;
+  if (activeDrumroll !== roll) return; // closed (and stopped) mid-roll
+  activeDrumroll = null; // the crash rings out on its own
+  drum.classList.remove('rolling');
+  drumStage.hidden = true;
+  reveal.hidden = false;
+  el<HTMLButtonElement>('report-save')?.focus();
+}
+
+/**
+ * Show the modal on the drumroll screen, waiting for Reveal. The rating and
+ * class counts are filled in now but stay hidden until the roll's crash.
+ */
 function showReportModal(rows: Parameters<typeof countClasses>[0], total: number, cancelled: boolean): void {
   const modal = $('report-modal');
   const drum = $('report-drumroll');
@@ -842,17 +870,16 @@ function showReportModal(rows: Parameters<typeof countClasses>[0], total: number
     : `${rows.length} file${rows.length !== 1 ? 's' : ''} judged, subfolders included.`;
 
   const n = rows.length;
-  drumText.textContent = `Drumroll… judging ${n} file${n !== 1 ? 's' : ''}`;
+  activeDrumroll?.stop();
+  activeDrumroll = null;
+  $('report-drum')?.classList.remove('rolling');
+  drumText.textContent = `${n} file${n !== 1 ? 's' : ''} judged. Ready for the verdict?`;
+  const btn = el<HTMLButtonElement>('report-reveal-btn');
+  if (btn) btn.hidden = false;
   drum.hidden = false;
   reveal.hidden = true;
   modal.hidden = false;
-  clearTimeout(drumrollTimer);
-  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  drumrollTimer = window.setTimeout(() => {
-    drum.hidden = true;
-    reveal.hidden = false;
-    el<HTMLButtonElement>('report-save')?.focus();
-  }, reduced ? 300 : DRUMROLL_MS);
+  btn?.focus();
 }
 
 async function startScan(): Promise<void> {
@@ -912,6 +939,7 @@ function setupFolderReport(): void {
     void startScan();
   });
   $('report-close')?.addEventListener('click', closeReportModal);
+  $('report-reveal-btn')?.addEventListener('click', () => void rollAndReveal());
   $('report-save')?.addEventListener('click', async () => {
     if (!reportMarkdown) return;
     try {
