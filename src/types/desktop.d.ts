@@ -13,13 +13,30 @@ export interface SpectreGramDesktop {
   /** File > Save menu: renderer paints the spectrogram PNG and saves it. */
   onSavePng(callback: () => void): () => void;
   /** Folder panel: fires when the shell has loaded an audio folder. */
-  onFolderLoaded(callback: (data: { folderPath: string; folderName: string; files: Array<{ path: string; name: string }> }) => void): () => void;
+  onFolderLoaded(callback: (data: FolderLoaded) => void): () => void;
+  /** Folder report: save dialog in the scanned folder; resolves true if saved. */
+  saveReport(text: string, defaultName: string): Promise<boolean>;
   /** Folder panel: grant read access + open a file from the folder. */
   openFolderFile(filePath: string): Promise<boolean>;
   /** Report whether a spectrogram is present (gates Save as PNG in the menu). */
   reportSpectrogramState(present: boolean): Promise<boolean>;
   /** Options menu actions; returns an unsubscribe function. */
   onMenuAction(callback: (action: MenuAction, value?: unknown) => void): () => void;
+}
+
+/** One audio file in an opened folder; `name` is relative to the folder. */
+export interface FolderFile {
+  path: string;
+  name: string;
+}
+
+export interface FolderLoaded {
+  folderPath: string;
+  folderName: string;
+  /** Includes files in subfolders, sorted by relative path. */
+  files: FolderFile[];
+  /** True when the folder had more audio files than the listing cap. */
+  truncated?: boolean;
 }
 
 /** Actions the Options menu sends to the renderer. */

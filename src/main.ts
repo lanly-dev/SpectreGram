@@ -735,13 +735,16 @@ function setupFolderPanel(): void {
   if (!box || !panel || !list || !nameNode) return;
 
   let selectedLi: HTMLElement | null = null;
-  desktop.onFolderLoaded(({ folderName, files }) => {
+  desktop.onFolderLoaded(({ folderName, files, truncated }) => {
     nameNode.textContent = folderName;
     list.replaceChildren();
     selectedLi = null;
     for (const { path: filePath, name } of files) {
       const li = document.createElement('li');
+      // `name` is relative to the opened folder (subfolders included);
+      // the tooltip shows it in full when the panel ellipsizes it.
       li.textContent = name;
+      li.title = name;
       li.tabIndex = 0;
       const open = () => void desktop.openFolderFile(filePath);
       li.addEventListener('click', () => {
@@ -766,7 +769,9 @@ function setupFolderPanel(): void {
     panel.hidden = false;
     box.classList.add('folder-open');
     document.querySelector('main')?.classList.add('folder-open');
-    toast(`Folder "${folderName}" — ${files.length} audio file${files.length !== 1 ? 's' : ''}`);
+    const count = `${files.length} audio file${files.length !== 1 ? 's' : ''}`;
+    if (truncated) toast(`Folder "${folderName}" — showing the first ${count} (list capped).`);
+    else toast(`Folder "${folderName}" — ${count}`);
   });
 }
 

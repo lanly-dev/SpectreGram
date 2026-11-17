@@ -109,6 +109,26 @@ function registerIpc() {
     return true;
   });
 
+  // Folder report (spec: .kiro/specs/folder-report/, R5): the save dialog
+  // opens inside the folder being scanned; nothing is written without it.
+  ipcMain.handle('sg:save-report', async (_event, text, defaultName) => {
+    if (typeof text !== 'string' || text.length > 10 * 1024 * 1024) {
+      throw new Error('Invalid report.');
+    }
+    const safeName = path.basename(String(defaultName || 'spectregram-report.md'));
+    if (SMOKE_SAVE_DIR) {
+      await fs.promises.writeFile(path.join(SMOKE_SAVE_DIR, safeName), text, 'utf8');
+      return true;
+    }
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: currentFolderPath ? path.join(currentFolderPath, safeName) : safeName,
+      filters: [{ name: 'Markdown report', extensions: ['md'] }],
+    });
+    if (result.canceled || !result.filePath) return false;
+    await fs.promises.writeFile(result.filePath, text, 'utf8');
+    return true;
+  });
+
   ipcMain.handle('sg:read-file', async (_event, filePath) => {
     const resolved = path.resolve(String(filePath));
     if (!allowedReadPaths.has(resolved)) {
@@ -163,32 +183,76 @@ function sendToast(message, kind = 'info') {
   sendMenuAction('toast', { message, kind });
 }
 
+/** Most audio files a folder listing (and therefore a scan) will include. */
+const MAX_FOLDER_FILES = 1000;
+
 /**
- * List the audio files in `folderPath` (optionally only the first `limit`,
- * by name), grant the renderer read access to them, and show them in the
- * folder panel under `displayName`.
+ * Collect audio files under `root`, subfolders included (spec:
+ * .kiro/specs/folder-report/, R1). Hidden entries (".name") are skipped.
+ * Symbolic links are never followed — `Dirent.isDirectory()` is false for a
+ * link — so a link loop can't trap the walk. Stops at `cap` files.
+ * Unreadable subfolders are skipped rather than failing the whole listing.
+ * Returns `{ files, truncated }`; each file is `{ path, name }`, where `name`
+ * is the path relative to `root` with "/" separators, sorted by name.
+ */
+async function walkAudioFiles(root, cap) {
+  const files = [];
+  let truncated = false;
+  const stack = [root];
+  while (stack.length) {
+    const dir = stack.pop();
+    let entries;
+    try {
+      entries = await fs.promises.readdir(dir, { withFileTypes: true });
+    } catch (e) {
+      if (dir === root) throw e; // the folder itself must be readable
+      continue;
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(full);
+      } else if (entry.isFile() && AUDIO_EXTS.has(path.extname(entry.name).toLowerCase())) {
+        if (files.length >= cap) {
+          truncated = true;
+          break;
+        }
+        files.push({ path: full, name: path.relative(root, full).split(path.sep).join('/') });
+      }
+    }
+    if (truncated) break;
+  }
+  files.sort((a, b) => a.name.localeCompare(b.name));
+  return { files, truncated };
+}
+
+// The folder currently shown in the panel; Save report opens its dialog here.
+let currentFolderPath = '';
+
+/**
+ * List the audio files in `folderPath` and its subfolders (optionally only
+ * the first `limit`, by relative path), grant the renderer read access to
+ * them, and show them in the folder panel under `displayName`.
  */
 async function loadFolder(folderPath, { limit = Infinity, displayName } = {}) {
   if (!mainWindow) return;
   try {
-    const entries = await fs.promises.readdir(folderPath, { withFileTypes: true });
-    const audioFiles = entries
-      .filter(
-        (entry) => entry.isFile() && AUDIO_EXTS.has(path.extname(entry.name).toLowerCase()),
-      )
-      .map((entry) => ({ path: path.join(folderPath, entry.name), name: entry.name }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .slice(0, limit);
-    if (!audioFiles.length) {
-      sendToast('No audio files in that folder.', 'error');
+    const cap = Math.min(limit, MAX_FOLDER_FILES);
+    const { files, truncated } = await walkAudioFiles(folderPath, cap);
+    if (!files.length) {
+      sendToast('No audio files in that folder or its subfolders.', 'error');
       return;
     }
     // Grant the renderer read access to every listed audio file.
-    audioFiles.forEach((f) => allowedReadPaths.add(f.path));
+    files.forEach((f) => allowedReadPaths.add(f.path));
+    currentFolderPath = folderPath;
     mainWindow.webContents.send('sg:folder-loaded', {
       folderPath,
       folderName: displayName || path.basename(folderPath),
-      files: audioFiles,
+      files,
+      // Only report the global cap, not a deliberate `limit` (sample folder).
+      truncated: truncated && cap === MAX_FOLDER_FILES,
     });
   } catch (e) {
     console.error('read folder failed:', e);

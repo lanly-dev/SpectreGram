@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld('spectregramDesktop', {
   /** Report whether a spectrogram is present (gates Save as PNG in the menu). */
   reportSpectrogramState: (present) =>
     ipcRenderer.invoke('sg:spectrogram-state', present),
+  /** Folder report: save dialog opened in the scanned folder. Resolves true if saved. */
+  saveReport: (text, defaultName) => ipcRenderer.invoke('sg:save-report', text, defaultName),
   /** Options menu actions (screensaver toggle, development helpers, toasts). */
   onMenuAction: (callback) => {
     const listener = (_event, action, value) => callback(action, value);

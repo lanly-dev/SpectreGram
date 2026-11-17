@@ -24,7 +24,7 @@ Out of scope: see `requirements.md` → Non-goals.
 
 ## Implementation status
 
-- ⏳ **1** — not started.
+- ✅ **1** — 2026-11-16. `walkAudioFiles` (iterative; skips `.`-names; symlinks not followed; unreadable subfolders skipped; cap 1,000) + recursive `loadFolder` sending `truncated`; `currentFolderPath`; `sg:save-report` IPC (string ≤ 10 MB, dialog in the folder, Markdown filter, smoke-mode direct write); preload `saveReport`; `FolderFile`/`FolderLoaded` types; panel rows show the relative path + tooltip, capped-list toast. Checked: `node --check` on main/preload, build ✓, Vitest 10/10 ✓. Behavior on a real nested folder is checked in task 5.
 - ⏳ **2** — not started.
 - ⏳ **3** — not started.
 - ⏳ **4** — not started.
