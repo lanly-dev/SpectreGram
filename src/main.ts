@@ -38,8 +38,8 @@ function pickStep(steps: number[], span: number, max: number): number {
 }
 
 function fmtFreq(hz: number): string {
-  // Number(...) drops a trailing ".0", so 5000 reads "5 k", not "5.0 k".
-  if (hz >= 1000) return `${Number((hz / 1000).toFixed(hz >= 10000 ? 0 : 1))} k`;
+  // Number(...) drops a trailing ".0", so 5000 reads "5 kHz", not "5.0 kHz".
+  if (hz >= 1000) return `${Number((hz / 1000).toFixed(hz >= 10000 ? 0 : 1))} kHz`;
   return String(Math.round(hz));
 }
 
@@ -631,7 +631,7 @@ function setupCrosshair(): void {
 
     // Finer readout as the view narrows (≈1 ms per pixel at the minimum zoom).
     const tStr = fmtTime(time, span <= 2 ? 3 : span <= 20 ? 2 : 1);
-    const fStr = freq >= 1000 ? `${(freq / 1000).toFixed(freq >= 10000 ? 0 : 1)} k` : `${Math.round(freq)} Hz`;
+    const fStr = freq >= 1000 ? `${(freq / 1000).toFixed(freq >= 10000 ? 0 : 1)} kHz` : `${Math.round(freq)} Hz`;
 
     v.style.display = 'block';
     h.style.display = 'block';
