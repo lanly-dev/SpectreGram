@@ -60,6 +60,19 @@ pixel bright at (time t, frequency f), play a sine at f during t. So:
    over ±2 columns in dB. Grain amplitude = background × `BLEND_MARGIN_DB`,
    clamped to [`SPARKLE_MIN_AMP`, `SPARKLE_MAX_AMP`]. Grains are 80 ms
    (was 60 ms) Hann envelopes. All TUNABLE.
+
+   **Added by R3d/R3e (2026-11-17):** `carveBand` dims each channel in the
+   band with an STFT filter: 2048-point frames every 512 samples, sqrt-Hann
+   analysis and synthesis windows (75% overlap → perfect reconstruction
+   where the gain is 1), band bins scaled by `1 − depth(t) × (1 − g)` with
+   `g` = −`CARVE_DB` and a cosine taper one row wide outside the band;
+   `depth(t)` eases 0 → 1 → 0 over the same ~1 s as the message fade, so
+   the processed region joins the untouched audio seamlessly. Order per
+   attempt: copy channels → carve → `measureBackground` on the carved mono
+   → sparkle → add. Then `verdictClassOf` on the result vs the original
+   (both via `computeStft` + `analyze`); attempts at `CARVE_DB`,
+   `CARVE_DB / 2`, 0; the first safe one is kept, else an error.
+   `embedMessage` returns `{ scale, carveDb }`.
 5. **WAV** (`src/message/wav.ts`, pure): 16-bit PCM, little-endian,
    interleaved, standard 44-byte header.
 

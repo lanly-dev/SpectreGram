@@ -74,6 +74,21 @@ its source.
   above that level, between a floor (so the text still shows over silence)
   and a ceiling (quieter than the previous sparkle, so busy passages never
   get loud grains). Quiet passages get quiet sparkles.
+- **R3d — Make room for the message.** *(Added 2026-11-17: with R3c alone
+  the text was not visible over two real tracks.)* While the message
+  plays, the original is dimmed by up to 12 dB **inside the message band
+  only** (≈ 11–16 kHz at 48 kHz), easing in and out over about a second,
+  so the soft sparkles show without adding loudness. The rest of the
+  spectrum is untouched (this amends R2's "untouched"). Cost: slightly
+  duller highs while the message plays.
+- **R3e — Verdict checked by construction.** Dimming a band could split
+  the analyzer's contiguous run and lower a genuine file's cutoff (a false
+  "costume"). So after building the haunted audio, the app runs the
+  analyzer (`cutoff.ts`, unchanged) on it and on the original: the cutoff
+  class (genuine / inconclusive / suspicious / none) must match and the
+  cutoff must not rise by more than 0.1 kHz. If not, it retries with half
+  the dimming, then none; if even that fails, nothing is saved and the
+  user is told.
 - **R4 — Output.** A new 16-bit PCM **WAV** at the decoded sample rate,
   same length and channel count as the decoded track, named
   `<original>-haunted.wav` by default. Desktop: native save dialog. Web:
