@@ -442,6 +442,12 @@ function buildMenu() {
             { label: 'Show Screensaver', click: menuShowScreensaver },
             { label: 'Show Error Toast', click: menuTestErrorToast },
             { label: 'Load Sample Folder', click: menuLoadSampleFolder },
+            { type: 'separator' },
+            {
+              label: 'Developer Tools',
+              accelerator: process.platform === 'darwin' ? 'Alt+Command+I' : 'F12',
+              click: menuDevTools,
+            },
           ],
         },
       ],
@@ -451,16 +457,25 @@ function buildMenu() {
       submenu: [
         { label: 'Language', click: menuLanguage },
         { label: 'About', click: menuAbout },
-        { type: 'separator' },
-        {
-          label: 'Developer Tools',
-          accelerator: process.platform === 'darwin' ? 'Alt+Command+I' : 'F12',
-          click: menuDevTools,
-        },
       ],
     },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  // Test-only: print the built menu (labels + accelerators) and quit.
+  if (process.env.SPECTREGRAM_SMOKE_MENU === '1') {
+    const walk = (items) =>
+      items.map((i) =>
+        i.type === 'separator'
+          ? '---'
+          : i.submenu
+            ? { [i.label]: walk(i.submenu.items) }
+            : i.accelerator
+              ? `${i.label} [${i.accelerator}]`
+              : i.label,
+      );
+    console.log('SMOKE_MENU', JSON.stringify(walk(Menu.getApplicationMenu().items)));
+    app.exit(0);
+  }
 }
 
 function createWindow() {
