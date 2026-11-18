@@ -96,6 +96,20 @@ shortens to ~0.6 s.
   the app; report saved via the smoke save path. Results recorded in
   `tasks.md`.
 
+## Refresh (R1b, added 2026-11-17)
+
+`loadFolder` remembers the options it was called with
+(`currentFolderOptions`: limit + display name) next to `currentFolderPath`.
+New IPC `sg:refresh-folder` re-runs `loadFolder(currentFolderPath,
+currentFolderOptions)` and marks the payload `refreshed: true`; it does
+nothing (resolves false) if no folder is open. Paths that vanished stay in
+the read allowlist (harmless: reading them fails). The renderer keeps the
+selected row's path and re-selects it after the list is rebuilt; the
+existing `onFolderForScan` cancels a running scan. The toast says
+"Refreshed" instead of the open-folder text. The button is an `icon-btn`
+with a circular-arrow SVG, `aria-label`/`title` "Refresh folder", placed
+before Scan in the panel header.
+
 ## Risks
 
 - **Long scans:** ~0.5–1 s per file; 1,000 files ≈ 10–15 min. Mitigated by

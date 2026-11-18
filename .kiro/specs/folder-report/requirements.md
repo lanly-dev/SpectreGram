@@ -25,6 +25,12 @@ of the user's files.
   `.`) are skipped; symbolic links are not followed (no loops). At most
   1,000 files are listed; if more exist, the user is told the list was
   capped. Each file shows its path relative to the opened folder.
+- **R1b — Refresh.** *(Added 2026-11-17, maintainer's ask.)* An icon
+  button to the left of **Scan** re-lists the open folder (same recursive
+  rules, cap and display name as when it was opened), so files added,
+  removed or renamed since are picked up without reopening it. The
+  selected file stays selected if it's still there. Refreshing cancels a
+  running scan, like loading a folder does.
 - **R2 — Scan on demand.** The folder panel has a **Scan** button. Nothing
   is analyzed until it is clicked. While scanning, the button shows
   progress (`n / total`) and becomes **Cancel**. Scanning never replaces or
