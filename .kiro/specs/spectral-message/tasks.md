@@ -22,7 +22,7 @@ Out of scope: see `requirements.md` → Non-goals.
 
 ## Implementation status
 
-- ⏳ **1** — not started.
+- ✅ **1** — 2026-11-17. `src/message/phrases.ts`: `MAX_MESSAGE_CHARS` = 32, 18 original Halloween phrases (all ≤ 32 chars, no quotes from other works), `randomPhrase(exclude)` never repeats the phrase in the box. `src/message/raster.ts`: `rasterizeText` draws bold sans-serif at 128 px on an `OffscreenCanvas`, crops to the ink, block-averages to `MASK_ROWS` = 32 rows (aspect kept, cell = ink if ≥ 40% of its source pixels are ink); only-spaces → `cols` 0. Checked: build ✓ (typecheck), Vitest 10/10 ✓. The raster needs a real canvas, so its output is checked in the task 4 desktop run.
 - ⏳ **2** — not started.
 - ⏳ **3** — not started.
 - ⏳ **4** — not started.
