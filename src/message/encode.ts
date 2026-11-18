@@ -89,12 +89,18 @@ export function layoutMessage(mask: TextMask, sampleCount: number, sampleRate: n
 export const BLEND_MARGIN_DB = 14;
 /** Floor (≈ −66 dBFS): grains still show over silence. TUNABLE. */
 export const SPARKLE_MIN_AMP = 0.0005;
-/** Ceiling (≈ −46 dBFS; the earlier fixed sparkle was ≈ −40). TUNABLE. */
-export const SPARKLE_MAX_AMP = 0.005;
+/** Ceiling relative to the ORIGINAL (undimmed) level in that cell (R3f): at
+ *  0 dB, grains replace what the dimming took out instead of adding
+ *  loudness. TUNABLE. (A fixed −46 dBFS ceiling sat below real music's band
+ *  level, so letters never showed.) */
+export const GRAIN_CAP_OVER_ORIGINAL_DB = 0;
+/** Absolute ceiling, whatever the music (≈ −34 dBFS). TUNABLE. */
+export const SPARKLE_ABS_MAX_AMP = 0.02;
 /** Grain length: longer = gentler, less clicky twinkles (was 60 ms). */
 const SPARKLE_GRAIN_SEC = 0.08;
-/** Grains per second of column time, per "on" cell (at least 1). */
-const SPARKLE_RATE = 12;
+/** Grains per second of column time, per "on" cell (at least 1). Was 12;
+ *  doubled so letters read as solid shapes (R3f). */
+const SPARKLE_RATE = 24;
 /** Fade over the whole message (capped at 10% of its length). */
 const MESSAGE_FADE_SEC = 1;
 /** Background analysis: same window size as the analyzer. */
@@ -180,9 +186,15 @@ export function measureBackground(mono: Float32Array, sr: number, mask: TextMask
   return amp;
 }
 
-/** Grain loudness for a cell, from the track's level there (R3c). */
-export function grainAmp(background: number): number {
-  return Math.min(SPARKLE_MAX_AMP, Math.max(SPARKLE_MIN_AMP, background * 10 ** (BLEND_MARGIN_DB / 20)));
+/**
+ * Grain loudness for a cell (R3c, R3f): a margin above what's left after
+ * dimming, but never above the original's own level there (nor the absolute
+ * ceiling), and never below the floor.
+ */
+export function grainAmp(dimmed: number, original: number): number {
+  const cap = Math.min(SPARKLE_ABS_MAX_AMP, original * 10 ** (GRAIN_CAP_OVER_ORIGINAL_DB / 20));
+  const want = dimmed * 10 ** (BLEND_MARGIN_DB / 20);
+  return Math.max(SPARKLE_MIN_AMP, Math.min(want, cap));
 }
 
 /** Short twinkling grains at random times inside each "on" cell. */
@@ -192,6 +204,7 @@ function synthSparkle(
   mask: TextMask,
   layout: MessageLayout,
   background: Float32Array,
+  original: Float32Array,
   rand: () => number,
 ): void {
   const g = Math.max(8, Math.round(SPARKLE_GRAIN_SEC * sr));
@@ -202,7 +215,7 @@ function synthSparkle(
   for (let r = 0; r < mask.rows; r++) {
     for (let c = 0; c < mask.cols; c++) {
       if (!mask.data[r * mask.cols + c]) continue;
-      const amp = grainAmp(background[r * mask.cols + c]);
+      const amp = grainAmp(background[r * mask.cols + c], original[r * mask.cols + c]);
       for (let k = 0; k < perCell; k++) {
         const start = Math.round((c + rand()) * layout.colSamples - g / 2);
         const f = layout.rowFreqs[r] + (rand() - 0.5) * step;
@@ -359,7 +372,10 @@ export function embedMessage(
   const { startSample, endSample } = layout;
   const len = endSample - startSample;
   const fade = messageFadeSamples(layout, sampleRate);
-  const before = verdictClassOf(mixToMono(channels), sampleRate);
+  const originalMono = mixToMono(channels);
+  const before = verdictClassOf(originalMono, sampleRate);
+  // The original's level per cell: the grain ceiling (R3f).
+  const original = measureBackground(originalMono, sampleRate, mask, layout);
 
   for (const carveDb of [CARVE_DB, CARVE_DB / 2, 0]) {
     const work = channels.map((ch) => ch.slice());
@@ -369,7 +385,7 @@ export function embedMessage(
     // sits just above what's left around it.
     const background = measureBackground(mixToMono(work), sampleRate, mask, layout);
     const msg = new Float32Array(len); // msg[0] = startSample
-    synthSparkle(msg, sampleRate, mask, layout, background, rand);
+    synthSparkle(msg, sampleRate, mask, layout, background, original, rand);
     for (let i = 0; i < fade; i++) {
       const gn = 0.5 - 0.5 * Math.cos((Math.PI * i) / fade);
       msg[i] *= gn;

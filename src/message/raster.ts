@@ -14,7 +14,9 @@ export const MASK_ROWS = 32;
 
 /** Size the text is drawn at before scaling down to MASK_ROWS. */
 const DRAW_PX = 128;
-const FONT = `bold ${DRAW_PX}px "Segoe UI", system-ui, -apple-system, sans-serif`;
+// Heaviest weight, so strokes stay thick after scaling to 32 rows (R3f).
+// System fonts only — nothing to license or ship.
+const FONT = `900 ${DRAW_PX}px "Segoe UI Black", "Arial Black", "Segoe UI", system-ui, -apple-system, sans-serif`;
 /** A mask cell is ink when at least this share of its source pixels is ink. */
 const INK_SHARE = 0.4;
 
@@ -79,5 +81,15 @@ export function rasterizeText(text: string): TextMask {
       data[r * cols + c] = n > 0 && ink / n >= INK_SHARE ? 1 : 0;
     }
   }
-  return { rows, cols, data };
+  // Thicken every stroke by one column (R3f): thin verticals are the first
+  // thing to vanish among the sparkles.
+  const out = new Uint8Array(rows * (cols + 1));
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c <= cols; c++) {
+      const here = c < cols ? data[r * cols + c] : 0;
+      const left = c > 0 ? data[r * cols + c - 1] : 0;
+      out[r * (cols + 1) + c] = here | left;
+    }
+  }
+  return { rows, cols: cols + 1, data: out };
 }
