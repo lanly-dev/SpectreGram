@@ -36,6 +36,9 @@ before every commit.
    check incl. a genuine fixture; real-track samples (gitignored `lab/`)
    with the PNGs looked at; docs.
 
+9. **Readable letters** (R3f) — ceiling relative to the original, denser
+   grains, bolder raster; temporary check; real-track PNGs looked at; docs.
+
 Out of scope: see `requirements.md` → Non-goals.
 
 ---

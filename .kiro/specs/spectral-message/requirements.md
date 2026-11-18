@@ -81,6 +81,14 @@ its source.
   so the soft sparkles show without adding loudness. The rest of the
   spectrum is untouched (this amends R2's "untouched"). Cost: slightly
   duller highs while the message plays.
+- **R3f — Readable letters.** *(Added 2026-11-17: with R3d the dimmed band
+  showed as a dark box but the letters inside it did not — the fixed grain
+  ceiling sat below real music's band level.)* The grain ceiling is now
+  **the original's own level in that cell** (grains replace what was
+  dimmed rather than adding loudness), with an absolute top limit. Letters
+  are drawn with a heavier font and strokes thickened by one column, and
+  grains are packed about twice as densely, so the letters read as solid
+  shapes.
 - **R3e — Verdict checked by construction.** Dimming a band could split
   the analyzer's contiguous run and lower a genuine file's cutoff (a false
   "costume"). So after building the haunted audio, the app runs the

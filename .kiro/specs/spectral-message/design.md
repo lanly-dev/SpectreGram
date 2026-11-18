@@ -73,6 +73,12 @@ pixel bright at (time t, frequency f), play a sine at f during t. So:
    (both via `computeStft` + `analyze`); attempts at `CARVE_DB`,
    `CARVE_DB / 2`, 0; the first safe one is kept, else an error.
    `embedMessage` returns `{ scale, carveDb }`.
+
+   **Changed by R3f (2026-11-17):** `measureBackground` runs on both the
+   original and the dimmed mono; grain amplitude = clamp(dimmed × margin,
+   `SPARKLE_MIN_AMP`, min(original × `GRAIN_CAP_OVER_ORIGINAL_DB`,
+   `SPARKLE_ABS_MAX_AMP`)). `SPARKLE_RATE` 12 → 24 grains/s. `raster.ts`
+   draws at font weight 900 and dilates the mask by one column.
 5. **WAV** (`src/message/wav.ts`, pure): 16-bit PCM, little-endian,
    interleaved, standard 44-byte header.
 
