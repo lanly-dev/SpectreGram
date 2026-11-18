@@ -999,7 +999,7 @@ main.folder-open .controls {
   }
 }
 
-/* Folder refresh (spec: .kiro/specs/folder-report/, R1b): sits left of Scan. */
+/* Folder refresh (spec: .kiro/specs/folder-report/, R1b): sits right of Scan. */
 .refresh-btn {
   flex-shrink: 0;
   width: 22px;

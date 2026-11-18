@@ -88,7 +88,16 @@
       <section id="folder-panel" class="folder-panel" hidden>
         <div class="folder-panel-header">
           <span id="folder-name" class="folder-name"></span>
-          <!-- Refresh (spec: .kiro/specs/folder-report/, R1b): re-list the open folder. -->
+          <!-- Folder report (spec: .kiro/specs/folder-report/): becomes "Cancel · n/total" while scanning. -->
+          <button
+            id="scan-btn"
+            class="scan-btn"
+            type="button"
+            title="Scan every file in this folder and its subfolders"
+          >
+            Scan
+          </button>
+          <!-- Refresh (spec: .kiro/specs/folder-report/, R1b): re-list the open folder. Right of Scan. -->
           <button
             id="refresh-btn"
             class="icon-btn refresh-btn"
@@ -100,15 +109,6 @@
               <path d="M13 8a5 5 0 1 1-1.6-3.7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
               <path d="M13 2.5v3.2H9.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
-          </button>
-          <!-- Folder report (spec: .kiro/specs/folder-report/): becomes "Cancel · n/total" while scanning. -->
-          <button
-            id="scan-btn"
-            class="scan-btn"
-            type="button"
-            title="Scan every file in this folder and its subfolders"
-          >
-            Scan
           </button>
         </div>
         <!-- Loading state (spec: .kiro/specs/folder-report/, R1c): replaces the list while a folder is walked. -->

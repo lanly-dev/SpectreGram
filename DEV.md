@@ -146,7 +146,7 @@ followed, unreadable subfolders are skipped, and the list stops at 1,000
 files (`MAX_FOLDER_FILES`; the user gets a "list capped" toast). Panel rows
 show the path relative to the opened folder.
 
-**Refresh.** The circular-arrow button left of Scan re-lists the open
+**Refresh.** The circular-arrow button right of Scan re-lists the open
 folder (`sg:refresh-folder`) with the same rules, cap and display name it
 was opened with, so files added, removed or renamed since show up without
 reopening it. The selected file stays selected if it's still there, and a
