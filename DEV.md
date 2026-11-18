@@ -146,6 +146,13 @@ followed, unreadable subfolders are skipped, and the list stops at 1,000
 files (`MAX_FOLDER_FILES`; the user gets a "list capped" toast). Panel rows
 show the path relative to the opened folder.
 
+**Refresh.** The circular-arrow button left of Scan re-lists the open
+folder (`sg:refresh-folder`) with the same rules, cap and display name it
+was opened with, so files added, removed or renamed since show up without
+reopening it. The selected file stays selected if it's still there, and a
+running scan is cancelled (as when loading a folder). The toast says
+"Refreshed …".
+
 **Scan.** Nothing runs until Scan is clicked. Files are processed one at a
 time (read → `decodeFile` → `classify` in the worker), so only one decoded
 file is in memory at once, and a scanned file gets exactly the verdict a

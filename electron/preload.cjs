@@ -27,6 +27,8 @@ contextBridge.exposeInMainWorld('spectregramDesktop', {
     ipcRenderer.on('sg:folder-loaded', listener);
     return () => ipcRenderer.removeListener('sg:folder-loaded', listener);
   },
+  /** Folder panel: re-list the open folder (fires onFolderLoaded again). */
+  refreshFolder: () => ipcRenderer.invoke('sg:refresh-folder'),
   /** Folder panel: ask main to grant read access + open a file from the folder. */
   openFolderFile: (filePath) => ipcRenderer.invoke('sg:open-folder-file', filePath),
   /** Report whether a spectrogram is present (gates Save as PNG in the menu). */

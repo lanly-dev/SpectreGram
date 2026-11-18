@@ -20,6 +20,8 @@ export interface SpectreGramDesktop {
   saveReport(text: string, defaultName: string): Promise<boolean>;
   /** Folder panel: grant read access + open a file from the folder. */
   openFolderFile(filePath: string): Promise<boolean>;
+  /** Folder panel: re-list the open folder; false if none is open. */
+  refreshFolder(): Promise<boolean>;
   /** Report whether a spectrogram is present (gates Save as PNG in the menu). */
   reportSpectrogramState(present: boolean): Promise<boolean>;
   /** Options menu actions; returns an unsubscribe function. */
@@ -39,6 +41,8 @@ export interface FolderLoaded {
   files: FolderFile[];
   /** True when the folder had more audio files than the listing cap. */
   truncated?: boolean;
+  /** True when this listing came from the Refresh button. */
+  refreshed?: boolean;
 }
 
 /** Actions the Options menu sends to the renderer. */

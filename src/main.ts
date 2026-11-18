@@ -735,12 +735,31 @@ function setupFolderPanel(): void {
   if (!box || !panel || !list || !nameNode) return;
 
   let selectedLi: HTMLElement | null = null;
-  desktop.onFolderLoaded(({ folderName, files, truncated }) => {
+  // Path of the selected row, so a refresh can select it again (R1b).
+  let selectedPath = '';
+
+  const refreshBtn = el<HTMLButtonElement>('refresh-btn');
+  refreshBtn?.addEventListener('click', async () => {
+    refreshBtn.disabled = true;
+    refreshBtn.classList.add('spinning');
+    try {
+      await desktop.refreshFolder();
+    } catch (e) {
+      console.error('refresh failed:', e);
+      toast('Could not refresh the folder.', 'error');
+    } finally {
+      refreshBtn.disabled = false;
+      refreshBtn.classList.remove('spinning');
+    }
+  });
+
+  desktop.onFolderLoaded(({ folderName, files, truncated, refreshed }) => {
     onFolderForScan(folderName, files);
     nameNode.textContent = folderName;
     nameNode.title = folderName;
     list.replaceChildren();
     selectedLi = null;
+    if (!refreshed) selectedPath = '';
     for (const { path: filePath, name } of files) {
       const li = document.createElement('li');
       // `name` is relative to the opened folder (subfolders included);
@@ -760,20 +779,27 @@ function setupFolderPanel(): void {
           open();
         }
       });
+      li.dataset.path = filePath;
       list.appendChild(li);
+      if (filePath === selectedPath) selectLi(li);
     }
 
     function selectLi(li: HTMLElement): void {
       if (selectedLi) selectedLi.classList.remove('selected');
       selectedLi = li;
+      selectedPath = li.dataset.path ?? '';
       li.classList.add('selected');
     }
+    // A refreshed list keeps the selected file in view.
+    const sel = list.querySelector<HTMLElement>('li.selected');
+    if (refreshed && sel) sel.scrollIntoView({ block: 'nearest' });
     panel.hidden = false;
     box.classList.add('folder-open');
     document.querySelector('main')?.classList.add('folder-open');
     const count = `${files.length} audio file${files.length !== 1 ? 's' : ''}`;
-    if (truncated) toast(`Folder "${folderName}" — showing the first ${count} (list capped).`);
-    else toast(`Folder "${folderName}" — ${count}`);
+    const what = refreshed ? `Refreshed "${folderName}"` : `Folder "${folderName}"`;
+    if (truncated) toast(`${what} — showing the first ${count} (list capped).`);
+    else toast(`${what} — ${count}`);
   });
 }
 
