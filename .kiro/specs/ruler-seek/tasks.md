@@ -15,4 +15,9 @@ Out of scope: see `requirements.md` → Non-goals.
 
 ## Implementation status
 
-- ⏳ **1** — not started.
+- ✅ **1** — 2026-11-17. Build ✓, Vitest 10/10 ✓. Desktop smoke
+  (`SPECTREGRAM_SMOKE_SEEK=1`, 3:02 MP3, 537 px canvas): hover at 50% →
+  `#seek-hover` at 268.5 px, tooltip "1:31.2"; click → stopped playhead at
+  268.5 px; Play ~1 s → 271.5 px (≈ 1.0 s past the cue); Stop → 268.5 px;
+  pointerleave → line and tooltip hidden. Not verified: real mouse feel and
+  on-screen look, seek while zoomed, re-cue while playing (code paths only).

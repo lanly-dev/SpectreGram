@@ -252,6 +252,37 @@ reopens the WAV, prints both verdicts, and saves the WAV and its spectrogram
 PNG into `<dir>`. Test-only; can't run while another SpectreGram window is
 open.
 
+## Ruler seek
+
+Spec: `.kiro/specs/ruler-seek/`. Code: `setupRulerSeek()`, `showCue()` and
+the playback functions in `src/main.ts`; `#seek-hover` / `#seek-tooltip` in
+`index.html`; the "Ruler seek" block at the end of `src/style.css`.
+
+- **Hover** the bottom (time) ruler: a crimson line with a 🧛 rider follows
+  the cursor down the spectrogram (`#seek-hover`, separate from the white 👻
+  playhead), and a tooltip beside the cursor shows the time at that point
+  (same precision rule as the crosshair readout). Leaving the ruler hides
+  both.
+- **Click** the ruler: sets the cue (`cueSec`). Stopped → the playhead moves
+  to the cue. Playing → playback restarts from the cue.
+- **Play** starts from the cue (`source.start(0, offset)`). **Stop** returns
+  the playhead to the cue (hidden when the cue is 0:00). Reaching the end of
+  the track resets the cue to 0. Opening a new file resets it too. Zooming
+  keeps a cued playhead in place, or hides it when the cue is out of view.
+- Times come from `viewRange()`, so hover and click work while zoomed. The
+  ruler and spectrogram share left/right edges, so a fraction across one is
+  the same fraction across the other.
+- Not included: drag-scrubbing, keyboard seeking, seeking from the
+  spectrogram itself (dragging there zooms).
+
+**Smoke test.** `SPECTREGRAM_SMOKE=1 SPECTREGRAM_SMOKE_FILE=<track>
+SPECTREGRAM_SMOKE_SEEK=1 npx electron . --user-data-dir=<temp>` analyzes the
+track, hovers and clicks the ruler at 50%, plays for about 1 s, stops, and
+prints the hover line, tooltip and playhead positions at each step
+(`SEEK_HOVER` / `SEEK_CUED` / `SEEK_PLAYING` / `SEEK_STOPPED` / `SEEK_LEFT`).
+Test-only. The separate `--user-data-dir` lets it run while another
+SpectreGram window is open.
+
 ## Packaging
 
 electron-builder configuration lives in the `build` key of
