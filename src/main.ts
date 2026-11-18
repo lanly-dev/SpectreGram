@@ -1299,6 +1299,11 @@ const MIN_ZOOM_WINDOWS = 20;
 const ZOOM_COLUMNS = 1024;
 /** A drag narrower than this many pixels is treated as a click, not a zoom. */
 const DRAG_MIN_PX = 4;
+/**
+ * Ctrl + wheel zoom steepness: span scales by e^(deltaY × rate), so one
+ * 100-unit wheel notch changes the span by ×1.42 either way. TUNABLE.
+ */
+const ZOOM_WHEEL_RATE = 0.0035;
 
 interface TimeView {
   start: number;
@@ -1461,6 +1466,28 @@ function zoomTo(t0: number, t1: number): void {
   applyView({ start: a, end: b });
 }
 
+/**
+ * Zoom in/out by `factor` (> 1 zooms out), keeping the time at `frac`
+ * (0–1 across the visible range, i.e. under the pointer) where it is.
+ */
+function zoomByAt(frac: number, factor: number): void {
+  const dur = trackDuration();
+  // No audio yet (a cached file still re-decoding) means the worker cannot
+  // serve a segment, so stay put instead of asking and toasting an error.
+  if (!fullGrid || !audioBuffer || !(dur > 0)) return;
+  const r = viewRange();
+  const span = r.end - r.start;
+  const anchor = r.start + frac * span;
+  const nextSpan = Math.min(dur, Math.max(minZoomSec(), span * factor));
+  if (nextSpan === span) return; // already at the minimum zoom or the whole track
+  if (nextSpan >= dur * 0.999) {
+    applyView(null);
+    return;
+  }
+  const start = Math.max(0, Math.min(dur - nextSpan, anchor - frac * nextSpan));
+  applyView({ start, end: start + nextSpan });
+}
+
 /** Scroll the zoomed view by `dt` seconds, clamped to the track. */
 function panBy(dt: number): void {
   if (!view) return;
@@ -1520,16 +1547,44 @@ function setupZoom(): void {
   });
   wrap.addEventListener('pointercancel', endDrag);
 
-  // Mouse wheel / trackpad scrolls the zoomed view horizontally.
+  // While Ctrl/⌘ is held the wheel zooms, so the graph shows a magnifier.
+  // The class lives on the wrap (not the body) so only the graph is affected.
+  const setZoomCursor = (on: boolean): void => {
+    wrap.classList.toggle('zoom-mod', on);
+  };
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Control' || e.key === 'Meta') setZoomCursor(true);
+  });
+  window.addEventListener('keyup', (e) => {
+    if (e.key === 'Control' || e.key === 'Meta') setZoomCursor(false);
+  });
+  // A release outside the window never reaches keyup — drop the cursor then.
+  window.addEventListener('blur', () => setZoomCursor(false));
+
+  // Mouse wheel / trackpad scrolls the zoomed view horizontally; Ctrl/⌘ +
+  // wheel zooms in and out around the pointer, like a map. Both gestures
+  // suppress the browser's own page zoom.
   wrap.addEventListener(
     'wheel',
     (e) => {
+      const rect = wrap.getBoundingClientRect();
+      const width = rect.width;
+      if (!(width > 0)) return;
+      const raw = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      const px = e.deltaMode === 1 ? raw * 16 : e.deltaMode === 2 ? raw * width : raw;
+      if (e.ctrlKey || e.metaKey) {
+        // Suppress the page zoom even with no file loaded, so the graph never
+        // scales the whole UI instead of the view.
+        e.preventDefault();
+        if (!fullGrid) return; // nothing to zoom into yet
+        // Exponential so wheel notches and pinch gestures both feel even.
+        const step = Math.max(-300, Math.min(300, px));
+        const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / width));
+        zoomByAt(frac, Math.exp(step * ZOOM_WHEEL_RATE));
+        return;
+      }
       if (!view) return;
       e.preventDefault();
-      const width = wrap.getBoundingClientRect().width;
-      if (!(width > 0)) return;
-      const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      const px = e.deltaMode === 1 ? d * 16 : e.deltaMode === 2 ? d * width : d;
       panBy((px / width) * (view.end - view.start));
     },
     { passive: false },

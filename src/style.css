@@ -509,6 +509,12 @@ main.folder-open .controls {
   touch-action: none;
 }
 
+/* Ctrl/⌘ held: the wheel zooms here, so the graph shows a magnifier. Scoped to
+   the wrap — the rest of the UI keeps its normal pointer. */
+.canvas-wrap.zoom-mod {
+  cursor: zoom-in;
+}
+
 /* Highlight while dragging out a time segment. */
 .zoom-select {
   position: absolute;
