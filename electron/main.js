@@ -36,6 +36,8 @@ const SMOKE_SAVE_DIR = process.env.SPECTREGRAM_SMOKE_SAVE_DIR || '';
 const SMOKE_FOLDER = process.env.SPECTREGRAM_SMOKE_FOLDER || '';
 // Spectral-message smoke: haunt SMOKE_FILE with this text, then reopen it.
 const SMOKE_MESSAGE = process.env.SPECTREGRAM_SMOKE_MESSAGE || '';
+// ...and this sound style (hiss / warble / sparkle); default is the dialog's.
+const SMOKE_MESSAGE_STYLE = process.env.SPECTREGRAM_SMOKE_MESSAGE_STYLE || '';
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -539,6 +541,8 @@ async function runMessageSmoke() {
       const i = document.getElementById('message-input');
       i.value = ${JSON.stringify(SMOKE_MESSAGE)};
       i.dispatchEvent(new Event('input'));
+      const st = ${JSON.stringify(SMOKE_MESSAGE_STYLE)};
+      if (st) { const r = document.querySelector('input[name="message-style"][value="' + st + '"]'); if (r) r.checked = true; }
       document.getElementById('message-form').requestSubmit();
     })()`);
     const t0 = Date.now();
