@@ -41,7 +41,22 @@ export type HoldRequest = {
   params?: Partial<StftParams>;
 };
 
-export type WorkerRequest = AnalyzeRequest | ZoomRequest | HoldRequest;
+/**
+ * Folder scan (spec: .kiro/specs/folder-report/, R3): STFT + cutoff for one
+ * file, returning only the verdict. No progress messages, no grid transfer,
+ * and the held zoom samples are left untouched.
+ */
+export type ClassifyRequest = {
+  type: 'classify';
+  /** Echoed back so the scan can match replies to requests. */
+  id: number;
+  samples: Float32Array;
+  params?: Partial<StftParams>;
+  sampleRate: number;
+  claimedFormat: string;
+};
+
+export type WorkerRequest = AnalyzeRequest | ZoomRequest | HoldRequest | ClassifyRequest;
 
 // Responses posted from the worker (worker -> main). The grid and the verdict are
 // separate messages: the grid is already computed when the cutoff pass starts,
@@ -53,7 +68,9 @@ export type WorkerMessage =
   | { type: 'verdict'; cutoffHz: number; verdict: string }
   | { type: 'error'; message: string }
   | { type: 'zoom-result'; id: number; data: Float32Array; frames: number; bins: number }
-  | { type: 'zoom-error'; id: number; message: string };
+  | { type: 'zoom-error'; id: number; message: string }
+  | { type: 'classify-result'; id: number; cutoffHz: number; verdict: string }
+  | { type: 'classify-error'; id: number; message: string };
 
 // Minimal worker-global shape so we can target the worker's postMessage
 // signature without pulling in the WebWorker lib (which conflicts with the
@@ -129,10 +146,25 @@ function handleZoom(msg: ZoomRequest): void {
   }
 }
 
+function handleClassify(msg: ClassifyRequest): void {
+  try {
+    const grid = computeStft(msg.samples, msg.params);
+    const { cutoff, verdict } = analyze(grid, msg.sampleRate, msg.claimedFormat);
+    scope.postMessage(
+      { type: 'classify-result', id: msg.id, cutoffHz: cutoff.cutoffHz, verdict } satisfies WorkerMessage,
+      [],
+    );
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    scope.postMessage({ type: 'classify-error', id: msg.id, message } satisfies WorkerMessage, []);
+  }
+}
+
 scope.onmessage = (ev: MessageEvent) => {
   const msg = ev.data as WorkerRequest;
   if (msg?.type === 'analyze') handleAnalyze(msg);
   else if (msg?.type === 'zoom') handleZoom(msg);
+  else if (msg?.type === 'classify') handleClassify(msg);
   else if (msg?.type === 'hold') {
     heldSamples = msg.samples;
     heldParams = msg.params;

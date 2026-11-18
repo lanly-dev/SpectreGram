@@ -15,8 +15,12 @@ import {
   DB_STEP,
   type PaletteName,
 } from './render';
-import { DEFAULT_STFT, type DbGrid, type StftParams } from './audio/stft';
+import { DEFAULT_STFT, stftParamsFor, type DbGrid, type StftParams } from './audio/stft';
 import type { AnalyzeRequest, HoldRequest, WorkerMessage, ZoomRequest } from './audio/stft-worker';
+import { runScan } from './scan';
+import { buildReportMarkdown, CLASS_INFO, countClasses, rateCollection } from './report';
+import type { FolderFile } from './types/desktop';
+import { playDrumroll, type Drumroll } from './drumroll';
 
 // Tick step candidates for the rulers. The spectrogram's frequency axis is
 // LINEAR, so frequency ticks must be evenly spaced in Hz: log-spaced values
@@ -581,17 +585,7 @@ async function handleFile(file: File): Promise<void> {
   showFileFacts(file, res.facts);
   setVerdictPending('Analyzing… 0%');
 
-  // Adaptive hop: cap the frame count near the display width (1024 px) so long
-  // tracks don't waste FFTs on columns that get downscaled away. Short tracks
-  // keep the default 50% overlap for time resolution.
-  const TARGET_FRAMES = 1024;
-  const baseHop = DEFAULT_STFT.hopSize;
-  const fftSize = DEFAULT_STFT.fftSize;
-  const framesAtBase = Math.floor((res.mono.length - fftSize) / baseHop) + 1;
-  const hopSize = framesAtBase > TARGET_FRAMES
-    ? Math.max(baseHop, Math.ceil((res.mono.length - fftSize) / (TARGET_FRAMES - 1)))
-    : baseHop;
-  const params = { ...DEFAULT_STFT, hopSize };
+  const params = stftParamsFor(res.mono.length);
 
   const w = ensureWorker();
   const req: AnalyzeRequest = {
@@ -735,13 +729,18 @@ function setupFolderPanel(): void {
   if (!box || !panel || !list || !nameNode) return;
 
   let selectedLi: HTMLElement | null = null;
-  desktop.onFolderLoaded(({ folderName, files }) => {
+  desktop.onFolderLoaded(({ folderName, files, truncated }) => {
+    onFolderForScan(folderName, files);
     nameNode.textContent = folderName;
+    nameNode.title = folderName;
     list.replaceChildren();
     selectedLi = null;
     for (const { path: filePath, name } of files) {
       const li = document.createElement('li');
+      // `name` is relative to the opened folder (subfolders included);
+      // the tooltip shows it in full when the panel ellipsizes it.
       li.textContent = name;
+      li.title = name;
       li.tabIndex = 0;
       const open = () => void desktop.openFolderFile(filePath);
       li.addEventListener('click', () => {
@@ -766,8 +765,203 @@ function setupFolderPanel(): void {
     panel.hidden = false;
     box.classList.add('folder-open');
     document.querySelector('main')?.classList.add('folder-open');
-    toast(`Folder "${folderName}" — ${files.length} audio file${files.length !== 1 ? 's' : ''}`);
+    const count = `${files.length} audio file${files.length !== 1 ? 's' : ''}`;
+    if (truncated) toast(`Folder "${folderName}" — showing the first ${count} (list capped).`);
+    else toast(`Folder "${folderName}" — ${count}`);
   });
+}
+
+// --- Folder report: Scan → drumroll → collector rating -----------------------
+// Spec: .kiro/specs/folder-report/. The scan itself is src/scan.ts and the
+// rating/report text is src/report.ts; this is only the UI around them.
+
+const REPORT_FILE_NAME = 'spectregram-report.md';
+
+let scanFolderName = '';
+let scanFiles: FolderFile[] = [];
+let scanning = false;
+let scanCancelRequested = false;
+/** Bumped per folder load; a scan of an older folder drops its result. */
+let scanFolderGen = 0;
+let reportMarkdown = '';
+/** The drumroll playing right now, so Close/Esc can silence it. */
+let activeDrumroll: Drumroll | null = null;
+
+function scanButtonIdle(): void {
+  const btn = $('scan-btn');
+  if (!btn) return;
+  btn.classList.remove('scanning');
+  btn.textContent = 'Scan';
+  btn.title = 'Scan every file in this folder and its subfolders';
+}
+
+/** A folder was (re)loaded: remember its files and stop any running scan. */
+function onFolderForScan(folderName: string, files: FolderFile[]): void {
+  scanFolderGen++;
+  if (scanning) scanCancelRequested = true;
+  scanFolderName = folderName;
+  scanFiles = files;
+  scanButtonIdle();
+}
+
+function reportModalOpen(): boolean {
+  const modal = $('report-modal');
+  return !!modal && !modal.hidden;
+}
+
+function closeReportModal(): void {
+  activeDrumroll?.stop();
+  activeDrumroll = null;
+  $('report-drum')?.classList.remove('rolling');
+  const modal = $('report-modal');
+  if (modal) modal.hidden = true;
+}
+
+/** Reveal click: shake the drum, play the roll, reveal the rating on the crash. */
+async function rollAndReveal(): Promise<void> {
+  const drum = $('report-drum');
+  const drumStage = $('report-drumroll');
+  const drumText = $('report-drumroll-text');
+  const reveal = $('report-reveal');
+  const btn = el<HTMLButtonElement>('report-reveal-btn');
+  if (!drum || !drumStage || !drumText || !reveal || !btn || activeDrumroll) return;
+  btn.hidden = true;
+  drumText.textContent = 'Drumroll…';
+  drum.classList.add('rolling');
+  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  const roll = playDrumroll({ reducedMotion: reduced });
+  activeDrumroll = roll;
+  await roll.done;
+  if (activeDrumroll !== roll) return; // closed (and stopped) mid-roll
+  activeDrumroll = null; // the crash rings out on its own
+  drum.classList.remove('rolling');
+  drumStage.hidden = true;
+  reveal.hidden = false;
+  el<HTMLButtonElement>('report-save')?.focus();
+}
+
+/**
+ * Show the modal on the drumroll screen, waiting for Reveal. The rating and
+ * class counts are filled in now but stay hidden until the roll's crash.
+ */
+function showReportModal(rows: Parameters<typeof countClasses>[0], total: number, cancelled: boolean): void {
+  const modal = $('report-modal');
+  const drum = $('report-drumroll');
+  const drumText = $('report-drumroll-text');
+  const reveal = $('report-reveal');
+  if (!modal || !drum || !drumText || !reveal) return;
+
+  const counts = countClasses(rows);
+  const rating = rateCollection(counts);
+  $('report-emoji')!.textContent = rating.emoji;
+  $('report-title')!.textContent = rating.title;
+  $('report-blurb')!.textContent = rating.blurb;
+  const list = $('report-counts')!;
+  list.replaceChildren();
+  for (const { cls, short, label } of CLASS_INFO) {
+    if (!counts[cls]) continue;
+    const li = document.createElement('li');
+    li.textContent = `${short} · ${counts[cls]}`;
+    li.title = label;
+    list.appendChild(li);
+  }
+  $('report-note')!.textContent = cancelled
+    ? `Scan stopped early: ${rows.length} of ${total} files judged.`
+    : `${rows.length} file${rows.length !== 1 ? 's' : ''} judged, subfolders included.`;
+
+  const n = rows.length;
+  activeDrumroll?.stop();
+  activeDrumroll = null;
+  $('report-drum')?.classList.remove('rolling');
+  drumText.textContent = `${n} file${n !== 1 ? 's' : ''} judged. Ready for the verdict?`;
+  const btn = el<HTMLButtonElement>('report-reveal-btn');
+  if (btn) btn.hidden = false;
+  drum.hidden = false;
+  reveal.hidden = true;
+  modal.hidden = false;
+  btn?.focus();
+}
+
+async function startScan(): Promise<void> {
+  const desktop = window.spectregramDesktop;
+  const btn = $('scan-btn');
+  if (!desktop || !btn || !scanFiles.length) return;
+  const gen = scanFolderGen;
+  const files = scanFiles;
+  const folderName = scanFolderName;
+  scanning = true;
+  scanCancelRequested = false;
+  btn.classList.add('scanning');
+  btn.title = 'Stop the scan';
+  btn.textContent = `Cancel · 0/${files.length}`;
+  try {
+    const result = await runScan(files, {
+      readFile: (p) => desktop.readFile(p),
+      isCancelled: () => scanCancelRequested,
+      onProgress: (done, total) => {
+        if (gen === scanFolderGen) btn.textContent = `Cancel · ${done}/${total}`;
+      },
+    });
+    if (gen !== scanFolderGen) return; // a different folder was opened meanwhile
+    if (!result.rows.length) {
+      toast('Scan cancelled.');
+      return;
+    }
+    reportMarkdown = buildReportMarkdown({
+      folderName,
+      scannedAt: new Date(),
+      rows: result.rows,
+      total: files.length,
+      cancelled: result.cancelled,
+    });
+    showReportModal(result.rows, files.length, result.cancelled);
+  } catch (e) {
+    console.error('scan failed:', e);
+    if (gen === scanFolderGen) toast('Scan failed.', 'error');
+  } finally {
+    // No scan is running any more, whichever folder is now showing.
+    scanning = false;
+    scanCancelRequested = false;
+    scanButtonIdle();
+  }
+}
+
+function setupFolderReport(): void {
+  const desktop = window.spectregramDesktop;
+  if (!desktop) return;
+  const btn = $('scan-btn');
+  btn?.addEventListener('click', () => {
+    if (scanning) {
+      scanCancelRequested = true;
+      btn.textContent = 'Stopping…';
+      return;
+    }
+    void startScan();
+  });
+  $('report-close')?.addEventListener('click', closeReportModal);
+  $('report-reveal-btn')?.addEventListener('click', () => void rollAndReveal());
+  $('report-save')?.addEventListener('click', async () => {
+    if (!reportMarkdown) return;
+    try {
+      const saved = await desktop.saveReport(reportMarkdown, REPORT_FILE_NAME);
+      toast(saved ? `Saved ${REPORT_FILE_NAME}` : 'Save cancelled.');
+    } catch (e) {
+      console.error('report save failed:', e);
+      toast('Could not save the report.', 'error');
+    }
+  });
+  // While the dialog is open it owns the keyboard: Esc closes it, and other
+  // shortcuts (u/l dB keys, Esc zoom reset) don't reach the view behind it.
+  // Capture phase + stopImmediatePropagation; button activation still works.
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      if (!reportModalOpen() || e.key === 'Tab') return;
+      e.stopImmediatePropagation();
+      if (e.key === 'Escape') closeReportModal();
+    },
+    { capture: true },
+  );
 }
 
 // Desktop only: files opened with / passed to the app arrive as paths. Read
@@ -1266,6 +1460,7 @@ function init(): void {
   setupPng();
   setupMenuSave();
   setupFolderPanel();
+  setupFolderReport();
   setupPlay();
   setupDesktopOpenFile();
   setupCrosshair();

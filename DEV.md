@@ -113,6 +113,70 @@ them for zoom requests without analyzing anything.
 hashing or decoding) drops its result instead of replacing the file you
 opened after it.
 
+## Folder report
+
+Desktop only. Spec: `.kiro/specs/folder-report/`. Open a folder (File ›
+Open Folder), click **Scan** in the folder panel, and every audio file in
+the folder **and its subfolders** is judged. The drumroll screen then waits
+for **Reveal**: clicking it plays a drumroll sound that ends on a crash, and
+the collector rating appears on the crash. **Save report** writes a Markdown
+report into that folder.
+
+| Piece | Where |
+| --- | --- |
+| Recursive listing (`walkAudioFiles`), save-report IPC | `electron/main.js` |
+| Sequential scan on its own worker | `src/scan.ts` |
+| Classes, rating tiers, Markdown builder (pure) | `src/report.ts` |
+| `classify` worker request | `src/audio/stft-worker.ts` |
+| Shared full-track STFT params (`stftParamsFor`) | `src/audio/stft.ts` |
+| Scan button, drumroll modal, save | `src/main.ts`, `index.html`, `src/style.css` |
+| Drumroll sound (synthesized) | `src/drumroll.ts` |
+
+**Drumroll sound.** Synthesized with Web Audio, so there is no audio file to
+license or ship: ~18 snare hits/s (band-passed white-noise bursts plus a
+short triangle "body"), a crescendo over 2.2 s (`ROLL_SEC`, 0.6 s with
+reduced motion), then a crash (high-passed noise decay + low thump).
+`playDrumroll()` returns `{ done, stop }`; the reveal waits on `done`, which
+resolves at the crash. It uses its own short-lived `AudioContext`, created on
+the Reveal click (a user gesture, so autoplay rules allow it) and closed once
+the crash has rung out. Close or Esc mid-roll stops the sound.
+
+**Listing.** Hidden entries (`.name`) are skipped, symbolic links are not
+followed, unreadable subfolders are skipped, and the list stops at 1,000
+files (`MAX_FOLDER_FILES`; the user gets a "list capped" toast). Panel rows
+show the path relative to the opened folder.
+
+**Scan.** Nothing runs until Scan is clicked. Files are processed one at a
+time (read → `decodeFile` → `classify` in the worker), so only one decoded
+file is in memory at once, and a scanned file gets exactly the verdict a
+single open would give (same `stftParamsFor`, same `cutoff.ts`). The scan
+has its own worker, so the spectrogram on screen and its zoom are not
+disturbed. Cancel stops after the current file; loading another folder
+cancels too.
+
+**Classes and rating.** `classifyRow` sorts each verdict into Genuine ·
+Costume · Inconclusive · Normal lossy · No call · Could not decode.
+`rateCollection` judges only files that claim lossless, by costume share =
+costume ÷ (genuine + costume): 0 → 👑 Crypt Keeper, ≤ 20% → 🧛 Avid
+Collector, ≤ 50% → 🧟 Haunted Hoarder, more → 🎃 Costume Party Noob; no
+lossless claims → 🦇 Lossy Lurker; only inconclusive → 🌫️ Lost in the Fog.
+Inconclusive is deliberately neutral (genuine 44.1 kHz files can read
+inconclusive on 48 kHz devices — AGENTS.md #3). The share thresholds are
+TUNABLE constants in `report.ts`. Every rating ends with "(estimate)".
+
+**Report.** `spectregram-report.md`: folder name (not its full path), scan
+time, rating, class counts, one row per file (relative path, claimed
+format, duration, cutoff, class, verdict) and the caveats, including the
+decode sample rate. Saving always goes through the save dialog, opened in
+the scanned folder; nothing is written or overwritten without it.
+
+**Smoke test.** `SPECTREGRAM_SMOKE=1 SPECTREGRAM_SMOKE_FOLDER=<folder>
+SPECTREGRAM_SMOKE_SAVE_DIR=<dir> npx electron .` loads the folder, clicks
+Scan, waits for the drumroll screen, clicks Reveal, prints the listing, the
+roll time and the revealed rating, and saves the report into `<dir>`
+without a dialog. Test-only; inert in normal use. Like the file smoke, it
+can't run while another SpectreGram window is open (single-instance lock).
+
 ## Packaging
 
 electron-builder configuration lives in the `build` key of

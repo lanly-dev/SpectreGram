@@ -56,9 +56,47 @@
       </section>
       <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
+      <!-- Folder report: drumroll, then the collector rating. -->
+      <div
+        id="report-modal"
+        class="report-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="report-title"
+        hidden
+      >
+        <div class="report-card">
+          <div id="report-drumroll" class="report-drumroll" aria-live="polite">
+            <div id="report-drum" class="drum" aria-hidden="true">🥁</div>
+            <div id="report-drumroll-text" class="drumroll-text">Your collection has been judged.</div>
+            <button id="report-reveal-btn" class="reveal-btn" type="button">Reveal</button>
+          </div>
+          <div id="report-reveal" class="report-reveal" hidden>
+            <div id="report-emoji" class="report-emoji" aria-hidden="true"></div>
+            <h2 id="report-title" class="report-title"></h2>
+            <p id="report-blurb" class="report-blurb"></p>
+            <ul id="report-counts" class="report-counts"></ul>
+            <p id="report-note" class="report-note"></p>
+            <div class="report-actions">
+              <button id="report-save" type="button">Save report</button>
+              <button id="report-close" type="button">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <section id="folder-panel" class="folder-panel" hidden>
         <div class="folder-panel-header">
-          <span id="folder-name"></span>
+          <span id="folder-name" class="folder-name"></span>
+          <!-- Folder report (spec: .kiro/specs/folder-report/): becomes "Cancel · n/total" while scanning. -->
+          <button
+            id="scan-btn"
+            class="scan-btn"
+            type="button"
+            title="Scan every file in this folder and its subfolders"
+          >
+            Scan
+          </button>
         </div>
         <ul id="folder-list" class="folder-list"></ul>
       </section>

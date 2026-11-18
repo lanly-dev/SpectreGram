@@ -36,6 +36,26 @@ export interface DbGrid {
   bins: number;
 }
 
+/** Frame count the full-track view is sized for (the canvas width). */
+const TARGET_FRAMES = 1024;
+
+/**
+ * STFT params for a full-track analysis of `sampleCount` samples. Adaptive
+ * hop: cap the frame count near the display width so long tracks don't
+ * waste FFTs on columns that get downscaled away; short tracks keep the
+ * default 50% overlap. Shared by a single open and the folder scan, so both
+ * produce the same verdict for the same file.
+ */
+export function stftParamsFor(sampleCount: number): StftParams {
+  const baseHop = DEFAULT_STFT.hopSize;
+  const framesAtBase = Math.floor((sampleCount - DEFAULT_STFT.fftSize) / baseHop) + 1;
+  const hopSize =
+    framesAtBase > TARGET_FRAMES
+      ? Math.max(baseHop, Math.ceil((sampleCount - DEFAULT_STFT.fftSize) / (TARGET_FRAMES - 1)))
+      : baseHop;
+  return { ...DEFAULT_STFT, hopSize };
+}
+
 // Post progress at most every N frames so the worker can relay without flooding.
 // TUNABLE.
 const PROGRESS_EVERY = 64;
