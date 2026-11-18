@@ -89,6 +89,16 @@ its source.
   are drawn with a heavier font and strokes thickened by one column, and
   grains are packed about twice as densely, so the letters read as solid
   shapes.
+- **R3g — Letters cut into the music, nothing added.** *(Added 2026-11-17
+  at the maintainer's suggestion; supersedes the sparkle sound of R3b–R3d
+  and R3f.)* Instead of adding any sound, the original is dimmed **inside
+  the letter shapes only**, in the message band, by up to 24 dB, easing in
+  and out with the message. The word shows as dark letters against the
+  music. Nothing is added, so there is no new sound to hear; the only
+  change is that the highs dip while each letter passes. Where the original
+  has nothing in the band (silence), there is nothing to dim and the
+  letters can't show — the docs say so. The R3e verdict check applies,
+  backing off 24 → 12 → 6 dB.
 - **R3e — Verdict checked by construction.** Dimming a band could split
   the analyzer's contiguous run and lower a genuine file's cutoff (a false
   "costume"). So after building the haunted audio, the app runs the

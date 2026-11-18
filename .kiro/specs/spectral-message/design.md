@@ -79,6 +79,16 @@ pixel bright at (time t, frequency f), play a sine at f during t. So:
    `SPARKLE_MIN_AMP`, min(original × `GRAIN_CAP_OVER_ORIGINAL_DB`,
    `SPARKLE_ABS_MAX_AMP`)). `SPARKLE_RATE` 12 → 24 grains/s. `raster.ts`
    draws at font weight 900 and dilates the mask by one column.
+
+   **Replaced by R3g (2026-11-17):** no synthesis at all. `carveLetters`
+   uses the same sqrt-Hann STFT filter as `carveBand`, but each bin's cut
+   comes from the text mask: for a frame centred in column c, a band bin
+   that maps to row r is dimmed when mask(r, c) is on (with a one-bin
+   smoothing across row edges), scaled by the message's eased depth. Sparkle
+   code (`measureBackground`, `grainAmp`, `synthSparkle`) and the box-wide
+   `carveBand` are removed. `LETTER_DIM_DB` = 24 (TUNABLE); verdict check
+   back-off 24 → 12 → 6, else an error. No clip scaling is needed (dimming
+   can't raise the peak much), but the existing guard stays.
 5. **WAV** (`src/message/wav.ts`, pure): 16-bit PCM, little-endian,
    interleaved, standard 44-byte header.
 
