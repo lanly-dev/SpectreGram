@@ -110,6 +110,21 @@ existing `onFolderForScan` cancels a running scan. The toast says
 with a circular-arrow SVG, `aria-label`/`title` "Refresh folder", placed
 before Scan in the panel header.
 
+## Loading state (R1c, added 2026-11-17)
+
+`loadFolder` sends `sg:folder-loading` `{ active: true, folderName, found }`
+before walking, then again with a growing `found` (from a progress callback
+in `walkAudioFiles`, throttled to ~150 ms), and `{ active: false }` on every
+exit that doesn't end in `sg:folder-loaded` (nothing found, error). A
+`folderLoadSeq` counter drops progress and results from a load that a newer
+one replaced. Renderer: while active, the list is hidden and a
+`#folder-loading` block takes its place (floating 👻, "Summoning the
+spirits…", "Searching “name” — n found"); the panel is shown if it was
+hidden; Refresh and Scan are disabled and the refresh icon spins; a running
+scan is asked to stop. `folder-loaded` or `active: false` restores the list.
+Test-only `SPECTREGRAM_SMOKE_WALK_DELAY_MS` slows the walk per folder so the
+smoke can observe the state.
+
 ## Risks
 
 - **Long scans:** ~0.5–1 s per file; 1,000 files ≈ 10–15 min. Mitigated by

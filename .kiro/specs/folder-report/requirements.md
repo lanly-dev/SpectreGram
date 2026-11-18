@@ -31,6 +31,14 @@ of the user's files.
   removed or renamed since are picked up without reopening it. The
   selected file stays selected if it's still there. Refreshing cancels a
   running scan, like loading a folder does.
+- **R1c — Loading state.** *(Added 2026-11-17, maintainer's ask.)* While a
+  folder is being listed (open, sample folder or refresh — big folders and
+  deep trees can take a while), the list area shows a Halloween-style
+  loading message with a live count of audio files found so far, and the
+  Refresh and Scan buttons are disabled. A running scan is cancelled when
+  loading starts. If loading fails or finds nothing, the previous list (if
+  any) comes back. If a second load starts before the first finishes, only
+  the latest one's result is shown.
 - **R2 — Scan on demand.** The folder panel has a **Scan** button. Nothing
   is analyzed until it is clicked. While scanning, the button shows
   progress (`n / total`) and becomes **Cancel**. Scanning never replaces or
