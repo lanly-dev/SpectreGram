@@ -204,18 +204,25 @@ if it would pass 90% of the track width). If a column would be narrower than
 one full-view STFT frame, strokes would vanish, so the app refuses and asks
 for fewer characters or a longer track.
 
-**Verdict safety.** The text lives between 22% and 50% of Nyquist (≈ 5.3–12
-kHz at 48 kHz), well below the analyzer's 73% "costume" line, and every
-tone fades in and out over 6 ms (hard edges click, and a click splashes
-energy all the way up to Nyquist). So a haunted file never measures a higher
-cutoff than its source. A WAV made from an MP3 is still lossy, and the
-analyzer correctly calls it a costume.
+**Verdict safety.** The text lives between 46% and 66% of Nyquist (≈ 11–16
+kHz at 48 kHz), below the analyzer's 73% "costume" line, and every tone
+fades in and out over 20 ms (hard edges click, and a click splashes energy
+all the way up to Nyquist). So a haunted file never reads as more lossless
+than its source. A WAV made from an MP3 is still lossy, and the analyzer
+correctly calls it a costume.
 
-**Settings (TUNABLE, `encode.ts`).** `ROW_AMP` = 0.03 per row (≈ −30 dBFS):
-the first value, 0.012, was too faint over a loud master. Louder reads
-better but is easier to hear; the tones are in the audible range by design.
-`BAND_LO`/`BAND_HI`, `RAMP_SEC`. If the mix would clip, the whole file is
-scaled down to a 0.999 peak.
+**Listening comfort.** The first version put 32 tones at ≈ −30 dBFS in
+5–12 kHz, near where hearing is most sensitive; adjacent tones ~200 Hz
+apart beat against each other, and the maintainer found it made his ears
+feel bad and dizzy. Now the band is higher (hearing is far less sensitive
+there, and music has little energy, so the text stays visible), each tone
+is ≈ 14 dB quieter, and the fades are longer raised-cosine swells.
+
+**Settings (TUNABLE, `encode.ts`).** `ROW_AMP` = 0.006 per row (≈ −44
+dBFS), `BAND_LO`/`BAND_HI` = 0.46/0.66 × Nyquist, `RAMP_SEC` = 0.02.
+Louder reads better over busy high frequencies but is easier to hear. Keep
+`BAND_HI` below 0.73 (the costume line). If the mix would clip, the whole
+file is scaled down to a 0.999 peak.
 
 **Output.** 16-bit PCM at the decoded sample rate (the device rate — see
 AGENTS.md #3), same length and channels as the decoded track, default name

@@ -9,16 +9,23 @@
 import { stftParamsFor } from '../audio/stft';
 import type { TextMask } from './raster';
 
-/** Message band, as fractions of Nyquist. The top (0.50) stays well below the
+/** Message band, as fractions of Nyquist (≈ 11–16 kHz at 48 kHz). High
+ *  enough that hearing is far less sensitive and music has little energy
+ *  (so quiet tones still read clearly), and the top (0.66) stays below the
  *  analyzer's "costume" line (SUSPICIOUS_RATIO 0.73 in cutoff.ts), so a
- *  haunted file can never measure a higher cutoff than its source (R3). */
-export const BAND_LO = 0.22;
-export const BAND_HI = 0.5;
-/** Peak amplitude of each row's sine (≈ −30 dBFS). TUNABLE: louder reads better over busy music but is easier to hear. −38 dBFS was too faint over a loud pop master. */
-export const ROW_AMP = 0.03;
-/** Fade at every on/off edge. Hard edges would click, and a click splashes
- *  energy across every frequency up to Nyquist (R3). */
-export const RAMP_SEC = 0.006;
+ *  haunted file can never read as more lossless than its source (R3, R3a).
+ *  History: 0.22–0.50 (≈ 5–12 kHz) was near peak hearing sensitivity and
+ *  made the result unpleasant to listen to. */
+export const BAND_LO = 0.46;
+export const BAND_HI = 0.66;
+/** Peak amplitude of each row's sine (≈ −44 dBFS). TUNABLE: louder reads
+ *  better but is easier to hear. History: −30 dBFS in the old band was
+ *  readable but made listeners' ears feel bad (R3a). */
+export const ROW_AMP = 0.006;
+/** Fade at every on/off edge (raised cosine). Hard edges would click, and a
+ *  click splashes energy across every frequency up to Nyquist (R3); long,
+ *  soft fades make tones swell in and out instead of stuttering (R3a). */
+export const RAMP_SEC = 0.02;
 
 // Full-track view geometry (render.ts FIXED_W × FIXED_H, linear 0…Nyquist):
 // used to size the text so it reads with its natural shape there.
@@ -112,7 +119,8 @@ export function embedMessage(
       const n = b - a;
       const rr = Math.min(ramp, Math.floor(n / 2));
       for (let i = 0; i < n; i++) {
-        const g = rr > 0 ? Math.min(1, i / rr, (n - 1 - i) / rr) : 1;
+        const x = rr > 0 ? Math.min(1, i / rr, (n - 1 - i) / rr) : 1;
+        const g = 0.5 - 0.5 * Math.cos(Math.PI * x); // raised-cosine fade
         msg[a + i] += ROW_AMP * g * im;
         // Rotate the phasor by w: one sample of a sine, no Math.sin call.
         const nre = re * cw - im * sw;
