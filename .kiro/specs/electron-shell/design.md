@@ -17,6 +17,7 @@ Everything else is untouched. DevDeps added: `electron`, `electron-builder` (pin
   - Fallback if `app://` misbehaves with the worker: tiny localhost static server in main (127.0.0.1, ephemeral port). Either way, acceptance check F5 is run against the PACKAGED build before calling this done.
 - Single-instance lock; `second-instance` + macOS `open-file` events forward the file path to the renderer via the preload bridge (§2.3) once the window is ready; cold-start file path is held and delivered after `did-finish-load`.
 - Custom native menu (File: Open… / Save / Quit; Help: Language / About / Developer Tools), in addition to OS menu defaults.
+  - *Amended 2026-11-17 (maintainer's ask):* **Developer Tools** moves out of Help into **Options › Development**, next to the other development helpers (Show Screensaver, Show Error Toast, Load Sample Folder), keeping its shortcut (F12; ⌥⌘I on macOS). Help keeps Language / About.
 
 ### 2.3 Preload bridges (the only renderer changes)
 ```js
