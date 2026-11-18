@@ -212,6 +212,84 @@
         </form>
       </div>
 
+      <!-- PNG export settings: current view, or the whole track as stacked strips. -->
+      <div
+        id="export-modal"
+        class="report-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="export-title"
+        hidden
+      >
+        <div class="report-card export-card">
+          <h2 id="export-title" class="report-title">🖼️ Export PNG</h2>
+          <p class="report-blurb">Speed squeezes the whole track into one strip; equal parts stacks one strip per slice.</p>
+          <label class="export-option">
+            <input type="radio" name="export-mode" value="current" checked />
+            <span>
+              <strong>Current view</strong>
+              <small>Exactly what the graph shows right now.</small>
+            </span>
+          </label>
+          <label class="export-option">
+            <input type="radio" name="export-mode" value="custom" />
+            <span>
+              <strong>Whole track, stacked</strong>
+              <small>Every part of the file as its own strip, in one image.</small>
+            </span>
+          </label>
+          <div id="export-custom" class="export-custom" hidden>
+            <div class="export-row">
+              <label for="export-split">Split by</label>
+              <select id="export-split">
+                <option value="speed" selected>Speed (one strip)</option>
+                <option value="parts">Equal parts (stacked)</option>
+              </select>
+            </div>
+            <div id="export-speed-row" class="export-row">
+              <label for="export-speed">Speed</label>
+              <select id="export-speed" title="How far the whole track is compressed horizontally">
+                <option value="slowest">Slowest · widest</option>
+                <option value="1" selected>1× · graph width</option>
+                <option value="2">2× · half width</option>
+                <option value="3">3× · third</option>
+                <option value="5">5× · fifth</option>
+              </select>
+            </div>
+            <div id="export-parts-row" class="export-row" hidden>
+              <label for="export-parts">Parts</label>
+              <select id="export-parts">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4" selected>4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+              </select>
+            </div>
+            <p id="export-summary" class="export-summary"></p>
+          </div>
+          <div class="export-extras">
+            <label class="export-check">
+              <input id="export-rulers" type="checkbox" checked />
+              Rulers (time + frequency)
+            </label>
+            <label class="export-check">
+              <input id="export-legend" type="checkbox" checked />
+              dB legend
+            </label>
+          </div>
+          <div class="report-actions">
+            <button id="export-cancel" type="button">Cancel</button>
+            <button id="export-go" type="button">Export</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Help > About (desktop): the shell sends sg:about and the renderer
            draws the card, so it wears the app's own haunted styling. -->
       <div

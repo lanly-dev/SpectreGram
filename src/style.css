@@ -1135,6 +1135,106 @@ main.folder-open .controls {
   z-index: 7;
 }
 
+/* --- PNG export panel ----------------------------------------------------- */
+/* Reuses .report-modal / .report-card. Two modes: the current view (one frame)
+   or the whole track cut into strips and stacked in one image. */
+
+.export-card {
+  width: min(370px, 92vw);
+  text-align: left;
+}
+
+.export-card .report-title,
+.export-card .report-blurb {
+  text-align: center;
+}
+
+.export-option {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 6px;
+  padding: 6px 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.export-option input {
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+
+.export-option strong {
+  display: block;
+  font-weight: 600;
+}
+
+.export-option small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.export-custom[hidden],
+.export-row[hidden] {
+  display: none;
+}
+
+.export-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 6px 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.export-card select {
+  min-width: 128px;
+  padding: 3px 6px;
+  font: inherit;
+  font-size: 0.72rem;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+
+.export-extras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 10px 0 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.export-check {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.export-check input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.export-summary {
+  margin: 8px 0 10px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
 /* --- About card (Help > About, desktop) ----------------------------------- */
 /* Reuses .report-modal / .report-card. The shell only sends `sg:about`; the
    card itself lives in index.html so it can wear the app's styling. */

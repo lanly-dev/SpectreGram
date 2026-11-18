@@ -15,11 +15,11 @@ contextBridge.exposeInMainWorld('spectregramDesktop', {
     ipcRenderer.on('sg:open-file', listener);
     return () => ipcRenderer.removeListener('sg:open-file', listener);
   },
-  /** File > Save menu: renderer paints the spectrogram PNG and saves it. */
-  onSavePng: (callback) => {
+  /** File > Export PNG…: open the export panel (same as the toolbar button). */
+  onExportOpen: (callback) => {
     const listener = (_event) => callback();
-    ipcRenderer.on('sg:save-png', listener);
-    return () => ipcRenderer.removeListener('sg:save-png', listener);
+    ipcRenderer.on('sg:export-open', listener);
+    return () => ipcRenderer.removeListener('sg:export-open', listener);
   },
   /** Folder panel: fires when the shell has loaded an audio folder. */
   onFolderLoaded: (callback) => {
@@ -37,7 +37,7 @@ contextBridge.exposeInMainWorld('spectregramDesktop', {
   refreshFolder: () => ipcRenderer.invoke('sg:refresh-folder'),
   /** Folder panel: ask main to grant read access + open a file from the folder. */
   openFolderFile: (filePath) => ipcRenderer.invoke('sg:open-folder-file', filePath),
-  /** Report whether a spectrogram is present (gates Save as PNG in the menu). */
+  /** Report whether a spectrogram is present (gates Export in the menu). */
   reportSpectrogramState: (present) =>
     ipcRenderer.invoke('sg:spectrogram-state', present),
   /** Spectral message: save the haunted WAV via a native dialog. Resolves true if saved. */

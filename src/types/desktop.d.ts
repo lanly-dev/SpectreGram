@@ -10,8 +10,8 @@ export interface SpectreGramDesktop {
   readFile(filePath: string): Promise<ArrayBuffer>;
   /** Subscribe to open-with events; returns an unsubscribe function. */
   onOpenFile(callback: (filePath: string) => void): () => void;
-  /** File > Save menu: renderer paints the spectrogram PNG and saves it. */
-  onSavePng(callback: () => void): () => void;
+  /** File > Export PNG…: open the export panel, like the toolbar button. */
+  onExportOpen(callback: () => void): () => void;
   /** Folder panel: fires when the shell has loaded an audio folder. */
   onFolderLoaded(callback: (data: FolderLoaded) => void): () => void;
   /** Spectral message: native save dialog for the haunted WAV; true if saved. */
@@ -24,7 +24,7 @@ export interface SpectreGramDesktop {
   refreshFolder(): Promise<boolean>;
   /** Folder panel: listing progress while a folder is being walked. */
   onFolderLoading(callback: (data: FolderLoading) => void): () => void;
-  /** Report whether a spectrogram is present (gates Save as PNG in the menu). */
+  /** Report whether a spectrogram is present (gates Export in the menu). */
   reportSpectrogramState(present: boolean): Promise<boolean>;
   /** Help > About: show the styled in-app About card. Returns an unsubscribe. */
   onShowAbout(callback: () => void): () => void;

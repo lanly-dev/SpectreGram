@@ -13,6 +13,10 @@ export type PaletteName = 'hellfire' | 'ectoplasm' | 'spectrum' | 'pumpkin';
 const FIXED_W = 1024;
 const FIXED_H = 512;
 
+/** The graph's pixel size, for callers that mint their own canvas (exports). */
+export const CANVAS_WIDTH = FIXED_W;
+export const CANVAS_HEIGHT = FIXED_H;
+
 // Lowest dBFS value the STFT produces (it clamps there), so the display range
 // can never usefully go below it.
 const STFT_FLOOR = -DEFAULT_STFT.dynRangeDb;
@@ -138,25 +142,16 @@ let activePaletteName: PaletteName = 'spectrum';
 let lastCtx: CanvasRenderingContext2D | null = null;
 let lastGrid: DbGrid | null = null;
 
-function drawGrid(
-  ctx: CanvasRenderingContext2D,
-  grid: DbGrid,
-  palette: Uint8ClampedArray,
-): void {
+/**
+ * Paint a grid's pixels onto an offscreen canvas at its native frames×bins,
+ * using the active palette and display range. Null for an empty grid.
+ */
+function gridToCanvas(grid: DbGrid, palette: Uint8ClampedArray): OffscreenCanvas | null {
   const { frames, bins, data } = grid;
-  if (frames === 0 || bins === 0) {
-    ctx.clearRect(0, 0, FIXED_W, FIXED_H);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, FIXED_W, FIXED_H);
-    return;
-  }
+  if (frames === 0 || bins === 0) return null;
 
-  // Keep the canvas buffer at the fixed size; never resample to frames/bins.
-  ctx.canvas.width = FIXED_W;
-  ctx.canvas.height = FIXED_H;
-
-  // Paint the grid into an offscreen canvas at native frames×bins, then scale
-  // it into the fixed buffer. Low frequency at the bottom (conventional).
+  // Paint at native frames×bins; the caller scales it. Low frequency at the
+  // bottom (conventional).
   const off = new OffscreenCanvas(frames, bins);
   const octx = off.getContext('2d')!;
   const img = octx.createImageData(frames, bins);
@@ -195,9 +190,47 @@ function drawGrid(
     }
   }
   octx.putImageData(img, 0, 0);
+  return off;
+}
 
+function drawGrid(
+  ctx: CanvasRenderingContext2D,
+  grid: DbGrid,
+  palette: Uint8ClampedArray,
+): void {
+  // Keep the canvas buffer at the fixed size; never resample to frames/bins.
+  ctx.canvas.width = FIXED_W;
+  ctx.canvas.height = FIXED_H;
   ctx.clearRect(0, 0, FIXED_W, FIXED_H);
+  const off = gridToCanvas(grid, palette);
+  if (!off) {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, FIXED_W, FIXED_H);
+    return;
+  }
   ctx.drawImage(off, 0, 0, FIXED_W, FIXED_H);
+}
+
+/**
+ * Paint one grid as a strip of a taller composite canvas — the stacked PNG
+ * export. Uses the same palette and display range as the on-screen graph, and
+ * leaves the composite's size alone (the caller owns it).
+ */
+export function drawGridStrip(
+  ctx: CanvasRenderingContext2D,
+  grid: DbGrid,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): void {
+  const off = gridToCanvas(grid, activePalette);
+  if (!off) {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(x, y, width, height);
+    return;
+  }
+  ctx.drawImage(off, x, y, width, height);
 }
 
 /**

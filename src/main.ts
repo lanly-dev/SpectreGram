@@ -6,7 +6,9 @@ import { decodeFile, type DecodeResult, type FileFacts } from './audio/decode';
 import {
   renderSpectrogram,
   setActivePalette,
-  exportPng,
+  buildPalette,
+  CANVAS_WIDTH,
+  CANVAS_HEIGHT,
   getActivePaletteName,
   getDbRange,
   adjustDbRange,
@@ -16,7 +18,15 @@ import {
   type PaletteName,
 } from './render';
 import { DEFAULT_STFT, stftParamsFor, type DbGrid, type StftParams } from './audio/stft';
-import type { AnalyzeRequest, HoldRequest, WorkerMessage, ZoomRequest } from './audio/stft-worker';
+import type {
+  AnalyzeRequest,
+  ExportBandsRequest,
+  HoldRequest,
+  WorkerMessage,
+  ZoomRequest,
+} from './audio/stft-worker';
+import { bandRanges, planExport, type ExportPlan, type SplitMode } from './export-bands';
+import { composeExportImage, exportLayout, type ExportRow } from './export-image';
 import { runScan } from './scan';
 import { buildReportMarkdown, CLASS_INFO, countClasses, rateCollection } from './report';
 import type { FolderFile } from './types/desktop';
@@ -675,57 +685,282 @@ function setupPaletteToggle(): void {
   updatePaletteButton();
 }
 
+/** Save PNG bytes. Desktop: native save dialog; web: browser download. */
+function savePngBlob(blob: Blob, fileName: string): Promise<boolean> {
+  const desktop = window.spectregramDesktop;
+  if (desktop) return blob.arrayBuffer().then((ab) => desktop.savePng(ab, fileName));
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return Promise.resolve(true);
+}
+
+/** Rulers / legend checkboxes — they apply to every export shape. */
+function exportDecorations(): { rulers: boolean; legend: boolean } {
+  return {
+    rulers: el<HTMLInputElement>('export-rulers')?.checked !== false,
+    legend: el<HTMLInputElement>('export-legend')?.checked !== false,
+  };
+}
+
+function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('PNG encoding failed'))), 'image/png');
+  });
+}
+
+/** Compose the rows into one PNG — graph pixels plus any requested rulers/legend. */
+function composePng(rows: ExportRow[], columns: number): Promise<Blob> {
+  const { rulers, legend } = exportDecorations();
+  const canvas = composeExportImage(
+    {
+      rows,
+      columns,
+      nyquistHz: sampleRate / 2,
+      dbRange: getDbRange(),
+      palette: buildPalette(getActivePaletteName()),
+      timeStepFor: (span) => pickStep(TIME_STEPS, span, 6),
+      formatTime: (sec) => fmtTime(sec),
+      formatHz: fmtFreq,
+    },
+    rulers,
+    legend,
+  );
+  return canvasToPng(canvas);
+}
+
+/** Export what is on screen (the current view, zoom included). */
 function savePngFromCanvas(): Promise<boolean> {
   const canvas = el<HTMLCanvasElement>('canvas');
   if (!canvas) return Promise.resolve(false);
-  const fileName = `${currentBaseName}-spectrogram.png`;
-  // Desktop: native save dialog via the preload bridge. Web: download.
-  const desktop = window.spectregramDesktop;
-  if (desktop) {
-    return exportPng(canvas)
-      .then((blob) => blob.arrayBuffer())
-      .then((ab) => desktop.savePng(ab, fileName));
-  }
-  return exportPng(canvas).then((blob) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    return true;
-  });
+  const r = viewRange();
+  return composePng([{ source: canvas, startSec: r.start, endSec: r.end }], CANVAS_WIDTH).then(
+    (blob) => savePngBlob(blob, `${currentBaseName}-spectrogram.png`),
+  );
 }
 
 function setupPng(): void {
   const btn = $('png-btn');
   if (!btn) return;
-  btn.addEventListener('click', async () => {
-    try {
-      const saved = await savePngFromCanvas();
-      toast(saved ? `Saved ${currentBaseName}-spectrogram.png` : 'Save cancelled.');
-    } catch (e) {
-      console.error('export failed:', e);
-      toast('Export failed.', 'error');
-    }
+  // The button and File > Export PNG… both open the settings panel.
+  btn.addEventListener('click', openExportPanel);
+}
+
+// --- PNG export panel --------------------------------------------------------
+// Two shapes of export: the current view (one 1024×512 frame, exactly what the
+// canvas shows) or the whole track cut into strips and stacked in one tall
+// image. Each strip is re-analyzed by the worker at full width, so a stacked
+// export has the same detail as a zoomed view rather than a stretched overview.
+
+let exportReqId = 0;
+
+function exportModalOpen(): boolean {
+  const modal = $('export-modal');
+  return !!modal && !modal.hidden;
+}
+
+/** Active mode ('current' | 'custom'), split ('speed' | 'parts') and menu value. */
+function exportModeChoice(): { mode: string; split: SplitMode; value: string } {
+  const mode = document.querySelector<HTMLInputElement>("input[name='export-mode']:checked")?.value;
+  const split: SplitMode = el<HTMLSelectElement>('export-split')?.value === 'parts' ? 'parts' : 'speed';
+  const menu = split === 'parts' ? el<HTMLSelectElement>('export-parts') : el<HTMLSelectElement>('export-speed');
+  return { mode: mode === 'custom' ? 'custom' : 'current', split, value: menu?.value ?? (split === 'parts' ? '4' : '1') };
+}
+
+/** Plan for the current menu selection, or null with no track loaded. */
+function currentExportPlan(): ExportPlan | null {
+  const { mode, split, value } = exportModeChoice();
+  if (mode !== 'custom') return null;
+  return planExport(trackDuration(), split, value);
+}
+
+/** Keep the panel's rows and the strip summary in step with the menu. */
+function updateExportPanel(): void {
+  const { mode, split, value } = exportModeChoice();
+  const custom = $('export-custom');
+  const speedRow = $('export-speed-row');
+  const partsRow = $('export-parts-row');
+  const summary = $('export-summary');
+  if (custom) custom.hidden = mode !== 'custom';
+  if (speedRow) speedRow.hidden = split !== 'speed';
+  if (partsRow) partsRow.hidden = split !== 'parts';
+  if (!summary) return;
+  if (mode !== 'custom') {
+    const { rulers, legend } = exportDecorations();
+    const lay = exportLayout(1, CANVAS_WIDTH, rulers, legend);
+    summary.textContent = `Current view · ${lay.width} × ${lay.height} px`;
+    return;
+  }
+  const plan = currentExportPlan();
+  if (!plan) {
+    summary.textContent = 'Open a file first.';
+    return;
+  }
+  const { rulers, legend } = exportDecorations();
+  const lay = exportLayout(plan.strips, plan.columns, rulers, legend);
+  if (split === 'speed') {
+    // One strip covering the file; the speed setting compresses the time axis.
+    const label = value === 'slowest' ? 'slowest (½×)' : `${value}×`;
+    summary.textContent = `${lay.width} × ${lay.height} px · one strip · ${label}`;
+  } else {
+    const noun = plan.strips === 1 ? 'strip' : 'strips';
+    summary.textContent = `${plan.strips} ${noun} · ${lay.width} × ${lay.height} px · ${fmtTime(plan.stripSeconds)} each`;
+  }
+}
+
+function openExportPanel(): void {
+  const modal = $('export-modal');
+  if (!modal) return;
+  if (!fullGrid) {
+    toast('Open a file first.', 'error');
+    return;
+  }
+  updateExportPanel();
+  modal.hidden = false;
+  el<HTMLButtonElement>('export-go')?.focus();
+}
+
+function closeExportPanel(): void {
+  const modal = $('export-modal');
+  if (modal) modal.hidden = true;
+  el<HTMLButtonElement>('png-btn')?.focus();
+}
+
+/** Ask the worker to re-analyze each strip; resolves with one grid per strip. */
+function requestExportBands(
+  ranges: { startSample: number; endSample: number }[],
+  columns: number,
+): Promise<DbGrid[]> {
+  const w = worker;
+  if (!w) return Promise.reject(new Error('analysis worker is not running'));
+  return new Promise<DbGrid[]>((resolve, reject) => {
+    const id = ++exportReqId;
+    const onMessage = (ev: MessageEvent): void => {
+      const msg = ev.data as WorkerMessage;
+      if (msg.type === 'export-result' && msg.id === id) {
+        w.removeEventListener('message', onMessage);
+        resolve(msg.bands);
+      } else if (msg.type === 'export-error' && msg.id === id) {
+        w.removeEventListener('message', onMessage);
+        reject(new Error(msg.message));
+      }
+    };
+    w.addEventListener('message', onMessage);
+    const req: ExportBandsRequest = { type: 'export-bands', id, ranges, columns };
+    w.postMessage(req);
   });
 }
 
-/** File > Save menu: paint the spectrogram PNG and save it through the bridge. */
-function setupMenuSave(): void {
-  const desktop = window.spectregramDesktop;
-  if (!desktop) return;
-  desktop.onSavePng(async () => {
+/** Compose the strips into one tall PNG and hand it to the save path. */
+async function exportStacked(plan: ExportPlan): Promise<void> {
+  const dur = trackDuration();
+  const ranges = bandRanges(plan, dur, sampleRate);
+  if (!ranges.length) {
+    toast('Nothing to export for this track.', 'error');
+    return;
+  }
+  const bands = await requestExportBands(ranges, plan.columns);
+  if (!bands.length) {
+    toast('Nothing to export for this track.', 'error');
+    return;
+  }
+  const rows: ExportRow[] = bands.map((grid, i) => ({
+    grid,
+    startSec: ranges[i].startSample / sampleRate,
+    endSec: ranges[i].endSample / sampleRate,
+  }));
+  const blob = await composePng(rows, plan.columns);
+  const name =
+    bands.length > 1 ? `${currentBaseName}-stacked.png` : `${currentBaseName}-whole.png`;
+  const saved = await savePngBlob(blob, name);
+  toast(
+    saved
+      ? `Saved ${name} — ${bands.length > 1 ? `${bands.length} strips` : `${plan.columns} px wide`}`
+      : 'Save cancelled.',
+  );
+  if (saved) closeExportPanel();
+}
+
+async function runExport(): Promise<void> {
+  const go = el<HTMLButtonElement>('export-go');
+  const { mode } = exportModeChoice();
+  if (mode !== 'custom') {
     try {
       const saved = await savePngFromCanvas();
       toast(saved ? `Saved ${currentBaseName}-spectrogram.png` : 'Save cancelled.');
+      if (saved) closeExportPanel();
     } catch (e) {
       console.error('export failed:', e);
       toast('Export failed.', 'error');
     }
+    return;
+  }
+  const plan = currentExportPlan();
+  if (!plan) {
+    toast('Open a file first.', 'error');
+    return;
+  }
+  if (!fullGrid || !worker || !audioBuffer) {
+    toast('Audio is still loading — try again in a moment.', 'error');
+    return;
+  }
+  if (go) {
+    go.disabled = true;
+    go.textContent = 'Exporting…';
+  }
+  try {
+    await exportStacked(plan);
+  } catch (e) {
+    console.error('stacked export failed:', e);
+    toast(`Export failed: ${e instanceof Error ? e.message : String(e)}`, 'error');
+  } finally {
+    if (go) {
+      go.disabled = false;
+      go.textContent = 'Export';
+    }
+  }
+}
+
+function setupExportPanel(): void {
+  const modal = $('export-modal');
+  if (!modal) return;
+  for (const input of modal.querySelectorAll<HTMLInputElement>("input[name='export-mode']")) {
+    input.addEventListener('change', updateExportPanel);
+  }
+  for (const id of ['export-split', 'export-speed', 'export-parts']) {
+    el<HTMLSelectElement>(id)?.addEventListener('change', updateExportPanel);
+  }
+  for (const id of ['export-rulers', 'export-legend']) {
+    el<HTMLInputElement>(id)?.addEventListener('change', updateExportPanel);
+  }
+  $('export-cancel')?.addEventListener('click', closeExportPanel);
+  el<HTMLButtonElement>('export-go')?.addEventListener('click', () => void runExport());
+  // Clicking the dimmed backdrop cancels; clicks inside the card don't.
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeExportPanel();
   });
+  // While open the panel owns Esc, so it can't also reset the zoom.
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      if (!exportModalOpen() || e.key !== 'Escape') return;
+      e.stopImmediatePropagation();
+      closeExportPanel();
+    },
+    { capture: true },
+  );
+}
+
+/** File > Export PNG…: the same panel the toolbar button opens. */
+function setupMenuExport(): void {
+  const desktop = window.spectregramDesktop;
+  if (!desktop) return;
+  desktop.onExportOpen(openExportPanel);
 }
 
 /** Folder panel: list audio files from an opened folder; clicking one opens it. */
@@ -1879,7 +2114,8 @@ function init(): void {
   setupIntake();
   setupPaletteToggle();
   setupPng();
-  setupMenuSave();
+  setupExportPanel();
+  setupMenuExport();
   setupFolderPanel();
   setupFolderReport();
   setupMessage();

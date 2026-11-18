@@ -26,7 +26,7 @@ let pendingOpenPath = null;
 // Remember the directory of the last file the user picked via File > Open so
 // the dialog reopens there next time.
 let lastOpenDir = '';
-// Whether the renderer currently has a spectrogram to export. Gates Save as PNG.
+// Whether the renderer currently has a spectrogram to export. Gates the Export item.
 let hasSpectrogram = false;
 
 // Test-only hooks (used by the headless smoke run; inert otherwise).
@@ -182,10 +182,10 @@ function registerIpc() {
     return true;
   });
 
-  // Renderer reports whether a spectrogram is present, gating Save as PNG.
+  // Renderer reports whether a spectrogram is present, gating the Export item.
   ipcMain.handle('sg:spectrogram-state', (_event, present) => {
     hasSpectrogram = Boolean(present);
-    const item = Menu.getApplicationMenu()?.getMenuItemById('save-png');
+    const item = Menu.getApplicationMenu()?.getMenuItemById('export-png');
     if (item) item.enabled = hasSpectrogram;
     return true;
   });
@@ -365,9 +365,10 @@ function menuLoadSampleFolder() {
 }
 
 
-function menuSave() {
+// File > Export PNG…: opens the same export panel as the toolbar button.
+function menuExport() {
   if (!hasSpectrogram) return;
-  if (mainWindow) mainWindow.webContents.send('sg:save-png');
+  if (mainWindow) mainWindow.webContents.send('sg:export-open');
 }
 
 function menuExit() {
@@ -412,11 +413,11 @@ function buildMenu() {
           click: menuOpenFolder,
         },
         {
-          id: 'save-png',
-          label: 'Save as PNG',
+          id: 'export-png',
+          label: 'Export PNG…',
           accelerator: process.platform === 'darwin' ? 'Cmd+S' : 'Ctrl+S',
           enabled: false,
-          click: menuSave,
+          click: menuExport,
         },
         { type: 'separator' },
         {
