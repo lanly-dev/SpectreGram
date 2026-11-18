@@ -1841,6 +1841,38 @@ function setupMenuActions(screensaver: ScreensaverControls | null): void {
   });
 }
 
+/** Desktop Help › About: the shell sends `sg:about`; the card is in the DOM. */
+function setupAbout(): void {
+  const modal = $('about-modal');
+  const closeBtn = el<HTMLButtonElement>('about-close');
+  if (!modal || !closeBtn) return;
+  const isOpen = (): boolean => !modal.hidden;
+  // Only the desktop shell can open it (Help > About); the card's own
+  // interactions work either way, so the web build stays harmless.
+  window.spectregramDesktop?.onShowAbout(() => {
+    modal.hidden = false;
+    closeBtn.focus();
+  });
+  const close = (): void => {
+    modal.hidden = true;
+  };
+  closeBtn.addEventListener('click', close);
+  // Clicking the dimmed backdrop closes it; clicks inside the card don't.
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) close();
+  });
+  // While open the card owns Esc, so it doesn't also reset the zoom.
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      if (!isOpen() || e.key !== 'Escape') return;
+      e.stopImmediatePropagation();
+      close();
+    },
+    { capture: true },
+  );
+}
+
 // --- Init -------------------------------------------------------------------
 
 function init(): void {
@@ -1859,6 +1891,7 @@ function init(): void {
   setupWindowDrop();
   setupDbRangeKeys();
   setupMenuActions(setupScreensaver());
+  setupAbout();
   updateLegend();
   window.addEventListener('beforeunload', () => {
     teardownWorker();

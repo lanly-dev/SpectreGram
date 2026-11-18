@@ -384,14 +384,12 @@ function menuLanguage() {
   });
 }
 
+// Help > About: the renderer draws the card, so it can wear the app's own
+// haunted styling — a native message box can't be themed and insists on a
+// generic system glyph.
 function menuAbout() {
   if (!mainWindow) return;
-  void dialog.showMessageBox(mainWindow, {
-    type: 'info',
-    title: 'About SpectreGram',
-    message: 'SpectreGram',
-    detail: 'Acoustic spectrum analyser and lossy-disguise verdict.\nYour files never leave your machine.\nMIT license — Kiroween 2026.',
-  });
+  mainWindow.webContents.send('sg:about');
 }
 
 function menuDevTools() {

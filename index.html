@@ -212,6 +212,37 @@
         </form>
       </div>
 
+      <!-- Help > About (desktop): the shell sends sg:about and the renderer
+           draws the card, so it wears the app's own haunted styling. -->
+      <div
+        id="about-modal"
+        class="report-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="about-title"
+        hidden
+      >
+        <div class="report-card about-card">
+          <span class="about-web about-web-left" aria-hidden="true"></span>
+          <span class="about-web about-web-right" aria-hidden="true"></span>
+          <div class="about-art">
+            <img class="about-icon" src="icon.png" alt="SpectreGram icon" />
+            <span class="about-bat" aria-hidden="true">🦇</span>
+          </div>
+          <div class="about-body">
+            <h2 id="about-title" class="report-title about-title">
+              <span class="about-ghost" aria-hidden="true">👻</span> SpectreGram
+            </h2>
+            <p class="report-blurb">Acoustic spectrum analyser and lossy-disguise verdict.</p>
+            <p class="about-line"><span aria-hidden="true">🔒</span> Your files never leave your machine.</p>
+            <p class="about-line"><span aria-hidden="true">🎃</span> MIT license · Kiroween 2026</p>
+            <div class="report-actions">
+              <button id="about-close" type="button">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div id="screensaver" class="screensaver" hidden>
         <video
           id="screensaver-video"

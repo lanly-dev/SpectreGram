@@ -26,6 +26,8 @@ export interface SpectreGramDesktop {
   onFolderLoading(callback: (data: FolderLoading) => void): () => void;
   /** Report whether a spectrogram is present (gates Save as PNG in the menu). */
   reportSpectrogramState(present: boolean): Promise<boolean>;
+  /** Help > About: show the styled in-app About card. Returns an unsubscribe. */
+  onShowAbout(callback: () => void): () => void;
   /** Options menu actions; returns an unsubscribe function. */
   onMenuAction(callback: (action: MenuAction, value?: unknown) => void): () => void;
 }

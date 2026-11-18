@@ -1134,3 +1134,111 @@ main.folder-open .controls {
   pointer-events: none;
   z-index: 7;
 }
+
+/* --- About card (Help > About, desktop) ----------------------------------- */
+/* Reuses .report-modal / .report-card. The shell only sends `sg:about`; the
+   card itself lives in index.html so it can wear the app's styling. */
+
+.about-card {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  width: min(460px, 92vw);
+  text-align: left;
+  border-color: rgba(255, 122, 61, 0.35);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.65), 0 0 26px rgba(255, 122, 61, 0.16);
+}
+
+/* Icon column: stretches to the text panel's height, so the mark and the text
+   block end level. The PNG is transparent, so it sits straight on the card —
+   no plinth, no crop: the column is wider than tall, which lets `contain` fill
+   the full height at the image's own aspect ratio. */
+.about-art {
+  position: relative;
+  flex: 0 0 clamp(120px, 42%, 176px);
+}
+
+.about-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* A bat loitering in the icon's corner. */
+.about-bat {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  font-size: 15px;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px rgba(255, 122, 61, 0.65));
+  animation: about-bat-drift 3.8s ease-in-out infinite alternate;
+}
+
+@keyframes about-bat-drift {
+  from {
+    transform: translate(0, 0) rotate(-7deg);
+  }
+  to {
+    transform: translate(-5px, -4px) rotate(7deg);
+  }
+}
+
+.about-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.about-title {
+  margin-top: 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.about-ghost {
+  filter: drop-shadow(0 0 8px rgba(140, 120, 255, 0.55));
+}
+
+.about-line {
+  margin: 0 0 5px;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.about-body .report-actions {
+  /* Close sits in the bottom-right; the auto margin pins it to the bottom so
+     the text panel uses the icon's full height. */
+  margin-top: auto;
+  justify-content: flex-end;
+}
+
+/* Cobwebs in the card's top corners (same artwork as the spectrogram frame). */
+.about-web {
+  position: absolute;
+  top: 0;
+  width: 46px;
+  height: 46px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='white' stroke-opacity='0.13'%3E%3Cpath d='M0 0 L84 16 M0 0 L68 46 M0 0 L38 76 M0 0 L10 84'/%3E%3Cpath d='M14 82 Q18 52 42 34 M8 56 Q12 32 30 16 M3 30 Q6 14 16 5'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.about-web-left {
+  left: 0;
+}
+
+.about-web-right {
+  right: 0;
+  transform: scaleX(-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .about-bat {
+    animation: none;
+  }
+}
