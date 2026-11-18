@@ -13,8 +13,9 @@ pixel bright at (time t, frequency f), play a sine at f during t. So:
    scale to `ROWS` = 32 rows high (width keeps the aspect), threshold to a
    0/1 mask `rows × cols`. Row 0 is the top of the text.
 2. **Layout** (`src/message/encode.ts`, pure): the band is
-   `[0.22, 0.50] × Nyquist` (R3). In the full-track view (≈ `FIXED_W` 1024
-   × `FIXED_H` 512 px, linear 0…Nyquist), the band is `0.28 × 512` px
+   `[0.46, 0.66] × Nyquist` (R3, R3a; was `[0.22, 0.50]` before the
+   listening complaint). In the full-track view (≈ `FIXED_W` 1024
+   × `FIXED_H` 512 px, linear 0…Nyquist), the band is `0.20 × 512` px
    tall, so natural text width in px = `cols × bandPx / ROWS`. The message
    is centered in time, width = min(natural, 90% of the view), so short
    messages keep their shape and long ones are squeezed. Row r gets
@@ -23,11 +24,12 @@ pixel bright at (time t, frequency f), play a sine at f during t. So:
    the full-track STFT (`stftParamsFor`), otherwise thin strokes fall
    between frames and vanish. If `cols > 0.9 × fullViewFrames`, refuse.
 4. **Synthesis** (`encode.ts`, run in a worker): for each row, a sine of
-   amplitude `ROW_AMP` (TUNABLE; ≈ −38 dBFS planned, raised to ≈ −30 dBFS
-   after the task 4 real-track check showed −38 too faint over a loud
-   master) whose gain follows that row of
-   the mask over time, with `RAMP_SEC` (≈ 6 ms) linear fades at every
-   on/off edge (no clicks → no broadband splatter, R3). Each sine has a
+   amplitude `ROW_AMP` (TUNABLE; history: −38 dBFS planned, raised to −30
+   dBFS in task 4 for readability in the old 5–12 kHz band, which made it
+   unpleasant to listen to; now ≈ −44 dBFS in the higher band, R3a) whose
+   gain follows that row of the mask over time, with `RAMP_SEC` (≈ 20 ms,
+   up from 6 ms) raised-cosine fades at every on/off edge (no clicks → no
+   broadband splatter, R3; soft swells instead of stutter, R3a). Each sine has a
    random start phase so the rows don't add up in phase. Rows are generated
    with a rotating phasor (2 multiplies per sample) and only where the row
    is on. The message signal is added to every channel; if the mix would
