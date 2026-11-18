@@ -25,6 +25,11 @@ its source.
   character counter, and a 🎲 button that picks a random Halloween phrase
   from a built-in list (never the phrase already shown). Phrases are
   original wording, not quotes from songs, films or other works.
+- **R1a — Emoji.** *(Added 2026-11-17, maintainer's ask.)* Many dice
+  phrases include Halloween emoji (👻 🎃 🦇 💀 🕷️ 🕸️ 🧛 🌕 …), and typed
+  emoji work too. Emoji are cut into the music as silhouettes (their shape,
+  not their colors). The 32-character limit counts what the user sees: one
+  emoji = one character, including emoji made of several code points.
 - **R2 — Encode into audio.** The message is rendered as text and drawn
   into the track's spectrum as tones: higher rows of the text are higher
   frequencies, and the text runs left to right in time, centered in the
