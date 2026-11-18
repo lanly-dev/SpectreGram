@@ -739,12 +739,68 @@ function setupFolderPanel(): void {
   if (!box || !panel || !list || !nameNode) return;
 
   let selectedLi: HTMLElement | null = null;
-  desktop.onFolderLoaded(({ folderName, files, truncated }) => {
+  // Path of the selected row, so a refresh can select it again (R1b).
+  let selectedPath = '';
+
+  const refreshBtn = el<HTMLButtonElement>('refresh-btn');
+  // The loading state (below) disables the button and spins its icon for
+  // the whole walk, whichever way the load was started (R1b, R1c).
+  refreshBtn?.addEventListener('click', async () => {
+    try {
+      await desktop.refreshFolder();
+    } catch (e) {
+      console.error('refresh failed:', e);
+      toast('Could not refresh the folder.', 'error');
+    }
+  });
+
+  // Loading state (R1c): while a folder is walked, the list gives way to a
+  // Halloween message with a live count, and Refresh/Scan are disabled.
+  const loadingNode = el<HTMLElement>('folder-loading');
+  const loadingDetail = $('folder-loading-detail');
+  const scanBtn = el<HTMLButtonElement>('scan-btn');
+  const setFolderLoading = (active: boolean, folderName = '', found = 0): void => {
+    if (loadingNode) loadingNode.hidden = !active;
+    list.hidden = active;
+    if (refreshBtn) {
+      refreshBtn.disabled = active;
+      refreshBtn.classList.toggle('spinning', active);
+    }
+    if (scanBtn) scanBtn.disabled = active;
+    if (!active) return;
+    if (loadingDetail) {
+      const n = `${found.toLocaleString()} audio file${found !== 1 ? 's' : ''}`;
+      loadingDetail.textContent = folderName ? `Searching “${folderName}” — ${n} found` : `${n} found`;
+    }
+    // The panel may not be showing yet (first folder of the session).
+    panel.hidden = false;
+    box.classList.add('folder-open');
+    document.querySelector('main')?.classList.add('folder-open');
+  };
+  desktop.onFolderLoading(({ active, folderName, found, refreshed }) => {
+    if (active && !panel.hidden && !loadingNode?.hidden) {
+      setFolderLoading(true, folderName, found); // progress update only
+      return;
+    }
+    if (active) {
+      // A load is starting: whatever is scanning is about to be out of date.
+      if (scanning) scanCancelRequested = true;
+      if (!refreshed && nameNode) {
+        nameNode.textContent = folderName ?? '';
+        nameNode.title = folderName ?? '';
+      }
+    }
+    setFolderLoading(active, folderName, found);
+  });
+
+  desktop.onFolderLoaded(({ folderName, files, truncated, refreshed }) => {
+    setFolderLoading(false);
     onFolderForScan(folderName, files);
     nameNode.textContent = folderName;
     nameNode.title = folderName;
     list.replaceChildren();
     selectedLi = null;
+    if (!refreshed) selectedPath = '';
     for (const { path: filePath, name } of files) {
       const li = document.createElement('li');
       // `name` is relative to the opened folder (subfolders included);
@@ -764,20 +820,27 @@ function setupFolderPanel(): void {
           open();
         }
       });
+      li.dataset.path = filePath;
       list.appendChild(li);
+      if (filePath === selectedPath) selectLi(li);
     }
 
     function selectLi(li: HTMLElement): void {
       if (selectedLi) selectedLi.classList.remove('selected');
       selectedLi = li;
+      selectedPath = li.dataset.path ?? '';
       li.classList.add('selected');
     }
+    // A refreshed list keeps the selected file in view.
+    const sel = list.querySelector<HTMLElement>('li.selected');
+    if (refreshed && sel) sel.scrollIntoView({ block: 'nearest' });
     panel.hidden = false;
     box.classList.add('folder-open');
     document.querySelector('main')?.classList.add('folder-open');
     const count = `${files.length} audio file${files.length !== 1 ? 's' : ''}`;
-    if (truncated) toast(`Folder "${folderName}" — showing the first ${count} (list capped).`);
-    else toast(`Folder "${folderName}" — ${count}`);
+    const what = refreshed ? `Refreshed "${folderName}"` : `Folder "${folderName}"`;
+    if (truncated) toast(`${what} — showing the first ${count} (list capped).`);
+    else toast(`${what} — ${count}`);
   });
 }
 

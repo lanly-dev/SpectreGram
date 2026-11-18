@@ -146,6 +146,23 @@ followed, unreadable subfolders are skipped, and the list stops at 1,000
 files (`MAX_FOLDER_FILES`; the user gets a "list capped" toast). Panel rows
 show the path relative to the opened folder.
 
+**Refresh.** The circular-arrow button right of Scan re-lists the open
+folder (`sg:refresh-folder`) with the same rules, cap and display name it
+was opened with, so files added, removed or renamed since show up without
+reopening it. The selected file stays selected if it's still there, and a
+running scan is cancelled (as when loading a folder). The toast says
+"Refreshed …".
+
+**Loading.** Big folders and deep trees take a moment to walk. Meanwhile
+the list area shows a floating 👻, "Summoning the spirits…" and a live
+"Searching “name” — n audio files found" (from `sg:folder-loading`
+events). Refresh and Scan are disabled for the whole walk, however it was
+started, and a running scan is stopped. If nothing is found or the read
+fails, the previous list comes back. Only the latest load reports, so
+opening another folder mid-walk can't mix the two.
+`SPECTREGRAM_SMOKE_WALK_DELAY_MS` (test-only) slows the walk so the folder
+smoke can watch this state.
+
 **Scan.** Nothing runs until Scan is clicked. Files are processed one at a
 time (read → `decodeFile` → `classify` in the worker), so only one decoded
 file is in memory at once, and a scanned file gets exactly the verdict a

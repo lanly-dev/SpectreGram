@@ -34,6 +34,11 @@ const SMOKE_FILE = process.env.SPECTREGRAM_SMOKE_FILE || '';
 const SMOKE_SAVE_DIR = process.env.SPECTREGRAM_SMOKE_SAVE_DIR || '';
 // Folder-report smoke: open this folder, Scan, wait for the reveal, save.
 const SMOKE_FOLDER = process.env.SPECTREGRAM_SMOKE_FOLDER || '';
+// Folder refresh smoke: copy this file into SMOKE_FOLDER, then click Refresh.
+const SMOKE_REFRESH_ADD = process.env.SPECTREGRAM_SMOKE_REFRESH_ADD || '';
+// Slow the folder walk by this many ms per folder, so the loading state can
+// be observed (test-only; 0 in normal use).
+const SMOKE_WALK_DELAY_MS = Number(process.env.SPECTREGRAM_SMOKE_WALK_DELAY_MS) || 0;
 // Spectral-message smoke: haunt SMOKE_FILE with this text, then reopen it.
 const SMOKE_MESSAGE = process.env.SPECTREGRAM_SMOKE_MESSAGE || '';
 // Ruler-seek smoke: after SMOKE_FILE's verdict, hover/click the time ruler and play from the cue.
@@ -164,6 +169,14 @@ function registerIpc() {
     return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
   });
 
+  // Refresh (R1b): re-list the open folder with the options it was opened
+  // with. Resolves false when no folder is open.
+  ipcMain.handle('sg:refresh-folder', async () => {
+    if (!currentFolderPath) return false;
+    await loadFolder(currentFolderPath, { ...currentFolderOptions, refreshed: true });
+    return true;
+  });
+
   ipcMain.handle('sg:open-folder-file', async (_event, filePath) => {
     queueOpenFile(filePath);
     return true;
@@ -221,12 +234,19 @@ const MAX_FOLDER_FILES = 1000;
  * Returns `{ files, truncated }`; each file is `{ path, name }`, where `name`
  * is the path relative to `root` with "/" separators, sorted by name.
  */
-async function walkAudioFiles(root, cap) {
+async function walkAudioFiles(root, cap, onProgress) {
   const files = [];
   let truncated = false;
   const stack = [root];
+  let lastReport = 0;
   while (stack.length) {
     const dir = stack.pop();
+    // Live count for the loading message (R1c), at most every ~150 ms.
+    if (onProgress && Date.now() - lastReport > 150) {
+      lastReport = Date.now();
+      onProgress(files.length);
+    }
+    if (SMOKE_WALK_DELAY_MS) await new Promise((r) => setTimeout(r, SMOKE_WALK_DELAY_MS));
     let entries;
     try {
       entries = await fs.promises.readdir(dir, { withFileTypes: true });
@@ -255,33 +275,54 @@ async function walkAudioFiles(root, cap) {
 
 // The folder currently shown in the panel; Save report opens its dialog here.
 let currentFolderPath = '';
+// The options it was opened with (limit, display name), so Refresh lists it
+// exactly the same way (spec: .kiro/specs/folder-report/, R1b).
+let currentFolderOptions = {};
+// Bumped per folder load; see loadFolder (R1c).
+let folderLoadSeq = 0;
 
 /**
  * List the audio files in `folderPath` and its subfolders (optionally only
  * the first `limit`, by relative path), grant the renderer read access to
  * them, and show them in the folder panel under `displayName`.
  */
-async function loadFolder(folderPath, { limit = Infinity, displayName } = {}) {
+async function loadFolder(folderPath, { limit = Infinity, displayName, refreshed = false } = {}) {
   if (!mainWindow) return;
+  // Only the latest load may report (R1c): a slow walk replaced by a newer
+  // one must not flash its progress or overwrite the newer list.
+  const seq = ++folderLoadSeq;
+  const folderName = displayName || path.basename(folderPath);
+  const loading = (data) => {
+    if (seq === folderLoadSeq && mainWindow) mainWindow.webContents.send('sg:folder-loading', data);
+  };
+  loading({ active: true, folderName, found: 0, refreshed });
   try {
     const cap = Math.min(limit, MAX_FOLDER_FILES);
-    const { files, truncated } = await walkAudioFiles(folderPath, cap);
+    const { files, truncated } = await walkAudioFiles(folderPath, cap, (found) =>
+      loading({ active: true, folderName, found, refreshed }),
+    );
+    if (seq !== folderLoadSeq || !mainWindow) return;
     if (!files.length) {
+      loading({ active: false });
       sendToast('No audio files in that folder or its subfolders.', 'error');
       return;
     }
     // Grant the renderer read access to every listed audio file.
     files.forEach((f) => allowedReadPaths.add(f.path));
     currentFolderPath = folderPath;
+    currentFolderOptions = { limit, displayName };
     mainWindow.webContents.send('sg:folder-loaded', {
       folderPath,
       folderName: displayName || path.basename(folderPath),
       files,
       // Only report the global cap, not a deliberate `limit` (sample folder).
       truncated: truncated && cap === MAX_FOLDER_FILES,
+      refreshed,
     });
   } catch (e) {
     console.error('read folder failed:', e);
+    if (seq !== folderLoadSeq) return;
+    loading({ active: false });
     sendToast('Could not read that folder.', 'error');
   }
 }
@@ -403,6 +444,12 @@ function buildMenu() {
             { label: 'Show Screensaver', click: menuShowScreensaver },
             { label: 'Show Error Toast', click: menuTestErrorToast },
             { label: 'Load Sample Folder', click: menuLoadSampleFolder },
+            { type: 'separator' },
+            {
+              label: 'Developer Tools',
+              accelerator: process.platform === 'darwin' ? 'Alt+Command+I' : 'F12',
+              click: menuDevTools,
+            },
           ],
         },
       ],
@@ -412,16 +459,25 @@ function buildMenu() {
       submenu: [
         { label: 'Language', click: menuLanguage },
         { label: 'About', click: menuAbout },
-        { type: 'separator' },
-        {
-          label: 'Developer Tools',
-          accelerator: process.platform === 'darwin' ? 'Alt+Command+I' : 'F12',
-          click: menuDevTools,
-        },
       ],
     },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  // Test-only: print the built menu (labels + accelerators) and quit.
+  if (process.env.SPECTREGRAM_SMOKE_MENU === '1') {
+    const walk = (items) =>
+      items.map((i) =>
+        i.type === 'separator'
+          ? '---'
+          : i.submenu
+            ? { [i.label]: walk(i.submenu.items) }
+            : i.accelerator
+              ? `${i.label} [${i.accelerator}]`
+              : i.label,
+      );
+    console.log('SMOKE_MENU', JSON.stringify(walk(Menu.getApplicationMenu().items)));
+    app.exit(0);
+  }
 }
 
 function createWindow() {
@@ -632,7 +688,39 @@ async function runFolderSmoke() {
   const js = (code) => mainWindow.webContents.executeJavaScript(code);
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const started = Date.now();
-  await loadFolder(path.resolve(SMOKE_FOLDER));
+  const loadDone = loadFolder(path.resolve(SMOKE_FOLDER));
+  if (SMOKE_WALK_DELAY_MS) {
+    // Loading-state check (R1c): sample the panel while the slowed walk runs.
+    const seen = [];
+    for (;;) {
+      const s = JSON.parse(
+        await mainWindow.webContents.executeJavaScript(`JSON.stringify({
+          loading: !document.getElementById('folder-loading').hidden,
+          listHidden: document.getElementById('folder-list').hidden,
+          refreshDisabled: document.getElementById('refresh-btn').disabled,
+          scanDisabled: document.getElementById('scan-btn').disabled,
+          detail: document.getElementById('folder-loading-detail').textContent,
+          rows: document.querySelectorAll('#folder-list li').length
+        })`),
+      );
+      seen.push(s);
+      if (!s.loading && s.rows > 0) break;
+      if (Date.now() - started > 60000) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    const during = seen.filter((s) => s.loading);
+    console.log(
+      'SMOKE_LOADING',
+      JSON.stringify({
+        samples: seen.length,
+        loadingSamples: during.length,
+        allDisabled: during.every((s) => s.refreshDisabled && s.scanDisabled && s.listHidden),
+        details: [...new Set(during.map((s) => s.detail))].slice(0, 4).concat(['…']).concat([during.at(-1)?.detail]),
+        end: seen.at(-1),
+      }),
+    );
+  }
+  await loadDone;
   try {
     // Wait for the panel to list the files, then start the scan.
     for (;;) {
@@ -645,6 +733,35 @@ async function runFolderSmoke() {
       await js(`JSON.stringify([...document.querySelectorAll('#folder-list li')].map((li) => li.textContent))`),
     );
     console.log('SMOKE_FOLDER_LISTED', JSON.stringify(listed));
+    if (SMOKE_REFRESH_ADD) {
+      // Refresh check (R1b): select a row, add a file on disk, click Refresh,
+      // and confirm the new file is listed and the selection survived.
+      await js(`document.querySelectorAll('#folder-list li')[1].classList.add('probe')`);
+      await js(`document.querySelector('#folder-list li.probe').click()`);
+      await sleep(500);
+      const selBefore = await js(`(document.querySelector('#folder-list li.selected') || {}).textContent || ''`);
+      const target = path.join(path.resolve(SMOKE_FOLDER), 'Added Later', path.basename(SMOKE_REFRESH_ADD));
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(SMOKE_REFRESH_ADD, target);
+      await js(`document.getElementById('refresh-btn').click()`);
+      for (;;) {
+        const n = await js(`document.querySelectorAll('#folder-list li').length`);
+        if (n > listed.length) break;
+        if (Date.now() - started > 30000) throw new Error('refresh never showed the new file');
+        await sleep(200);
+      }
+      const after = JSON.parse(
+        await js(`JSON.stringify({
+          rows: [...document.querySelectorAll('#folder-list li')].map((li) => li.textContent),
+          selected: (document.querySelector('#folder-list li.selected') || {}).textContent || '',
+          toast: (document.getElementById('toast') || {}).textContent || ''
+        })`),
+      );
+      console.log('SMOKE_REFRESH_OK', JSON.stringify({ selBefore, ...after }));
+      console.log('SMOKE_REFRESH_LAYOUT', await js(`JSON.stringify(['folder-name', 'refresh-btn', 'scan-btn'].map((id) => { const r = document.getElementById(id).getBoundingClientRect(); return { id, left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), h: Math.round(r.height) }; }))`));
+      app.exit(after.selected === selBefore ? 0 : 5);
+      return;
+    }
     await js(`document.getElementById('scan-btn').click()`);
     // The drumroll screen waits for Reveal; click it once it shows.
     for (;;) {

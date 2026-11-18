@@ -100,6 +100,25 @@
           >
             Scan
           </button>
+          <!-- Refresh (spec: .kiro/specs/folder-report/, R1b): re-list the open folder. Right of Scan. -->
+          <button
+            id="refresh-btn"
+            class="icon-btn refresh-btn"
+            type="button"
+            aria-label="Refresh folder"
+            title="Refresh folder"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+              <path d="M13 8a5 5 0 1 1-1.6-3.7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+              <path d="M13 2.5v3.2H9.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </div>
+        <!-- Loading state (spec: .kiro/specs/folder-report/, R1c): replaces the list while a folder is walked. -->
+        <div id="folder-loading" class="folder-loading" role="status" aria-live="polite" hidden>
+          <div class="folder-loading-ghost" aria-hidden="true">👻</div>
+          <div class="folder-loading-title">Summoning the spirits…</div>
+          <div id="folder-loading-detail" class="folder-loading-detail"></div>
         </div>
         <ul id="folder-list" class="folder-list"></ul>
       </section>
