@@ -918,3 +918,83 @@ main.folder-open .controls {
     animation: none;
   }
 }
+/* --- Spectral message dialog (spec: .kiro/specs/spectral-message/) --------- */
+/* Reuses .report-modal / .report-card; these are the extra pieces. */
+
+.message-card {
+  text-align: left;
+}
+
+.message-card .report-title,
+.message-card .report-actions {
+  text-align: center;
+}
+
+.message-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.message-input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.message-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.message-dice {
+  flex-shrink: 0;
+  width: 32px;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.message-dice.rolled {
+  animation: dice-roll 0.35s ease-out;
+}
+
+@keyframes dice-roll {
+  from {
+    transform: rotate(-200deg) scale(0.7);
+  }
+  to {
+    transform: rotate(0) scale(1);
+  }
+}
+
+.message-count {
+  margin: 3px 0 6px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.icon-btn:disabled:hover {
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-dice.rolled {
+    animation: none;
+  }
+}

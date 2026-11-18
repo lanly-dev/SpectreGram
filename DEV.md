@@ -177,6 +177,81 @@ roll time and the revealed rating, and saves the report into `<dir>`
 without a dialog. Test-only; inert in normal use. Like the file smoke, it
 can't run while another SpectreGram window is open (single-instance lock).
 
+## Spectral message
+
+Spec: `.kiro/specs/spectral-message/`. With a track loaded, the controls-row
+**Haunt** button opens a dialog: type up to 32 characters or roll 🎲 for a
+Halloween phrase, then **Generate & save**. SpectreGram writes a **new**
+16-bit WAV with the text drawn into its sound, so the words show up in the
+spectrogram of that file — in SpectreGram or any other spectrum app. The
+saved file then opens in the app. The original file is never changed.
+
+| Piece | Where |
+| --- | --- |
+| Dice phrases (original wording), 32-char limit | `src/message/phrases.ts` |
+| Text → 32-row 0/1 mask (canvas) | `src/message/raster.ts` |
+| Layout, fit check, tone synthesis (pure) | `src/message/encode.ts` |
+| 16-bit PCM WAV writer (pure) | `src/message/wav.ts` |
+| Worker running embed + WAV | `src/message/embed-worker.ts` |
+| `sg:save-wav` save dialog | `electron/main.js`, `electron/preload.cjs` |
+| Button, dialog, generate → save → open | `src/main.ts`, `index.html`, `src/style.css` |
+
+**How the text gets in.** A spectrogram plots time left→right and
+frequency bottom→top. Nothing is added to the track: inside the letter
+shapes, in the message band, the original is dimmed by `LETTER_DIM_DB`
+(24 dB), so the word shows as dark letters against the music. It's done
+with an STFT filter (2048-point sqrt-Hann frames every 512 samples) that
+reconstructs the audio exactly wherever nothing is dimmed, so other
+frequencies and other times come back unchanged. The text is centered in
+the track and sized to read with its natural shape in the full-track view
+(squeezed if it would pass 90% of the track width). If a column would be
+narrower than one full-view STFT frame, strokes would vanish, so the app
+refuses and asks for fewer characters or a longer track. Letters use the
+heaviest system font weight, thickened by one column.
+
+**Verdict safety.** The letters live between 46% and 66% of Nyquist (≈ 11–16
+kHz at 48 kHz), below the analyzer's 73% "costume" line, and the dimming
+eases in and out over ~1 s. On top of that the app checks by construction:
+after cutting the letters it runs the analyzer on the result and on the
+original, and keeps the result only if the cutoff class matches and the
+cutoff hasn't risen by more than 0.1 kHz — otherwise it retries at 12, then
+6 dB, and refuses if none is safe. A WAV made from an MP3 is still lossy,
+and the analyzer correctly calls it a costume.
+
+**What you hear.** Nothing new — the highs just dip while each letter
+passes. Where the track has nothing in the band (silence, a quiet break),
+there is nothing to dim, so the letters can't show there.
+
+**Emoji.** Most dice phrases include Halloween emoji, and typed emoji work
+too. They're drawn with the system emoji font and cut in as silhouettes (the
+mask comes from the glyph's alpha, so shape only, no colors) — e.g.
+"🎃 BOO 👻 🦇" reads as pumpkin, BOO, ghost and bat. The 32-character limit
+counts graphemes (`countChars` in `phrases.ts`, via `Intl.Segmenter`), so
+an emoji is one character even when it's several code points; the input's
+`maxlength` is only a 128-code-unit safety cap.
+
+**History (why it works this way).** Every version that *added* sound
+failed: 32 steady tones made the maintainer's ears feel bad and dizzy;
+hiss and warble were rejected by ear; soft "blended" sparkle grains were
+comfortable but invisible over real music, even with the band dimmed to
+make room. Cutting the letters in (his suggestion) was readable on both
+real test tracks (loud pop, full-band orchestral). Spec R3a–R3g.
+
+**Settings (TUNABLE, `encode.ts`).** `LETTER_DIM_DB` (24; 12 was too faint),
+`BAND_LO`/`BAND_HI` = 0.46/0.66 × Nyquist — keep `BAND_HI` below 0.73 (the
+costume line).
+**Output.** 16-bit PCM at the decoded sample rate (the device rate — see
+AGENTS.md #3), same length and channels as the decoded track, default name
+`<original>-haunted.wav`. Desktop: native save dialog. Web: browser
+download.
+
+**Smoke test.** `SPECTREGRAM_SMOKE=1 SPECTREGRAM_SMOKE_FILE=<track>
+SPECTREGRAM_SMOKE_SAVE_DIR=<dir> SPECTREGRAM_SMOKE_MESSAGE="TRICK OR TREAT"
+npx electron .` analyzes the track, haunts it through the real dialog,
+reopens the WAV, prints both verdicts, and saves the WAV and its spectrogram
+PNG into `<dir>`. Test-only; can't run while another SpectreGram window is
+open.
+
 ## Packaging
 
 electron-builder configuration lives in the `build` key of
