@@ -34,6 +34,22 @@ pixel bright at (time t, frequency f), play a sine at f during t. So:
    with a rotating phasor (2 multiplies per sample) and only where the row
    is on. The message signal is added to every channel; if the mix would
    clip, everything is scaled by `0.999 / peak`.
+   **Superseded by R3b (2026-11-17):** steady tones are removed; step 4 is
+   now one of three styles (`MessageStyle`), all writing into the same
+   message buffer:
+   - **hiss** — overlap-add noise synthesis: 2048-point frames every 512
+     samples; each frame's spectrum has random-phase bins of equal
+     magnitude wherever the current column's mask row is on (band bins
+     only), inverse FFT (`fft.js`), periodic-Hann window, overlap-add.
+     The 75% overlap crossfades columns over ~40 ms, so no clicks.
+   - **warble** — ⌈ROWS/2⌉ oscillators, each covering two mask rows (on if
+     either is), pitch wobbling ± one row spacing at a random 3–6 Hz rate;
+     raised-cosine fades at run edges.
+   - **sparkle** — per "on" cell, ~12 grains per second of column time (≥ 1)
+     at random times, pitch jittered ± half a row, 60 ms Hann envelopes.
+   Then a ~1 s raised-cosine fade over the whole message (≤ 10% of it),
+   per R3b. Per-style levels are TUNABLE and set to similar visibility in
+   the temporary check.
 5. **WAV** (`src/message/wav.ts`, pure): 16-bit PCM, little-endian,
    interleaved, standard 44-byte header.
 

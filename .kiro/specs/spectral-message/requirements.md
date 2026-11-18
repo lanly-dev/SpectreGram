@@ -46,6 +46,22 @@ its source.
   little energy (so the text stays visible at a low level), the level drops
   to ≈ −44 dBFS per tone, and the fades lengthen so tones swell instead of
   stutter. The maintainer confirms by listening.
+  *(Amended again 2026-11-17: the quieter, higher steady tones were still
+  unpleasant — 32 tones held for the whole message read as a constant
+  whine. Steady tones are dropped; see R3b.)*
+- **R3b — Sound styles.** The letters don't have to be drawn with straight
+  lines, so the user picks one of three sounds in the dialog, to compare by
+  ear:
+  - **Hiss** (default) — letters filled with band-limited noise: a quiet
+    cymbal-like hiss, no whine, no beating; letters look solid and grainy.
+  - **Warble** — half as many tones, each slowly wobbling in pitch like a
+    faint theremin; letters look like wavy lines.
+  - **Sparkle** — letters drawn with short random twinkling blips; letters
+    look dotted (sparse in the full-track view, clear when zoomed).
+
+  All three stay inside the R3 band, fade the whole message in and out
+  over about a second, and are tuned to similar visibility. The style is
+  part of the default file name (`<original>-haunted-<style>.wav`).
 - **R4 — Output.** A new 16-bit PCM **WAV** at the decoded sample rate,
   same length and channel count as the decoded track, named
   `<original>-haunted.wav` by default. Desktop: native save dialog. Web:
