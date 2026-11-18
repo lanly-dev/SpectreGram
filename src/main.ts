@@ -21,6 +21,10 @@ import { runScan } from './scan';
 import { buildReportMarkdown, CLASS_INFO, countClasses, rateCollection } from './report';
 import type { FolderFile } from './types/desktop';
 import { playDrumroll, type Drumroll } from './drumroll';
+import { MAX_MESSAGE_CHARS, randomPhrase } from './message/phrases';
+import { rasterizeText, type TextMask } from './message/raster';
+import { layoutMessage } from './message/encode';
+import type { EmbedMessage, EmbedRequest } from './message/embed-worker';
 
 // Tick step candidates for the rulers. The spectrogram's frequency axis is
 // LINEAR, so frequency ticks must be evenly spaced in Hz: log-spaced values
@@ -357,6 +361,7 @@ function onWorkerMessage(msg: WorkerMessage): void {
     // arrives as its own message, so it never delays the graph and never blocks
     // the UI thread (its per-bin percentile sort measures ~160 ms).
     fullGrid = grid;
+    updateMessageButton();
     if (pendingCache) pendingCache.grid = grid;
     const ctx = spectrogramCtx();
     if (ctx) renderSpectrogram(ctx, grid);
@@ -519,6 +524,7 @@ async function openFromCache(file: File, key: string, hit: CachedAnalysis, gen: 
   hideProgress();
   showFileFacts(file, hit.facts);
   fullGrid = hit.grid;
+  updateMessageButton();
   const ctx = spectrogramCtx();
   if (ctx) renderSpectrogram(ctx, hit.grid);
   setVerdict(hit.verdict);
@@ -964,6 +970,185 @@ function setupFolderReport(): void {
   );
 }
 
+// --- Spectral message: hide text in the track's sound, save a new WAV --------
+// Spec: .kiro/specs/spectral-message/. Text → mask is src/message/raster.ts;
+// the tones and the WAV are made in src/message/embed-worker.ts.
+
+let messageBusy = false;
+
+/** The button works once a track's spectrogram is on screen. */
+function updateMessageButton(): void {
+  const btn = el<HTMLButtonElement>('message-btn');
+  if (btn) btn.disabled = !fullGrid;
+}
+
+function messageModalOpen(): boolean {
+  const modal = $('message-modal');
+  return !!modal && !modal.hidden;
+}
+
+function updateMessageCount(): void {
+  const input = el<HTMLInputElement>('message-input');
+  const count = $('message-count');
+  if (input && count) count.textContent = `${input.value.length} / ${MAX_MESSAGE_CHARS}`;
+}
+
+function rollDice(): void {
+  const input = el<HTMLInputElement>('message-input');
+  const dice = $('message-dice');
+  if (!input) return;
+  input.value = randomPhrase(input.value);
+  updateMessageCount();
+  if (dice) {
+    dice.classList.remove('rolled');
+    void dice.offsetWidth; // restart the spin animation
+    dice.classList.add('rolled');
+  }
+  input.focus();
+}
+
+function openMessageModal(): void {
+  if (!fullGrid) return;
+  if (!audioBuffer) {
+    toast('Audio is still loading — try again in a moment.');
+    return;
+  }
+  const modal = $('message-modal');
+  const input = el<HTMLInputElement>('message-input');
+  if (!modal || !input) return;
+  if (!input.value.trim()) input.value = randomPhrase();
+  updateMessageCount();
+  modal.hidden = false;
+  input.focus();
+  input.select();
+}
+
+function closeMessageModal(): void {
+  if (messageBusy) return; // let a generate finish
+  const modal = $('message-modal');
+  if (modal) modal.hidden = true;
+  el<HTMLButtonElement>('message-btn')?.focus();
+}
+
+/** Add the message to copies of the decoded channels and encode a WAV, in a worker. */
+function embedInWorker(buffer: AudioBuffer, mask: TextMask): Promise<ArrayBuffer> {
+  // Locked Vite module-worker syntax (build-conventions.md).
+  const worker = new Worker(new URL('./message/embed-worker.ts', import.meta.url), { type: 'module' });
+  const channels: Float32Array[] = [];
+  for (let c = 0; c < buffer.numberOfChannels; c++) channels.push(buffer.getChannelData(c).slice());
+  return new Promise<ArrayBuffer>((resolve, reject) => {
+    worker.onmessage = (ev: MessageEvent) => {
+      const msg = ev.data as EmbedMessage;
+      worker.terminate();
+      if (msg.type === 'embed-result') resolve(msg.wav);
+      else reject(new Error(msg.message));
+    };
+    worker.onerror = (e) => {
+      worker.terminate();
+      reject(new Error(e.message || 'The embed worker failed.'));
+    };
+    const req: EmbedRequest = { type: 'embed', channels, sampleRate: buffer.sampleRate, mask };
+    worker.postMessage(req, [...channels.map((ch) => ch.buffer), mask.data.buffer]);
+  });
+}
+
+/** Desktop: native save dialog. Web: browser download. True when saved. */
+async function saveWavBytes(wav: ArrayBuffer, name: string): Promise<boolean> {
+  const desktop = window.spectregramDesktop;
+  if (desktop) return desktop.saveWav(wav, name);
+  const url = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return true;
+}
+
+async function generateMessage(): Promise<void> {
+  if (messageBusy) return;
+  const input = el<HTMLInputElement>('message-input');
+  const gen = el<HTMLButtonElement>('message-generate');
+  if (!input || !gen) return;
+  const text = input.value.trim().slice(0, MAX_MESSAGE_CHARS);
+  if (!text) {
+    toast('Type a message or roll the dice first.', 'error');
+    return;
+  }
+  const buffer = audioBuffer;
+  if (!buffer) {
+    toast('Audio is still loading — try again in a moment.');
+    return;
+  }
+  let mask: TextMask;
+  try {
+    mask = rasterizeText(text);
+  } catch (e) {
+    console.error('rasterize failed:', e);
+    toast('Could not draw that message.', 'error');
+    return;
+  }
+  if (mask.cols === 0) {
+    toast('Nothing to draw — try some letters.', 'error');
+    return;
+  }
+  if (!layoutMessage(mask, buffer.length, buffer.sampleRate)) {
+    toast('That message doesn’t fit this track — try fewer characters or a longer track.', 'error');
+    return;
+  }
+  const name = `${currentBaseName}-haunted.wav`;
+  messageBusy = true;
+  gen.disabled = true;
+  gen.textContent = 'Haunting…';
+  let wav: ArrayBuffer | null = null;
+  try {
+    wav = await embedInWorker(buffer, mask);
+    if (!(await saveWavBytes(wav, name))) {
+      toast('Save cancelled.');
+      wav = null;
+    }
+  } catch (e) {
+    console.error('haunt failed:', e);
+    toast(`Could not haunt this track: ${e instanceof Error ? e.message : String(e)}`, 'error');
+    wav = null;
+  } finally {
+    messageBusy = false;
+    gen.disabled = false;
+    gen.textContent = 'Generate & save';
+  }
+  if (!wav) return;
+  closeMessageModal();
+  toast(`Saved ${name} — look for your message!`);
+  // Open the result through the normal path, so the spectrogram shows it.
+  await handleFile(new File([wav], name, { type: 'audio/wav' }));
+}
+
+function setupMessage(): void {
+  $('message-btn')?.addEventListener('click', openMessageModal);
+  $('message-dice')?.addEventListener('click', rollDice);
+  $('message-cancel')?.addEventListener('click', closeMessageModal);
+  $('message-input')?.addEventListener('input', updateMessageCount);
+  $('message-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    void generateMessage();
+  });
+  // While open, the dialog owns the keyboard (like the report modal): Esc
+  // closes it, and the view's shortcuts (u/l dB, Esc zoom reset) don't fire.
+  // Typing and Enter-to-submit still work — only propagation is stopped.
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      if (!messageModalOpen() || e.key === 'Tab') return;
+      e.stopImmediatePropagation();
+      if (e.key === 'Escape') closeMessageModal();
+    },
+    { capture: true },
+  );
+  updateMessageButton();
+}
+
 // Desktop only: files opened with / passed to the app arrive as paths. Read
 // the bytes through the bridge and hand them to the exact same handleFile
 // path as a drop or pick (wrapped in a File), so analysis is identical.
@@ -1079,6 +1264,7 @@ function spectrogramCtx(): CanvasRenderingContext2D | null {
 /** Forget any zoom (a new file is loading). */
 function resetZoomState(): void {
   fullGrid = null;
+  updateMessageButton();
   view = null;
   zoomReqId++;
   zoomBusy = false;
@@ -1461,6 +1647,7 @@ function init(): void {
   setupMenuSave();
   setupFolderPanel();
   setupFolderReport();
+  setupMessage();
   setupPlay();
   setupDesktopOpenFile();
   setupCrosshair();

@@ -131,6 +131,26 @@ function registerIpc() {
     return true;
   });
 
+  // Spectral message (spec: .kiro/specs/spectral-message/, R4): save the
+  // haunted WAV through a native dialog; nothing is written without it.
+  ipcMain.handle('sg:save-wav', async (_event, arrayBuffer, defaultName) => {
+    // Same shape check as the PNG bytes: whatever the IPC clone produced must
+    // be binary with a byte length (not a string or object from the renderer).
+    if (!arrayBuffer || typeof arrayBuffer.byteLength !== 'number') throw new Error('Invalid audio.');
+    const safeName = path.basename(String(defaultName || 'spectregram-haunted.wav'));
+    if (SMOKE_SAVE_DIR) {
+      await fs.promises.writeFile(path.join(SMOKE_SAVE_DIR, safeName), Buffer.from(arrayBuffer));
+      return true;
+    }
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: lastOpenDir ? path.join(lastOpenDir, safeName) : safeName,
+      filters: [{ name: 'WAV audio', extensions: ['wav'] }],
+    });
+    if (result.canceled || !result.filePath) return false;
+    await fs.promises.writeFile(result.filePath, Buffer.from(arrayBuffer));
+    return true;
+  });
+
   ipcMain.handle('sg:read-file', async (_event, filePath) => {
     const resolved = path.resolve(String(filePath));
     if (!allowedReadPaths.has(resolved)) {

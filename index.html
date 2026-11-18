@@ -126,7 +126,68 @@
             <rect x="4" y="4" width="8" height="8" rx="1" fill="currentColor" />
           </svg>
         </button>
+        <!-- Spectral message (spec: .kiro/specs/spectral-message/). Enabled once a track is loaded. -->
+        <button
+          id="message-btn"
+          class="icon-btn"
+          type="button"
+          aria-label="Haunt this track with a hidden message"
+          title="Haunt this track with a hidden message"
+          disabled
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <path d="M3 13 6.5 3h1L11 13M4.4 9.5h5.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M12.5 3.5v3M11 5h3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+          </svg>
+        </button>
       </section>
+
+      <!-- Spectral message dialog: type or roll a phrase, generate a haunted WAV. -->
+      <div
+        id="message-modal"
+        class="report-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="message-title"
+        hidden
+      >
+        <form id="message-form" class="report-card message-card" novalidate>
+          <h2 id="message-title" class="report-title">👻 Haunt this track</h2>
+          <p class="report-blurb">
+            Hide a message in the sound. It shows up in the spectrogram of the new file, in SpectreGram or any spectrum app.
+          </p>
+          <div class="message-row">
+            <input
+              id="message-input"
+              class="message-input"
+              type="text"
+              maxlength="32"
+              autocomplete="off"
+              spellcheck="false"
+              aria-label="Message (up to 32 characters)"
+              placeholder="Type a message…"
+            />
+            <button
+              id="message-dice"
+              class="message-dice"
+              type="button"
+              aria-label="Random Halloween phrase"
+              title="Random Halloween phrase"
+            >
+              🎲
+            </button>
+          </div>
+          <div id="message-count" class="message-count" aria-live="polite">0 / 32</div>
+          <p class="report-note">
+            Saves a new WAV; your file isn’t changed. The message is drawn between about 22% and 50% of the
+            frequency range, so it may be faintly audible.
+          </p>
+          <div class="report-actions">
+            <button id="message-generate" type="submit">Generate &amp; save</button>
+            <button id="message-cancel" type="button">Cancel</button>
+          </div>
+        </form>
+      </div>
 
       <div id="screensaver" class="screensaver" hidden>
         <video

@@ -14,6 +14,8 @@ export interface SpectreGramDesktop {
   onSavePng(callback: () => void): () => void;
   /** Folder panel: fires when the shell has loaded an audio folder. */
   onFolderLoaded(callback: (data: FolderLoaded) => void): () => void;
+  /** Spectral message: native save dialog for the haunted WAV; true if saved. */
+  saveWav(arrayBuffer: ArrayBuffer, defaultName: string): Promise<boolean>;
   /** Folder report: save dialog in the scanned folder; resolves true if saved. */
   saveReport(text: string, defaultName: string): Promise<boolean>;
   /** Folder panel: grant read access + open a file from the folder. */

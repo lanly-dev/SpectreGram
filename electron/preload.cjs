@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld('spectregramDesktop', {
   /** Report whether a spectrogram is present (gates Save as PNG in the menu). */
   reportSpectrogramState: (present) =>
     ipcRenderer.invoke('sg:spectrogram-state', present),
+  /** Spectral message: save the haunted WAV via a native dialog. Resolves true if saved. */
+  saveWav: (arrayBuffer, defaultName) => ipcRenderer.invoke('sg:save-wav', arrayBuffer, defaultName),
   /** Folder report: save dialog opened in the scanned folder. Resolves true if saved. */
   saveReport: (text, defaultName) => ipcRenderer.invoke('sg:save-report', text, defaultName),
   /** Options menu actions (screensaver toggle, development helpers, toasts). */
