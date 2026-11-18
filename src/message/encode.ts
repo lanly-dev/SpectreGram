@@ -14,8 +14,8 @@ import type { TextMask } from './raster';
  *  haunted file can never measure a higher cutoff than its source (R3). */
 export const BAND_LO = 0.22;
 export const BAND_HI = 0.5;
-/** Peak amplitude of each row's sine (≈ −38 dBFS). TUNABLE. */
-export const ROW_AMP = 0.012;
+/** Peak amplitude of each row's sine (≈ −30 dBFS). TUNABLE: louder reads better over busy music but is easier to hear. −38 dBFS was too faint over a loud pop master. */
+export const ROW_AMP = 0.03;
 /** Fade at every on/off edge. Hard edges would click, and a click splashes
  *  energy across every frequency up to Nyquist (R3). */
 export const RAMP_SEC = 0.006;

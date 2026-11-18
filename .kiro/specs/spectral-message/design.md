@@ -23,7 +23,9 @@ pixel bright at (time t, frequency f), play a sine at f during t. So:
    the full-track STFT (`stftParamsFor`), otherwise thin strokes fall
    between frames and vanish. If `cols > 0.9 × fullViewFrames`, refuse.
 4. **Synthesis** (`encode.ts`, run in a worker): for each row, a sine of
-   amplitude `ROW_AMP` (TUNABLE, ≈ −38 dBFS) whose gain follows that row of
+   amplitude `ROW_AMP` (TUNABLE; ≈ −38 dBFS planned, raised to ≈ −30 dBFS
+   after the task 4 real-track check showed −38 too faint over a loud
+   master) whose gain follows that row of
    the mask over time, with `RAMP_SEC` (≈ 6 ms) linear fades at every
    on/off edge (no clicks → no broadband splatter, R3). Each sine has a
    random start phase so the rows don't add up in phase. Rows are generated

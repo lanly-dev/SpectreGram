@@ -177,6 +177,58 @@ roll time and the revealed rating, and saves the report into `<dir>`
 without a dialog. Test-only; inert in normal use. Like the file smoke, it
 can't run while another SpectreGram window is open (single-instance lock).
 
+## Spectral message
+
+Spec: `.kiro/specs/spectral-message/`. With a track loaded, the controls-row
+**Haunt** button opens a dialog: type up to 32 characters or roll 🎲 for a
+Halloween phrase, then **Generate & save**. SpectreGram writes a **new**
+16-bit WAV with the text drawn into its sound, so the words show up in the
+spectrogram of that file — in SpectreGram or any other spectrum app. The
+saved file then opens in the app. The original file is never changed.
+
+| Piece | Where |
+| --- | --- |
+| Dice phrases (original wording), 32-char limit | `src/message/phrases.ts` |
+| Text → 32-row 0/1 mask (canvas) | `src/message/raster.ts` |
+| Layout, fit check, tone synthesis (pure) | `src/message/encode.ts` |
+| 16-bit PCM WAV writer (pure) | `src/message/wav.ts` |
+| Worker running embed + WAV | `src/message/embed-worker.ts` |
+| `sg:save-wav` save dialog | `electron/main.js`, `electron/preload.cjs` |
+| Button, dialog, generate → save → open | `src/main.ts`, `index.html`, `src/style.css` |
+
+**How text becomes sound.** A spectrogram plots time left→right and
+frequency bottom→top, so each row of the text mask becomes one sine wave
+whose volume follows that row over time. The text is centered in the track
+and sized to read with its natural shape in the full-track view (squeezed
+if it would pass 90% of the track width). If a column would be narrower than
+one full-view STFT frame, strokes would vanish, so the app refuses and asks
+for fewer characters or a longer track.
+
+**Verdict safety.** The text lives between 22% and 50% of Nyquist (≈ 5.3–12
+kHz at 48 kHz), well below the analyzer's 73% "costume" line, and every
+tone fades in and out over 6 ms (hard edges click, and a click splashes
+energy all the way up to Nyquist). So a haunted file never measures a higher
+cutoff than its source. A WAV made from an MP3 is still lossy, and the
+analyzer correctly calls it a costume.
+
+**Settings (TUNABLE, `encode.ts`).** `ROW_AMP` = 0.03 per row (≈ −30 dBFS):
+the first value, 0.012, was too faint over a loud master. Louder reads
+better but is easier to hear; the tones are in the audible range by design.
+`BAND_LO`/`BAND_HI`, `RAMP_SEC`. If the mix would clip, the whole file is
+scaled down to a 0.999 peak.
+
+**Output.** 16-bit PCM at the decoded sample rate (the device rate — see
+AGENTS.md #3), same length and channels as the decoded track, default name
+`<original>-haunted.wav`. Desktop: native save dialog. Web: browser
+download.
+
+**Smoke test.** `SPECTREGRAM_SMOKE=1 SPECTREGRAM_SMOKE_FILE=<track>
+SPECTREGRAM_SMOKE_SAVE_DIR=<dir> SPECTREGRAM_SMOKE_MESSAGE="TRICK OR TREAT"
+npx electron .` analyzes the track, haunts it through the real dialog,
+reopens the WAV, prints both verdicts, and saves the WAV and its spectrogram
+PNG into `<dir>`. Test-only; can't run while another SpectreGram window is
+open.
+
 ## Packaging
 
 electron-builder configuration lives in the `build` key of

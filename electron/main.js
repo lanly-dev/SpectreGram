@@ -34,6 +34,8 @@ const SMOKE_FILE = process.env.SPECTREGRAM_SMOKE_FILE || '';
 const SMOKE_SAVE_DIR = process.env.SPECTREGRAM_SMOKE_SAVE_DIR || '';
 // Folder-report smoke: open this folder, Scan, wait for the reveal, save.
 const SMOKE_FOLDER = process.env.SPECTREGRAM_SMOKE_FOLDER || '';
+// Spectral-message smoke: haunt SMOKE_FILE with this text, then reopen it.
+const SMOKE_MESSAGE = process.env.SPECTREGRAM_SMOKE_MESSAGE || '';
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -490,6 +492,10 @@ async function runSmoke() {
       const done = !/\bpending\b/.test(state.verdictClass) && state.verdict.includes('(estimate)');
       if (done) {
         console.log('SMOKE_ANALYSIS_OK', JSON.stringify(state));
+        if (SMOKE_MESSAGE) {
+          await runMessageSmoke();
+          return;
+        }
         if (SMOKE_SAVE_DIR) {
           await mainWindow.webContents.executeJavaScript(`document.getElementById('png-btn').click()`);
           await new Promise((r) => setTimeout(r, 1500));
@@ -518,6 +524,51 @@ async function runSmoke() {
     setTimeout(poll, 500);
   };
   void poll();
+}
+
+// Spectral-message smoke (env-gated, test-only): after SMOKE_FILE's verdict,
+// haunt it with SMOKE_MESSAGE through the real dialog, wait for the saved WAV
+// to reopen and get its own verdict, then save that spectrogram as a PNG.
+async function runMessageSmoke() {
+  const js = (code) => mainWindow.webContents.executeJavaScript(code);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  try {
+    await js(`document.getElementById('message-btn').click()`);
+    await sleep(300);
+    await js(`(() => {
+      const i = document.getElementById('message-input');
+      i.value = ${JSON.stringify(SMOKE_MESSAGE)};
+      i.dispatchEvent(new Event('input'));
+      document.getElementById('message-form').requestSubmit();
+    })()`);
+    const t0 = Date.now();
+    for (;;) {
+      const raw = await js(`JSON.stringify({
+        title: document.title,
+        verdict: (document.getElementById('verdict') || {}).textContent || '',
+        verdictClass: (document.getElementById('verdict') || {}).className || '',
+        facts: (document.getElementById('facts') || {}).textContent || '',
+        toast: (document.getElementById('toast') || {}).textContent || ''
+      })`);
+      const s = JSON.parse(raw);
+      const ready = s.title.includes('-haunted') && !/\bpending\b/.test(s.verdictClass) && s.verdict.includes('(estimate)');
+      if (ready) {
+        console.log('SMOKE_MESSAGE_OK', `ms=${Date.now() - t0}`, raw);
+        break;
+      }
+      if (Date.now() - t0 > 120000) throw new Error(`haunted file never analyzed; last toast: ${s.toast}`);
+      await sleep(400);
+    }
+    await js(`document.getElementById('png-btn').click()`);
+    await sleep(1500);
+    for (const f of fs.readdirSync(SMOKE_SAVE_DIR)) {
+      console.log('SMOKE_MESSAGE_FILE', f, fs.statSync(path.join(SMOKE_SAVE_DIR, f)).size);
+    }
+    app.exit(0);
+  } catch (e) {
+    console.log('SMOKE_MESSAGE_FAIL', e.message);
+    app.exit(4);
+  }
 }
 
 // Folder-report smoke (env-gated, test-only): loads SMOKE_FOLDER through the
