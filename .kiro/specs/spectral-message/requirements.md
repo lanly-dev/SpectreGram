@@ -62,6 +62,18 @@ its source.
   All three stay inside the R3 band, fade the whole message in and out
   over about a second, and are tuned to similar visibility. The style is
   part of the default file name (`<original>-haunted-<style>.wav`).
+
+  *(Amended 2026-11-17 after the maintainer compared them: hiss and warble
+  are removed; sparkle is the only sound. The style picker and the style in
+  the file name go away; the default name is `<original>-haunted.wav`
+  again.)*
+- **R3c — Softer sparkle that blends in.** Each grain is longer and
+  gentler, and its loudness is **calibrated to the track**: before adding
+  anything, the app measures how loud the original already is at each
+  moment and pitch of the message, and sets each grain a fixed margin
+  above that level, between a floor (so the text still shows over silence)
+  and a ceiling (quieter than the previous sparkle, so busy passages never
+  get loud grains). Quiet passages get quiet sparkles.
 - **R4 — Output.** A new 16-bit PCM **WAV** at the decoded sample rate,
   same length and channel count as the decoded track, named
   `<original>-haunted.wav` by default. Desktop: native save dialog. Web:

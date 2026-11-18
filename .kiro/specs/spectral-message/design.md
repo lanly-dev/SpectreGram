@@ -50,6 +50,16 @@ pixel bright at (time t, frequency f), play a sine at f during t. So:
    Then a ~1 s raised-cosine fade over the whole message (≤ 10% of it),
    per R3b. Per-style levels are TUNABLE and set to similar visibility in
    the temporary check.
+
+   **Superseded by R3c (2026-11-17):** only **sparkle** remains (hiss and
+   warble removed). Blend calibration: the channels are mixed to mono and
+   three 2048-point Hann frames are analyzed per mask column (start,
+   middle, end of its span) — only the band bins, with the analyzer's
+   normalization (`2 / windowSum`). The background for cell (row, column)
+   is the median magnitude over that row's bins in those frames, smoothed
+   over ±2 columns in dB. Grain amplitude = background × `BLEND_MARGIN_DB`,
+   clamped to [`SPARKLE_MIN_AMP`, `SPARKLE_MAX_AMP`]. Grains are 80 ms
+   (was 60 ms) Hann envelopes. All TUNABLE.
 5. **WAV** (`src/message/wav.ts`, pure): 16-bit PCM, little-endian,
    interleaved, standard 44-byte header.
 
