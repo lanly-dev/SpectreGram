@@ -7,7 +7,8 @@
 // (R3b, R3c).
 
 import FFT from 'fft.js';
-import { stftParamsFor } from '../audio/stft';
+import { computeStft, stftParamsFor } from '../audio/stft';
+import { analyze, LOSSLESS_HIGH_RATIO, SUSPICIOUS_RATIO } from '../audio/cutoff';
 import type { TextMask } from './raster';
 
 /** Message band, as fractions of Nyquist (≈ 11–16 kHz at 48 kHz). High
@@ -81,8 +82,11 @@ export function layoutMessage(mask: TextMask, sampleCount: number, sampleRate: n
 // a ceiling. Quiet passages get quiet sparkles; busy ones never get loud ones.
 // (Steady tones, hiss and warble were tried and removed: R3a, R3b.)
 
-/** Grain loudness above the track's own level at that moment and pitch. TUNABLE. */
-export const BLEND_MARGIN_DB = 8;
+/** Grain loudness above the (dimmed) track's own level at that moment and pitch.
+ *  TUNABLE. +14 dB with the band dimmed 12 dB puts the grains near the band's
+ *  original level, so the band gets no louder overall. (+8 dB read only
+ *  +3 dB visible: grains are brief and only partly caught by each frame.) */
+export const BLEND_MARGIN_DB = 14;
 /** Floor (≈ −66 dBFS): grains still show over silence. TUNABLE. */
 export const SPARKLE_MIN_AMP = 0.0005;
 /** Ceiling (≈ −46 dBFS; the earlier fixed sparkle was ≈ −40). TUNABLE. */
@@ -220,10 +224,130 @@ function synthSparkle(
   }
 }
 
+// --- Make room + verdict check (R3d, R3e) ------------------------------------
+
+/** How much the original is dimmed inside the message band (dB). TUNABLE. */
+export const CARVE_DB = 12;
+const CARVE_FFT = 2048;
+const CARVE_HOP = CARVE_FFT / 4;
+/** A haunted file's cutoff may not rise by more than this (Hz). */
+const VERDICT_RISE_TOLERANCE_HZ = 100;
+
+/** Raised-cosine "depth" of the message at sample i (0 outside, 1 inside, ~1 s eases). */
+function messageDepth(i: number, layout: MessageLayout, fade: number): number {
+  const { startSample: a, endSample: b } = layout;
+  if (i < a || i >= b) return 0;
+  const x = Math.min(1, (i - a) / fade, (b - 1 - i) / fade);
+  return 0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, x));
+}
+
+function messageFadeSamples(layout: MessageLayout, sr: number): number {
+  const len = layout.endSample - layout.startSample;
+  return Math.max(1, Math.min(Math.round(MESSAGE_FADE_SEC * sr), Math.floor(len * 0.1)));
+}
+
 /**
- * Add the message to every channel in place, as blended sparkles. If the
- * result would clip, every channel is scaled by 0.999 / peak. Returns that
- * scale (1 = unchanged).
+ * Dim one channel by `carveDb` inside the message band while the message
+ * plays (R3d), in place. STFT filter: sqrt-Hann analysis and synthesis
+ * windows at 75% overlap reconstruct the signal exactly where the gain is 1,
+ * and the gain eases in and out with the message, so the edited region joins
+ * the untouched audio seamlessly. Only band bins (plus a one-row taper) are
+ * touched.
+ */
+export function carveBand(ch: Float32Array, sr: number, mask: TextMask, layout: MessageLayout, carveDb: number): void {
+  if (!(carveDb > 0)) return;
+  const L = CARVE_FFT;
+  const H = CARVE_HOP;
+  const fft = new FFT(L);
+  const spec = fft.createComplexArray();
+  const time = fft.createComplexArray();
+  const frame = new Float64Array(L);
+  const win = new Float64Array(L);
+  for (let n = 0; n < L; n++) win[n] = Math.sqrt(0.5 - 0.5 * Math.cos((2 * Math.PI * n) / L)); // sqrt periodic Hann
+  // Σ win² over the 4 overlapping frames = 2, so each output is halved.
+  const olaScale = 0.5;
+
+  // Full-depth gain per bin: g inside the band, cosine taper one row wide outside.
+  const g = 10 ** (-carveDb / 20);
+  const binHz = sr / L;
+  const step = rowStepHz(layout);
+  const fHi = layout.rowFreqs[0] + step / 2;
+  const fLo = layout.rowFreqs[mask.rows - 1] - step / 2;
+  const cut = new Float64Array(L / 2 + 1); // how much of the cut each bin gets (0…1)
+  for (let k = 0; k <= L / 2; k++) {
+    const f = k * binHz;
+    const d = f < fLo ? (fLo - f) / step : f > fHi ? (f - fHi) / step : 0;
+    cut[k] = d >= 1 ? 0 : 0.5 + 0.5 * Math.cos(Math.PI * d);
+  }
+
+  const fade = messageFadeSamples(layout, sr);
+  const a = Math.max(0, layout.startSample - L);
+  const b = Math.min(ch.length, layout.endSample + L);
+  const out = new Float32Array(b - a);
+  for (let s = a - L + H; s < b; s += H) {
+    const depth = messageDepth(s + L / 2, layout, fade);
+    for (let n = 0; n < L; n++) {
+      const i = s + n;
+      frame[n] = i >= 0 && i < ch.length ? ch[i] * win[n] : 0;
+    }
+    fft.realTransform(spec, frame);
+    fft.completeSpectrum(spec);
+    if (depth > 0) {
+      for (let k = 1; k < L / 2; k++) {
+        if (!cut[k]) continue;
+        const gk = 1 - depth * cut[k] * (1 - g);
+        spec[2 * k] *= gk;
+        spec[2 * k + 1] *= gk;
+        spec[2 * (L - k)] *= gk;
+        spec[2 * (L - k) + 1] *= gk;
+      }
+    }
+    fft.inverseTransform(time, spec);
+    for (let n = 0; n < L; n++) {
+      const i = s + n;
+      if (i >= a && i < b) out[i - a] += time[2 * n] * win[n] * olaScale;
+    }
+  }
+  ch.set(out, a);
+}
+
+type CutoffClass = 'genuine' | 'inconclusive' | 'suspicious' | 'none';
+
+/** The analyzer's view of a signal: cutoff (Hz) and its class (R3e). */
+export function verdictClassOf(mono: Float32Array, sr: number): { cutoffHz: number; cls: CutoffClass } {
+  const { cutoff } = analyze(computeStft(mono, stftParamsFor(mono.length)), sr, 'FLAC');
+  const ratio = sr > 0 ? cutoff.cutoffHz / (sr / 2) : 0;
+  const cls: CutoffClass =
+    cutoff.cutoffHz <= 0
+      ? 'none'
+      : ratio >= LOSSLESS_HIGH_RATIO
+        ? 'genuine'
+        : ratio < SUSPICIOUS_RATIO
+          ? 'suspicious'
+          : 'inconclusive';
+  return { cutoffHz: cutoff.cutoffHz, cls };
+}
+
+function mixToMono(channels: Float32Array[]): Float32Array {
+  const n = channels[0]?.length ?? 0;
+  const mono = new Float32Array(n);
+  for (const ch of channels) for (let i = 0; i < n; i++) mono[i] += ch[i] / channels.length;
+  return mono;
+}
+
+export interface EmbedResult {
+  /** Clip-protection scale applied to the whole file (1 = unchanged). */
+  scale: number;
+  /** How much the band was dimmed in the version that was kept (dB). */
+  carveDb: number;
+}
+
+/**
+ * Add the message to every channel in place: dim the band to make room
+ * (R3d), add blended sparkles (R3c), then check the analyzer still reads the
+ * file the same (R3e) — retrying with half the dimming, then none. Throws if
+ * no attempt keeps the verdict. If the result would clip, every channel is
+ * scaled by 0.999 / peak.
  */
 export function embedMessage(
   channels: Float32Array[],
@@ -231,38 +355,40 @@ export function embedMessage(
   mask: TextMask,
   layout: MessageLayout,
   rand: () => number = Math.random,
-): number {
+): EmbedResult {
   const { startSample, endSample } = layout;
   const len = endSample - startSample;
+  const fade = messageFadeSamples(layout, sampleRate);
+  const before = verdictClassOf(mixToMono(channels), sampleRate);
 
-  // Measure the original (mono mix, like the analyzer) before adding anything.
-  const n = channels[0]?.length ?? 0;
-  const mono = new Float32Array(n);
-  for (const ch of channels) for (let i = 0; i < n; i++) mono[i] += ch[i] / channels.length;
-  const background = measureBackground(mono, sampleRate, mask, layout);
+  for (const carveDb of [CARVE_DB, CARVE_DB / 2, 0]) {
+    const work = channels.map((ch) => ch.slice());
+    for (const ch of work) carveBand(ch, sampleRate, mask, layout, carveDb);
 
-  // Grains are placed relative to the message window (msg[0] = startSample).
-  const msg = new Float32Array(len);
-  synthSparkle(msg, sampleRate, mask, layout, background, rand);
-
-  // Ease the whole message in and out, so it never starts abruptly.
-  const fade = Math.min(Math.round(MESSAGE_FADE_SEC * sampleRate), Math.floor(len * 0.1));
-  for (let i = 0; i < fade; i++) {
-    const gn = 0.5 - 0.5 * Math.cos((Math.PI * i) / fade);
-    msg[i] *= gn;
-    msg[len - 1 - i] *= gn;
-  }
-
-  let peak = 0;
-  for (const ch of channels) {
-    for (let i = 0; i < len; i++) ch[startSample + i] += msg[i];
-    for (let i = 0; i < ch.length; i++) {
-      const v = Math.abs(ch[i]);
-      if (v > peak) peak = v;
+    // Measure the (dimmed) original before adding anything, so each grain
+    // sits just above what's left around it.
+    const background = measureBackground(mixToMono(work), sampleRate, mask, layout);
+    const msg = new Float32Array(len); // msg[0] = startSample
+    synthSparkle(msg, sampleRate, mask, layout, background, rand);
+    for (let i = 0; i < fade; i++) {
+      const gn = 0.5 - 0.5 * Math.cos((Math.PI * i) / fade);
+      msg[i] *= gn;
+      msg[len - 1 - i] *= gn;
     }
+    for (const ch of work) for (let i = 0; i < len; i++) ch[startSample + i] += msg[i];
+
+    const after = verdictClassOf(mixToMono(work), sampleRate);
+    const safe = after.cls === before.cls && after.cutoffHz <= before.cutoffHz + VERDICT_RISE_TOLERANCE_HZ;
+    if (!safe) continue;
+
+    let peak = 0;
+    for (const ch of work) for (let i = 0; i < ch.length; i++) peak = Math.max(peak, Math.abs(ch[i]));
+    const scale = peak > 0.999 ? 0.999 / peak : 1;
+    work.forEach((ch, c) => {
+      if (scale !== 1) for (let i = 0; i < ch.length; i++) ch[i] *= scale;
+      channels[c].set(ch);
+    });
+    return { scale, carveDb };
   }
-  if (peak <= 0.999) return 1;
-  const scale = 0.999 / peak;
-  for (const ch of channels) for (let i = 0; i < ch.length; i++) ch[i] *= scale;
-  return scale;
+  throw new Error('Could not add the message without changing how the file is judged.');
 }
