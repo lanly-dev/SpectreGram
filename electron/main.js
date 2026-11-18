@@ -41,6 +41,8 @@ const SMOKE_REFRESH_ADD = process.env.SPECTREGRAM_SMOKE_REFRESH_ADD || '';
 const SMOKE_WALK_DELAY_MS = Number(process.env.SPECTREGRAM_SMOKE_WALK_DELAY_MS) || 0;
 // Spectral-message smoke: haunt SMOKE_FILE with this text, then reopen it.
 const SMOKE_MESSAGE = process.env.SPECTREGRAM_SMOKE_MESSAGE || '';
+// Ruler-seek smoke: after SMOKE_FILE's verdict, hover/click the time ruler and play from the cue.
+const SMOKE_SEEK = process.env.SPECTREGRAM_SMOKE_SEEK === '1';
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -552,6 +554,10 @@ async function runSmoke() {
           await runMessageSmoke();
           return;
         }
+        if (SMOKE_SEEK) {
+          await runSeekSmoke();
+          return;
+        }
         if (SMOKE_SAVE_DIR) {
           await mainWindow.webContents.executeJavaScript(`document.getElementById('png-btn').click()`);
           await new Promise((r) => setTimeout(r, 1500));
@@ -580,6 +586,54 @@ async function runSmoke() {
     setTimeout(poll, 500);
   };
   void poll();
+}
+
+// Ruler-seek smoke (env-gated, test-only): hover the bottom ruler at 50%,
+// click to cue, play ~1 s, stop. Prints the DOM measurements at each step.
+async function runSeekSmoke() {
+  const js = (code) => mainWindow.webContents.executeJavaScript(code);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const measure = `JSON.stringify((() => {
+    const wrap = document.getElementById('canvas-wrap');
+    const line = document.getElementById('seek-hover');
+    const tip = document.getElementById('seek-tooltip');
+    const ph = document.getElementById('playhead');
+    return {
+      wrapW: wrap.clientWidth,
+      hoverHidden: line.hidden, hoverLeft: line.style.left,
+      tipHidden: tip.hidden, tip: tip.textContent,
+      phDisplay: ph.style.display, phLeft: ph.style.left,
+      playing: document.getElementById('play-btn').classList.contains('playing'),
+      seekable: document.getElementById('ruler-bottom').classList.contains('seekable')
+    };
+  })())`;
+  try {
+    await js(`(() => {
+      const r = document.getElementById('ruler-bottom').getBoundingClientRect();
+      const x = r.left + r.width * 0.5, y = r.top + r.height / 2;
+      document.getElementById('ruler-bottom').dispatchEvent(new PointerEvent('pointermove', { clientX: x, clientY: y, bubbles: true }));
+    })()`);
+    console.log('SEEK_HOVER', await js(measure));
+    await js(`(() => {
+      const r = document.getElementById('ruler-bottom').getBoundingClientRect();
+      const x = r.left + r.width * 0.5, y = r.top + r.height / 2;
+      document.getElementById('ruler-bottom').dispatchEvent(new MouseEvent('click', { clientX: x, clientY: y, bubbles: true }));
+    })()`);
+    await sleep(100);
+    console.log('SEEK_CUED', await js(measure));
+    await js(`document.getElementById('play-btn').click()`);
+    await sleep(1000);
+    console.log('SEEK_PLAYING', await js(measure));
+    await js(`document.getElementById('play-btn').click()`);
+    await sleep(200);
+    console.log('SEEK_STOPPED', await js(measure));
+    await js(`document.getElementById('ruler-bottom').dispatchEvent(new PointerEvent('pointerleave'))`);
+    console.log('SEEK_LEFT', await js(measure));
+    app.exit(0);
+  } catch (err) {
+    console.log('SEEK_FAIL', String(err));
+    app.exit(4);
+  }
 }
 
 // Spectral-message smoke (env-gated, test-only): after SMOKE_FILE's verdict,

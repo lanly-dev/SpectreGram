@@ -1071,3 +1071,60 @@ main.folder-open .controls {
     animation: none;
   }
 }
+
+/* --- Ruler seek (spec: .kiro/specs/ruler-seek/) ----------------------------- */
+
+/* The time ruler takes the pointer (other rulers stay inert); it only acts
+   once a spectrogram is on screen (`seekable`). */
+.ruler-bottom {
+  pointer-events: auto;
+}
+
+.ruler-bottom.seekable {
+  cursor: pointer;
+}
+
+/* Hover preview: crimson, with Dracula on top — distinct from the white
+   ghost playhead. */
+.seek-hover {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: rgba(220, 30, 60, 0.9);
+  box-shadow:
+    0 0 8px rgba(255, 40, 70, 0.75),
+    0 0 2px rgba(255, 120, 130, 0.9);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.seek-hover[hidden],
+.seek-tooltip[hidden] {
+  display: none;
+}
+
+.seek-hover-icon {
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  line-height: 1;
+  filter: drop-shadow(0 0 4px rgba(255, 60, 80, 0.9));
+}
+
+.seek-tooltip {
+  position: absolute;
+  padding: 2px 6px;
+  background: rgba(21, 21, 28, 0.92);
+  color: #fff;
+  border: 1px solid rgba(220, 30, 60, 0.7);
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 7;
+}

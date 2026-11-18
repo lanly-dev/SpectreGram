@@ -21,6 +21,8 @@
         <section id="canvas-wrap" class="canvas-wrap">
           <canvas id="canvas" width="1024" height="512" aria-label="Spectrogram"></canvas>
           <div id="playhead" class="playhead" aria-hidden="true"><span class="playhead-ghost">👻</span></div>
+          <!-- Ruler seek (spec: .kiro/specs/ruler-seek/): preview line while hovering the time ruler. -->
+          <div id="seek-hover" class="seek-hover" aria-hidden="true" hidden><span class="seek-hover-icon">🧛</span></div>
           <div id="crosshair-v" class="crosshair crosshair-v" aria-hidden="true"></div>
           <div id="crosshair-h" class="crosshair crosshair-h" aria-hidden="true"></div>
           <div id="cursor-label" class="cursor-label" aria-hidden="true"></div>
@@ -43,6 +45,7 @@
           <div class="empty-text">Drop a file… if you dare</div>
         </div>
         <div id="ruler-bottom" class="ruler ruler-bottom" aria-hidden="true"></div>
+        <div id="seek-tooltip" class="seek-tooltip" aria-hidden="true" hidden></div>
         <div
           id="legend"
           class="legend"

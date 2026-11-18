@@ -187,6 +187,8 @@ let playSource: AudioBufferSourceNode | null = null;
 let playStartCtxTime = 0;
 let rafId = 0;
 let isPlaying = false;
+/** Where Play starts, in seconds (set by clicking the time ruler — ruler seek). */
+let cueSec = 0;
 
 function $(id: string): HTMLElement | null {
   return document.getElementById(id);
@@ -556,8 +558,10 @@ async function openFromCache(file: File, key: string, hit: CachedAnalysis, gen: 
 
 async function handleFile(file: File): Promise<void> {
   const gen = ++openGen;
-  // Cancel any in-flight analysis and playback before starting fresh.
+  // Cancel any in-flight analysis and playback before starting fresh; a new
+  // file starts with the cue back at 0:00 (ruler seek, R4).
   teardownWorker();
+  cueSec = 0;
   stopPlayback();
   resetZoomState();
   pendingCache = null;
@@ -1365,6 +1369,7 @@ function applyView(next: TimeView | null): void {
   const r = viewRange();
   setTimeRuler(r.start, r.end, view === null);
   updateZoomChrome();
+  showCue(); // keep a stopped, cued playhead at its time (ruler seek, R4)
   if (view) {
     requestZoomGrid();
   } else {
@@ -1559,15 +1564,28 @@ function startPlayback(): void {
   playSource = playCtx.createBufferSource();
   playSource.buffer = audioBuffer;
   playSource.connect(playCtx.destination);
-  playSource.onended = () => stopPlayback();
-  playStartCtxTime = playCtx.currentTime;
-  playSource.start();
+  // Start from the cue (ruler seek, R3); a cue right at the end restarts.
+  const offset = cueSec < audioBuffer.duration - 0.05 ? Math.max(0, cueSec) : 0;
+  const src = playSource;
+  playSource.onended = () => {
+    // Only a source that played to the end resets the cue — not one that
+    // was stopped to jump elsewhere.
+    if (playSource === src) stopPlayback('end');
+  };
+  // `elapsed` (now − start) is then the position in the track.
+  playStartCtxTime = playCtx.currentTime - offset;
+  playSource.start(0, offset);
   isPlaying = true;
   updatePlayButton();
   rafLoop();
 }
 
-function stopPlayback(): void {
+/**
+ * Stop playback. `'end'` (the track finished) resets the cue to 0:00 and
+ * hides the playhead; a user stop puts the playhead back at the cue
+ * (hidden at 0:00) — ruler seek, R3.
+ */
+function stopPlayback(reason: 'user' | 'end' = 'user'): void {
   if (playSource) {
     try {
       playSource.stop();
@@ -1583,14 +1601,20 @@ function stopPlayback(): void {
   }
   isPlaying = false;
   updatePlayButton();
-  movePlayhead(0, false);
+  if (reason === 'end') cueSec = 0;
+  showCue();
+}
+
+/** Show the stopped playhead at the cue (hidden when the cue is 0:00). */
+function showCue(): void {
+  if (!isPlaying) movePlayhead(cueSec, cueSec > 0);
 }
 
 function rafLoop(): void {
   if (!isPlaying || !playCtx || !audioBuffer) return;
   const elapsed = playCtx.currentTime - playStartCtxTime;
   if (elapsed >= audioBuffer.duration) {
-    stopPlayback();
+    stopPlayback('end');
     return;
   }
   movePlayhead(elapsed, true);
@@ -1617,6 +1641,63 @@ function updatePlayButton(): void {
   btn.classList.toggle('playing', isPlaying);
   btn.title = label;
   btn.setAttribute('aria-label', label);
+}
+
+// --- Ruler seek: hover the time ruler to preview, click to cue ----------------
+// Spec: .kiro/specs/ruler-seek/. The bottom ruler and the spectrogram share
+// their left/right edges, so a fraction across one is the same across the
+// other; times come from viewRange(), so this works while zoomed.
+
+function setupRulerSeek(): void {
+  const ruler = $('ruler-bottom');
+  const wrap = $('canvas-wrap');
+  const box = $('spectrogram-box');
+  const line = $('seek-hover');
+  const tip = $('seek-tooltip');
+  if (!ruler || !wrap || !box || !line || !tip) return;
+
+  const ready = (): boolean => !!fullGrid && trackDuration() > 0;
+  const pointAt = (clientX: number): { frac: number; time: number; span: number } => {
+    const r = ruler.getBoundingClientRect();
+    const frac = r.width > 0 ? Math.max(0, Math.min(1, (clientX - r.left) / r.width)) : 0;
+    const v = viewRange();
+    const span = v.end - v.start;
+    return { frac, time: v.start + frac * span, span };
+  };
+  const hide = (): void => {
+    line.hidden = true;
+    tip.hidden = true;
+  };
+
+  ruler.addEventListener('pointermove', (e) => {
+    ruler.classList.toggle('seekable', ready());
+    if (!ready()) {
+      hide();
+      return;
+    }
+    const { frac, time, span } = pointAt(e.clientX);
+    line.style.left = `${(frac * wrap.clientWidth).toFixed(1)}px`;
+    line.hidden = false;
+    // Same precision rule as the crosshair readout.
+    tip.textContent = fmtTime(time, span <= 2 ? 3 : span <= 20 ? 2 : 1);
+    tip.hidden = false;
+    // Beside the cursor, just above the ruler, kept inside the box.
+    const b = box.getBoundingClientRect();
+    const rr = ruler.getBoundingClientRect();
+    let left = e.clientX - b.left + 10;
+    if (left + tip.offsetWidth > b.width - 2) left = e.clientX - b.left - tip.offsetWidth - 10;
+    tip.style.left = `${Math.max(2, left)}px`;
+    tip.style.top = `${rr.top - b.top - tip.offsetHeight - 3}px`;
+  });
+  ruler.addEventListener('pointerleave', hide);
+
+  // Click: cue playback there (R2); while playing, jump there now (R3).
+  ruler.addEventListener('click', (e) => {
+    if (!ready()) return;
+    cueSec = Math.max(0, Math.min(pointAt(e.clientX).time, trackDuration()));
+    if (isPlaying) startPlayback();
+    else showCue();
+  });
 }
 
 function setupPlay(): void {
@@ -1716,6 +1797,7 @@ function init(): void {
   setupFolderReport();
   setupMessage();
   setupPlay();
+  setupRulerSeek();
   setupDesktopOpenFile();
   setupCrosshair();
   setupZoom();
