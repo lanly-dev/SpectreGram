@@ -15,7 +15,7 @@ export type EmbedRequest = {
 };
 
 export type EmbedMessage =
-  | { type: 'embed-result'; wav: ArrayBuffer; scale: number; carveDb: number }
+  | { type: 'embed-result'; wav: ArrayBuffer; scale: number; dimDb: number }
   | { type: 'embed-error'; message: string };
 
 interface WorkerScope {
@@ -32,9 +32,9 @@ scope.onmessage = (ev: MessageEvent) => {
     const n = msg.channels[0]?.length ?? 0;
     const layout = layoutMessage(msg.mask, n, msg.sampleRate);
     if (!layout) throw new Error('The message does not fit this track.');
-    const { scale, carveDb } = embedMessage(msg.channels, msg.sampleRate, msg.mask, layout);
+    const { scale, dimDb } = embedMessage(msg.channels, msg.sampleRate, msg.mask, layout);
     const wav = encodeWav16(msg.channels, msg.sampleRate);
-    scope.postMessage({ type: 'embed-result', wav, scale, carveDb } satisfies EmbedMessage, [wav]);
+    scope.postMessage({ type: 'embed-result', wav, scale, dimDb } satisfies EmbedMessage, [wav]);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     scope.postMessage({ type: 'embed-error', message } satisfies EmbedMessage, []);

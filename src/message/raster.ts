@@ -82,7 +82,7 @@ export function rasterizeText(text: string): TextMask {
     }
   }
   // Thicken every stroke by one column (R3f): thin verticals are the first
-  // thing to vanish among the sparkles.
+  // thing to vanish against busy music.
   const out = new Uint8Array(rows * (cols + 1));
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c <= cols; c++) {

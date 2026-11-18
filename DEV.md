@@ -196,48 +196,42 @@ saved file then opens in the app. The original file is never changed.
 | `sg:save-wav` save dialog | `electron/main.js`, `electron/preload.cjs` |
 | Button, dialog, generate → save → open | `src/main.ts`, `index.html`, `src/style.css` |
 
-**How text becomes sound.** A spectrogram plots time left→right and
-frequency bottom→top, so every "on" cell of the text mask gets short
-twinkling grains (80 ms, Hann-shaped, ~12 per second of column time, pitch
-jittered ± half a row) at random moments inside it. The text is centered in the track
-and sized to read with its natural shape in the full-track view (squeezed
-if it would pass 90% of the track width). If a column would be narrower than
-one full-view STFT frame, strokes would vanish, so the app refuses and asks
-for fewer characters or a longer track.
+**How the text gets in.** A spectrogram plots time left→right and
+frequency bottom→top. Nothing is added to the track: inside the letter
+shapes, in the message band, the original is dimmed by `LETTER_DIM_DB`
+(24 dB), so the word shows as dark letters against the music. It's done
+with an STFT filter (2048-point sqrt-Hann frames every 512 samples) that
+reconstructs the audio exactly wherever nothing is dimmed, so other
+frequencies and other times come back unchanged. The text is centered in
+the track and sized to read with its natural shape in the full-track view
+(squeezed if it would pass 90% of the track width). If a column would be
+narrower than one full-view STFT frame, strokes would vanish, so the app
+refuses and asks for fewer characters or a longer track. Letters use the
+heaviest system font weight, thickened by one column.
 
-**Verdict safety.** The text lives between 46% and 66% of Nyquist (≈ 11–16
-kHz at 48 kHz), below the analyzer's 73% "costume" line, and every grain
-has a smooth envelope, plus a ~1 s fade over the whole message (hard edges
-click, and a click splashes energy up to Nyquist). So a haunted file never reads as more lossless
-than its source. A WAV made from an MP3 is still lossy, and the analyzer
-correctly calls it a costume.
+**Verdict safety.** The letters live between 46% and 66% of Nyquist (≈ 11–16
+kHz at 48 kHz), below the analyzer's 73% "costume" line, and the dimming
+eases in and out over ~1 s. On top of that the app checks by construction:
+after cutting the letters it runs the analyzer on the result and on the
+original, and keeps the result only if the cutoff class matches and the
+cutoff hasn't risen by more than 0.1 kHz — otherwise it retries at 12, then
+6 dB, and refuses if none is safe. A WAV made from an MP3 is still lossy,
+and the analyzer correctly calls it a costume.
 
-**Blend calibration.** Before adding anything, `measureBackground` checks
-how loud the track already is in every cell (median magnitude of that
-row's bins over three frames per column, normalized like the analyzer,
-smoothed over ± 2 columns). Each grain is set `BLEND_MARGIN_DB` (+8 dB)
-above that, clamped between `SPARKLE_MIN_AMP` (≈ −66 dBFS, so text still
-shows over silence) and `SPARKLE_MAX_AMP` (≈ −46 dBFS, so busy passages
-never get loud grains). Quiet passages get quiet sparkles.
+**What you hear.** Nothing new — the highs just dip while each letter
+passes. Where the track has nothing in the band (silence, a quiet break),
+there is nothing to dim, so the letters can't show there.
 
-**History (why it's sparkle).** The first version put 32 steady tones at
-≈ −30 dBFS in 5–12 kHz; they beat against each other and made the
-maintainer's ears feel bad and dizzy. Moving them higher and 14 dB quieter
-was still unpleasant. Hiss, warble and sparkle were then built to compare;
-he kept sparkle, softer, blended (R3a–R3c in the spec).
+**History (why it works this way).** Every version that *added* sound
+failed: 32 steady tones made the maintainer's ears feel bad and dizzy;
+hiss and warble were rejected by ear; soft "blended" sparkle grains were
+comfortable but invisible over real music, even with the band dimmed to
+make room. Cutting the letters in (his suggestion) was readable on both
+real test tracks (loud pop, full-band orchestral). Spec R3a–R3g.
 
-**Known limit: visibility over real music.** At these levels the text is
-easy to see over silence or quiet backgrounds, but over the two real tracks
-tested (a loud 128 kbps pop master and a full-band orchestral track) it was
-not visible in the full-track view except in a quiet gap: the ceiling stops
-the grains from competing with the music. Comfort and visibility pull
-against each other here; see the spec status for the open decision.
-
-**Settings (TUNABLE, `encode.ts`).** `BLEND_MARGIN_DB`, `SPARKLE_MIN_AMP`,
-`SPARKLE_MAX_AMP`, `BAND_LO`/`BAND_HI` = 0.46/0.66 × Nyquist. Keep
-`BAND_HI` below 0.73 (the costume line). If the mix would clip, the whole
-file is scaled down to a 0.999 peak.
-
+**Settings (TUNABLE, `encode.ts`).** `LETTER_DIM_DB` (24; 12 was too faint),
+`BAND_LO`/`BAND_HI` = 0.46/0.66 × Nyquist — keep `BAND_HI` below 0.73 (the
+costume line).
 **Output.** 16-bit PCM at the decoded sample rate (the device rate — see
 AGENTS.md #3), same length and channels as the decoded track, default name
 `<original>-haunted.wav`. Desktop: native save dialog. Web: browser
