@@ -15,8 +15,12 @@ export const MASK_ROWS = 32;
 /** Size the text is drawn at before scaling down to MASK_ROWS. */
 const DRAW_PX = 128;
 // Heaviest weight, so strokes stay thick after scaling to 32 rows (R3f).
-// System fonts only — nothing to license or ship.
-const FONT = `900 ${DRAW_PX}px "Segoe UI Black", "Arial Black", "Segoe UI", system-ui, -apple-system, sans-serif`;
+// System fonts only — nothing to license or ship. The emoji fonts come after
+// the text fonts so letters keep the heavy face and emoji still render; an
+// emoji becomes a silhouette because the mask is built from alpha (R1a).
+const FONT =
+  `900 ${DRAW_PX}px "Segoe UI Black", "Arial Black", "Segoe UI", system-ui, -apple-system, sans-serif, ` +
+  `"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji"`;
 /** A mask cell is ink when at least this share of its source pixels is ink. */
 const INK_SHARE = 0.4;
 

@@ -222,6 +222,14 @@ and the analyzer correctly calls it a costume.
 passes. Where the track has nothing in the band (silence, a quiet break),
 there is nothing to dim, so the letters can't show there.
 
+**Emoji.** Most dice phrases include Halloween emoji, and typed emoji work
+too. They're drawn with the system emoji font and cut in as silhouettes (the
+mask comes from the glyph's alpha, so shape only, no colors) — e.g.
+"🎃 BOO 👻 🦇" reads as pumpkin, BOO, ghost and bat. The 32-character limit
+counts graphemes (`countChars` in `phrases.ts`, via `Intl.Segmenter`), so
+an emoji is one character even when it's several code points; the input's
+`maxlength` is only a 128-code-unit safety cap.
+
 **History (why it works this way).** Every version that *added* sound
 failed: 32 steady tones made the maintainer's ears feel bad and dizzy;
 hiss and warble were rejected by ear; soft "blended" sparkle grains were

@@ -21,7 +21,7 @@ import { runScan } from './scan';
 import { buildReportMarkdown, CLASS_INFO, countClasses, rateCollection } from './report';
 import type { FolderFile } from './types/desktop';
 import { playDrumroll, type Drumroll } from './drumroll';
-import { MAX_MESSAGE_CHARS, randomPhrase } from './message/phrases';
+import { MAX_MESSAGE_CHARS, countChars, randomPhrase, truncateChars } from './message/phrases';
 import { rasterizeText, type TextMask } from './message/raster';
 import { layoutMessage } from './message/encode';
 import type { EmbedMessage, EmbedRequest } from './message/embed-worker';
@@ -990,7 +990,11 @@ function messageModalOpen(): boolean {
 function updateMessageCount(): void {
   const input = el<HTMLInputElement>('message-input');
   const count = $('message-count');
-  if (input && count) count.textContent = `${input.value.length} / ${MAX_MESSAGE_CHARS}`;
+  if (!input || !count) return;
+  // Count what the user sees (one emoji = one character), and hold the box
+  // to the limit — the HTML maxlength counts code units, so it's only a cap.
+  if (countChars(input.value) > MAX_MESSAGE_CHARS) input.value = truncateChars(input.value, MAX_MESSAGE_CHARS);
+  count.textContent = `${countChars(input.value)} / ${MAX_MESSAGE_CHARS}`;
 }
 
 function rollDice(): void {
@@ -1072,7 +1076,7 @@ async function generateMessage(): Promise<void> {
   const input = el<HTMLInputElement>('message-input');
   const gen = el<HTMLButtonElement>('message-generate');
   if (!input || !gen) return;
-  const text = input.value.trim().slice(0, MAX_MESSAGE_CHARS);
+  const text = truncateChars(input.value.trim(), MAX_MESSAGE_CHARS);
   if (!text) {
     toast('Type a message or roll the dice first.', 'error');
     return;
