@@ -26,7 +26,8 @@ of the user's files.
   1,000 files are listed; if more exist, the user is told the list was
   capped. Each file shows its path relative to the opened folder.
 - **R1b — Refresh.** *(Added 2026-11-17, maintainer's ask.)* An icon
-  button to the left of **Scan** re-lists the open folder (same recursive
+  button to the **right** of **Scan** (moved from the left at the
+  maintainer's request, 2026-11-17) re-lists the open folder (same recursive
   rules, cap and display name as when it was opened), so files added,
   removed or renamed since are picked up without reopening it. The
   selected file stays selected if it's still there. Refreshing cancels a

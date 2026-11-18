@@ -108,7 +108,8 @@ selected row's path and re-selects it after the list is rebuilt; the
 existing `onFolderForScan` cancels a running scan. The toast says
 "Refreshed" instead of the open-folder text. The button is an `icon-btn`
 with a circular-arrow SVG, `aria-label`/`title` "Refresh folder", placed
-before Scan in the panel header.
+after Scan in the panel header (it was before Scan until the maintainer
+asked for it on the right, 2026-11-17).
 
 ## Loading state (R1c, added 2026-11-17)
 
