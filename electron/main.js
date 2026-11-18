@@ -343,6 +343,12 @@ function menuOpenFolder() {
 const SAMPLE_DIR = path.join(__dirname, '..', 'lab');
 const SAMPLE_LIMIT = 10;
 
+// Checkbox reads "Advanced Export": checked = Export opens the panel (default).
+// Unchecked, the renderer saves the current view straight away instead.
+function menuToggleAdvancedExport(item) {
+  sendMenuAction('advanced-export', item.checked);
+}
+
 function menuToggleScreensaver(item) {
   // Checkbox reads "Disable Screensaver": checked = screensaver off.
   sendMenuAction('screensaver-enabled', !item.checked);
@@ -430,6 +436,13 @@ function buildMenu() {
     {
       label: 'Options',
       submenu: [
+        {
+          id: 'advanced-export',
+          label: 'Advanced Export',
+          type: 'checkbox',
+          checked: true,
+          click: menuToggleAdvancedExport,
+        },
         {
           id: 'disable-screensaver',
           label: 'Disable Screensaver',

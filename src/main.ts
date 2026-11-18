@@ -744,11 +744,41 @@ function savePngFromCanvas(): Promise<boolean> {
   );
 }
 
+// Options > Advanced Export (on by default): Export opens the settings panel.
+// Turned off, Export saves the graph on screen straight away, with no prompt.
+let advancedExport = true;
+
+/** Export entry point: toolbar button, Ctrl/Cmd+S and File > Export PNG…. */
+function startExport(): void {
+  if (advancedExport) {
+    openExportPanel();
+    return;
+  }
+  void quickExport();
+}
+
+/** Advanced export off: save exactly the view on screen, no panel. */
+async function quickExport(): Promise<void> {
+  const canvas = el<HTMLCanvasElement>('canvas');
+  if (!canvas || !fullGrid) {
+    toast('Open a file first.', 'error');
+    return;
+  }
+  const name = `${currentBaseName}-spectrogram.png`;
+  try {
+    const saved = await savePngBlob(await canvasToPng(canvas), name);
+    toast(saved ? `Saved ${name}` : 'Save cancelled.');
+  } catch (e) {
+    console.error('export failed:', e);
+    toast('Export failed.', 'error');
+  }
+}
+
 function setupPng(): void {
   const btn = $('png-btn');
   if (!btn) return;
-  // The button and File > Export PNG… both open the settings panel.
-  btn.addEventListener('click', openExportPanel);
+  // The button and File > Export PNG… share startExport() (panel or quick save).
+  btn.addEventListener('click', startExport);
 }
 
 // --- PNG export panel --------------------------------------------------------
@@ -960,7 +990,7 @@ function setupExportPanel(): void {
 function setupMenuExport(): void {
   const desktop = window.spectregramDesktop;
   if (!desktop) return;
-  desktop.onExportOpen(openExportPanel);
+  desktop.onExportOpen(startExport);
 }
 
 /** Folder panel: list audio files from an opened folder; clicking one opens it. */
@@ -2067,6 +2097,11 @@ function setupMenuActions(screensaver: ScreensaverControls | null): void {
     if (action === 'screensaver-enabled') {
       screensaver?.setEnabled(value === true);
       toast(value === true ? 'Screensaver enabled' : 'Screensaver disabled');
+    } else if (action === 'advanced-export') {
+      advancedExport = value !== false;
+      toast(
+        advancedExport ? 'Advanced export on' : 'Advanced export off — Export saves the current view',
+      );
     } else if (action === 'show-screensaver') {
       screensaver?.showNow();
     } else if (action === 'toast') {
