@@ -197,30 +197,44 @@ saved file then opens in the app. The original file is never changed.
 | Button, dialog, generate → save → open | `src/main.ts`, `index.html`, `src/style.css` |
 
 **How text becomes sound.** A spectrogram plots time left→right and
-frequency bottom→top, so each row of the text mask becomes one sine wave
-whose volume follows that row over time. The text is centered in the track
+frequency bottom→top, so every "on" cell of the text mask gets short
+twinkling grains (80 ms, Hann-shaped, ~12 per second of column time, pitch
+jittered ± half a row) at random moments inside it. The text is centered in the track
 and sized to read with its natural shape in the full-track view (squeezed
 if it would pass 90% of the track width). If a column would be narrower than
 one full-view STFT frame, strokes would vanish, so the app refuses and asks
 for fewer characters or a longer track.
 
 **Verdict safety.** The text lives between 46% and 66% of Nyquist (≈ 11–16
-kHz at 48 kHz), below the analyzer's 73% "costume" line, and every tone
-fades in and out over 20 ms (hard edges click, and a click splashes energy
-all the way up to Nyquist). So a haunted file never reads as more lossless
+kHz at 48 kHz), below the analyzer's 73% "costume" line, and every grain
+has a smooth envelope, plus a ~1 s fade over the whole message (hard edges
+click, and a click splashes energy up to Nyquist). So a haunted file never reads as more lossless
 than its source. A WAV made from an MP3 is still lossy, and the analyzer
 correctly calls it a costume.
 
-**Listening comfort.** The first version put 32 tones at ≈ −30 dBFS in
-5–12 kHz, near where hearing is most sensitive; adjacent tones ~200 Hz
-apart beat against each other, and the maintainer found it made his ears
-feel bad and dizzy. Now the band is higher (hearing is far less sensitive
-there, and music has little energy, so the text stays visible), each tone
-is ≈ 14 dB quieter, and the fades are longer raised-cosine swells.
+**Blend calibration.** Before adding anything, `measureBackground` checks
+how loud the track already is in every cell (median magnitude of that
+row's bins over three frames per column, normalized like the analyzer,
+smoothed over ± 2 columns). Each grain is set `BLEND_MARGIN_DB` (+8 dB)
+above that, clamped between `SPARKLE_MIN_AMP` (≈ −66 dBFS, so text still
+shows over silence) and `SPARKLE_MAX_AMP` (≈ −46 dBFS, so busy passages
+never get loud grains). Quiet passages get quiet sparkles.
 
-**Settings (TUNABLE, `encode.ts`).** `ROW_AMP` = 0.006 per row (≈ −44
-dBFS), `BAND_LO`/`BAND_HI` = 0.46/0.66 × Nyquist, `RAMP_SEC` = 0.02.
-Louder reads better over busy high frequencies but is easier to hear. Keep
+**History (why it's sparkle).** The first version put 32 steady tones at
+≈ −30 dBFS in 5–12 kHz; they beat against each other and made the
+maintainer's ears feel bad and dizzy. Moving them higher and 14 dB quieter
+was still unpleasant. Hiss, warble and sparkle were then built to compare;
+he kept sparkle, softer, blended (R3a–R3c in the spec).
+
+**Known limit: visibility over real music.** At these levels the text is
+easy to see over silence or quiet backgrounds, but over the two real tracks
+tested (a loud 128 kbps pop master and a full-band orchestral track) it was
+not visible in the full-track view except in a quiet gap: the ceiling stops
+the grains from competing with the music. Comfort and visibility pull
+against each other here; see the spec status for the open decision.
+
+**Settings (TUNABLE, `encode.ts`).** `BLEND_MARGIN_DB`, `SPARKLE_MIN_AMP`,
+`SPARKLE_MAX_AMP`, `BAND_LO`/`BAND_HI` = 0.46/0.66 × Nyquist. Keep
 `BAND_HI` below 0.73 (the costume line). If the mix would clip, the whole
 file is scaled down to a 0.999 peak.
 

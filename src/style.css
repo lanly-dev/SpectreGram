@@ -998,33 +998,3 @@ main.folder-open .controls {
     animation: none;
   }
 }
-/* Sound style picker (R3b). */
-.message-styles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  margin: 0 0 6px;
-  padding: 4px 8px 6px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 0.72rem;
-}
-
-.message-styles legend {
-  padding: 0 4px;
-  color: var(--muted);
-  font-size: 0.66rem;
-}
-
-.message-styles label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.message-styles input {
-  accent-color: var(--accent);
-  margin: 0;
-}

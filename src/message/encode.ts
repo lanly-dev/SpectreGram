@@ -2,9 +2,9 @@
 // Pure: no DOM, no Web Audio — runs in the embed worker and in Node tests.
 //
 // A spectrogram plots time left→right and frequency bottom→top, so drawing a
-// pixel at (time t, frequency f) means putting sound at f during t. How that
-// sound is made is the style (R3b): hiss (band-limited noise), warble
-// (wobbling tones) or sparkle (short grains).
+// pixel at (time t, frequency f) means putting sound at f during t. Here that
+// sound is short twinkling grains whose loudness blends with the track
+// (R3b, R3c).
 
 import FFT from 'fft.js';
 import { stftParamsFor } from '../audio/stft';
@@ -19,11 +19,6 @@ import type { TextMask } from './raster';
  *  made the result unpleasant to listen to. */
 export const BAND_LO = 0.46;
 export const BAND_HI = 0.66;
-/** Fade at every on/off edge of a warble tone (raised cosine). Hard edges
- *  would click, and a click splashes energy across every frequency up to
- *  Nyquist (R3); long, soft fades make tones swell instead of stutter (R3a).
- *  (Steady tones at −30/−44 dBFS were removed in R3b: they hurt to hear.) */
-export const RAMP_SEC = 0.02;
 
 // Full-track view geometry (render.ts FIXED_W × FIXED_H, linear 0…Nyquist):
 // used to size the text so it reads with its natural shape there.
@@ -78,152 +73,123 @@ export function layoutMessage(mask: TextMask, sampleCount: number, sampleRate: n
 }
 
 
-// --- Synthesis: three sound styles (R3b) ------------------------------------
-// The letters don't have to be drawn with straight lines. Steady tones (one
-// held sine per row) were dropped: 32 of them read as a constant whine.
 
-export type MessageStyle = 'hiss' | 'warble' | 'sparkle';
-export const MESSAGE_STYLES: readonly MessageStyle[] = ['hiss', 'warble', 'sparkle'];
+// --- Synthesis: blended sparkle (R3b, R3c) -----------------------------------
+// The letters are drawn with short twinkling grains at random moments, and
+// every grain's loudness is calibrated to the track: a fixed margin above how
+// loud the original already is at that moment and pitch, between a floor and
+// a ceiling. Quiet passages get quiet sparkles; busy ones never get loud ones.
+// (Steady tones, hiss and warble were tried and removed: R3a, R3b.)
 
-/** Per-style levels (TUNABLE), set so all three are equally visible over a
- *  music-like background (+4 dB in the temporary check), so the styles can
- *  be compared on sound alone. Message loudness then lands near −34 dBFS
- *  RMS for each. */
-/** hiss: sinusoid-equivalent amplitude per FFT bin (≈ −52 dBFS). */
-export const HISS_BIN_AMP = 0.0025;
-/** warble: peak amplitude of each wobbling oscillator (≈ −39 dBFS). */
-export const WARBLE_AMP = 0.011;
-/** sparkle: peak amplitude of each grain (≈ −40 dBFS; grains are brief). */
-export const SPARKLE_AMP = 0.0095;
-
-const HISS_FFT = 2048;
-const HISS_HOP = HISS_FFT / 4;
-/** warble: vibrato depth, in row spacings, and rate range (Hz). */
-const WARBLE_DEPTH_ROWS = 1;
-const WARBLE_RATE_MIN = 3;
-const WARBLE_RATE_MAX = 6;
-/** warble: samples per pitch update (the wobble is slow, so this is inaudible). */
-const WARBLE_BLOCK = 32;
-/** sparkle: grain length and grains per second of column time per cell. */
-const SPARKLE_GRAIN_SEC = 0.06;
+/** Grain loudness above the track's own level at that moment and pitch. TUNABLE. */
+export const BLEND_MARGIN_DB = 8;
+/** Floor (≈ −66 dBFS): grains still show over silence. TUNABLE. */
+export const SPARKLE_MIN_AMP = 0.0005;
+/** Ceiling (≈ −46 dBFS; the earlier fixed sparkle was ≈ −40). TUNABLE. */
+export const SPARKLE_MAX_AMP = 0.005;
+/** Grain length: longer = gentler, less clicky twinkles (was 60 ms). */
+const SPARKLE_GRAIN_SEC = 0.08;
+/** Grains per second of column time, per "on" cell (at least 1). */
 const SPARKLE_RATE = 12;
 /** Fade over the whole message (capped at 10% of its length). */
 const MESSAGE_FADE_SEC = 1;
+/** Background analysis: same window size as the analyzer. */
+const BLEND_FFT = 2048;
+/** Smooth the background over ± this many columns, so levels don't jump. */
+const BLEND_SMOOTH_COLS = 2;
 
 function rowStepHz(layout: MessageLayout): number {
   const f = layout.rowFreqs;
   return f.length > 1 ? (f[0] - f[f.length - 1]) / (f.length - 1) : 0;
 }
 
-/** hiss: overlap-add noise, filled where the current column's rows are on. */
-function synthHiss(msg: Float32Array, sr: number, mask: TextMask, layout: MessageLayout, rand: () => number): void {
-  const L = HISS_FFT;
+function median(values: number[]): number {
+  if (!values.length) return 0;
+  const s = values.slice().sort((a, b) => a - b);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+/**
+ * How loud the track already is in every mask cell: the median magnitude of
+ * that row's frequency bins over three frames in that column (start, middle,
+ * end), normalized like the analyzer (a full-scale sine reads 1.0), then
+ * smoothed over neighbouring columns in dB. Returns `rows × cols` linear
+ * amplitudes.
+ */
+export function measureBackground(mono: Float32Array, sr: number, mask: TextMask, layout: MessageLayout): Float32Array {
+  const L = BLEND_FFT;
   const fft = new FFT(L);
-  const spec = fft.createComplexArray();
   const out = fft.createComplexArray();
+  const frame = new Float64Array(L);
   const win = new Float64Array(L);
-  for (let n = 0; n < L; n++) win[n] = 0.5 - 0.5 * Math.cos((2 * Math.PI * n) / L); // periodic Hann
+  let winSum = 0;
+  for (let n = 0; n < L; n++) {
+    win[n] = 0.5 * (1 - Math.cos((2 * Math.PI * n) / (L - 1))); // the analyzer's window
+    winSum += win[n];
+  }
+  const norm = 2 / winSum;
   const binHz = sr / L;
   const step = rowStepHz(layout);
-  const fHi = layout.rowFreqs[0];
-  const fLo = layout.rowFreqs[mask.rows - 1];
-  const kLo = Math.max(1, Math.ceil((fLo - step / 2) / binHz));
-  const kHi = Math.min(L / 2 - 1, Math.floor((fHi + step / 2) / binHz));
-  const binRow = new Int32Array(kHi - kLo + 1);
-  for (let k = kLo; k <= kHi; k++) {
-    binRow[k - kLo] = Math.min(mask.rows - 1, Math.max(0, Math.round((fHi - k * binHz) / step)));
+  const rowBins: Array<[number, number]> = [];
+  for (let r = 0; r < mask.rows; r++) {
+    const f = layout.rowFreqs[r];
+    const k0 = Math.max(1, Math.ceil((f - step / 2) / binHz));
+    const k1 = Math.min(L / 2 - 1, Math.max(k0, Math.floor((f + step / 2) / binHz)));
+    rowBins.push([k0, k1]);
   }
-  // fft.js's inverse divides by L, so a bin pair of magnitude M gives a
-  // sinusoid of amplitude 2M/L.
-  const M = (HISS_BIN_AMP * L) / 2;
-  const len = msg.length;
-  for (let s = -L / 2; s < len; s += HISS_HOP) {
-    const c = Math.floor((s + L / 2) / layout.colSamples);
-    if (c < 0 || c >= mask.cols) continue;
-    spec.fill(0);
-    let any = false;
-    for (let k = kLo; k <= kHi; k++) {
-      if (!mask.data[binRow[k - kLo] * mask.cols + c]) continue;
-      const ph = rand() * 2 * Math.PI;
-      const re = M * Math.cos(ph);
-      const im = M * Math.sin(ph);
-      spec[2 * k] = re;
-      spec[2 * k + 1] = im;
-      spec[2 * (L - k)] = re; // Hermitian mirror → real output
-      spec[2 * (L - k) + 1] = -im;
-      any = true;
+
+  const db = new Float32Array(mask.rows * mask.cols);
+  const perRow: number[][] = Array.from({ length: mask.rows }, () => []);
+  for (let c = 0; c < mask.cols; c++) {
+    for (const v of perRow) v.length = 0;
+    for (const frac of [0.15, 0.5, 0.85]) {
+      const center = Math.round(layout.startSample + (c + frac) * layout.colSamples);
+      const s0 = center - L / 2;
+      for (let n = 0; n < L; n++) {
+        const i = s0 + n;
+        frame[n] = i >= 0 && i < mono.length ? mono[i] * win[n] : 0;
+      }
+      fft.realTransform(out, frame);
+      for (let r = 0; r < mask.rows; r++) {
+        const [k0, k1] = rowBins[r];
+        for (let k = k0; k <= k1; k++) perRow[r].push(Math.hypot(out[2 * k], out[2 * k + 1]) * norm);
+      }
     }
-    if (!any) continue;
-    fft.inverseTransform(out, spec);
-    const n0 = Math.max(0, -s);
-    const n1 = Math.min(L, len - s);
-    for (let n = n0; n < n1; n++) msg[s + n] += out[2 * n] * win[n];
+    for (let r = 0; r < mask.rows; r++) db[r * mask.cols + c] = 20 * Math.log10(Math.max(median(perRow[r]), 1e-7));
   }
-}
 
-/** Raised-cosine run envelope: 0 → 1 over `rr` samples at both ends. */
-function runGain(i: number, n: number, rr: number): number {
-  const x = rr > 0 ? Math.min(1, i / rr, (n - 1 - i) / rr) : 1;
-  return 0.5 - 0.5 * Math.cos(Math.PI * x);
-}
-
-/** warble: half as many oscillators, each wobbling ± one row in pitch. */
-function synthWarble(msg: Float32Array, sr: number, mask: TextMask, layout: MessageLayout, rand: () => number): void {
-  const step = rowStepHz(layout);
-  const ramp = Math.max(1, Math.round(RAMP_SEC * sr));
-  const colStart = (c: number): number => Math.min(msg.length, Math.round(c * layout.colSamples));
-  const on = (r0: number, r1: number, c: number): boolean =>
-    !!mask.data[r0 * mask.cols + c] || !!mask.data[r1 * mask.cols + c];
-  for (let r0 = 0; r0 < mask.rows; r0 += 2) {
-    const r1 = Math.min(r0 + 1, mask.rows - 1);
-    const f0 = (layout.rowFreqs[r0] + layout.rowFreqs[r1]) / 2;
-    const depth = WARBLE_DEPTH_ROWS * step;
-    const rate = WARBLE_RATE_MIN + rand() * (WARBLE_RATE_MAX - WARBLE_RATE_MIN);
-    const lfoW = (2 * Math.PI * rate) / sr;
-    const lfoPh0 = rand() * 2 * Math.PI;
-    const ph0 = rand() * 2 * Math.PI;
-    let re = Math.cos(ph0);
-    let im = Math.sin(ph0);
-    let c = 0;
-    while (c < mask.cols) {
-      if (!on(r0, r1, c)) {
-        c++;
-        continue;
+  const amp = new Float32Array(mask.rows * mask.cols);
+  for (let r = 0; r < mask.rows; r++) {
+    for (let c = 0; c < mask.cols; c++) {
+      let sum = 0;
+      let n = 0;
+      for (let d = -BLEND_SMOOTH_COLS; d <= BLEND_SMOOTH_COLS; d++) {
+        const cc = c + d;
+        if (cc < 0 || cc >= mask.cols) continue;
+        sum += db[r * mask.cols + cc];
+        n++;
       }
-      let e = c;
-      while (e + 1 < mask.cols && on(r0, r1, e + 1)) e++;
-      const a = colStart(c);
-      const n = colStart(e + 1) - a;
-      const rr = Math.min(ramp, Math.floor(n / 2));
-      // The wobble (3–6 Hz) changes slowly, so the pitch is updated once per
-      // WARBLE_BLOCK samples and the sine is a rotating phasor in between —
-      // no per-sample Math.sin (this was ~10× slower).
-      for (let i = 0; i < n; i += WARBLE_BLOCK) {
-        const m = Math.min(WARBLE_BLOCK, n - i);
-        // LFO phase from the absolute sample, so the wobble is continuous.
-        const f = f0 + depth * Math.sin(lfoPh0 + lfoW * (a + i + m / 2));
-        const w = (2 * Math.PI * f) / sr;
-        const cw = Math.cos(w);
-        const sw = Math.sin(w);
-        for (let j = 0; j < m; j++) {
-          const k = i + j;
-          const gain = k >= rr && k < n - rr ? 1 : runGain(k, n, rr);
-          msg[a + k] += WARBLE_AMP * gain * im;
-          const nre = re * cw - im * sw;
-          im = im * cw + re * sw;
-          re = nre;
-        }
-        const mag = Math.hypot(re, im); // keep |phasor| = 1 (rounding drift)
-        re /= mag;
-        im /= mag;
-      }
-      c = e + 1;
+      amp[r * mask.cols + c] = 10 ** (sum / n / 20);
     }
   }
+  return amp;
 }
 
-/** sparkle: short twinkling grains at random times inside each "on" cell. */
-function synthSparkle(msg: Float32Array, sr: number, mask: TextMask, layout: MessageLayout, rand: () => number): void {
+/** Grain loudness for a cell, from the track's level there (R3c). */
+export function grainAmp(background: number): number {
+  return Math.min(SPARKLE_MAX_AMP, Math.max(SPARKLE_MIN_AMP, background * 10 ** (BLEND_MARGIN_DB / 20)));
+}
+
+/** Short twinkling grains at random times inside each "on" cell. */
+function synthSparkle(
+  msg: Float32Array,
+  sr: number,
+  mask: TextMask,
+  layout: MessageLayout,
+  background: Float32Array,
+  rand: () => number,
+): void {
   const g = Math.max(8, Math.round(SPARKLE_GRAIN_SEC * sr));
   const win = new Float64Array(g);
   for (let n = 0; n < g; n++) win[n] = 0.5 - 0.5 * Math.cos((2 * Math.PI * n) / (g - 1));
@@ -232,6 +198,7 @@ function synthSparkle(msg: Float32Array, sr: number, mask: TextMask, layout: Mes
   for (let r = 0; r < mask.rows; r++) {
     for (let c = 0; c < mask.cols; c++) {
       if (!mask.data[r * mask.cols + c]) continue;
+      const amp = grainAmp(background[r * mask.cols + c]);
       for (let k = 0; k < perCell; k++) {
         const start = Math.round((c + rand()) * layout.colSamples - g / 2);
         const f = layout.rowFreqs[r] + (rand() - 0.5) * step;
@@ -243,7 +210,7 @@ function synthSparkle(msg: Float32Array, sr: number, mask: TextMask, layout: Mes
         let im = Math.sin(p0);
         for (let n = 0; n < g; n++) {
           const i = start + n;
-          if (i >= 0 && i < msg.length) msg[i] += SPARKLE_AMP * win[n] * im;
+          if (i >= 0 && i < msg.length) msg[i] += amp * win[n] * im;
           const nre = re * cw - im * sw;
           im = im * cw + re * sw;
           re = nre;
@@ -254,24 +221,29 @@ function synthSparkle(msg: Float32Array, sr: number, mask: TextMask, layout: Mes
 }
 
 /**
- * Add the message to every channel in place, in the chosen sound style. If
- * the result would clip, every channel is scaled by 0.999 / peak. Returns
- * that scale (1 = unchanged).
+ * Add the message to every channel in place, as blended sparkles. If the
+ * result would clip, every channel is scaled by 0.999 / peak. Returns that
+ * scale (1 = unchanged).
  */
 export function embedMessage(
   channels: Float32Array[],
   sampleRate: number,
   mask: TextMask,
   layout: MessageLayout,
-  style: MessageStyle = 'hiss',
   rand: () => number = Math.random,
 ): number {
   const { startSample, endSample } = layout;
   const len = endSample - startSample;
+
+  // Measure the original (mono mix, like the analyzer) before adding anything.
+  const n = channels[0]?.length ?? 0;
+  const mono = new Float32Array(n);
+  for (const ch of channels) for (let i = 0; i < n; i++) mono[i] += ch[i] / channels.length;
+  const background = measureBackground(mono, sampleRate, mask, layout);
+
+  // Grains are placed relative to the message window (msg[0] = startSample).
   const msg = new Float32Array(len);
-  if (style === 'warble') synthWarble(msg, sampleRate, mask, layout, rand);
-  else if (style === 'sparkle') synthSparkle(msg, sampleRate, mask, layout, rand);
-  else synthHiss(msg, sampleRate, mask, layout, rand);
+  synthSparkle(msg, sampleRate, mask, layout, background, rand);
 
   // Ease the whole message in and out, so it never starts abruptly.
   const fade = Math.min(Math.round(MESSAGE_FADE_SEC * sampleRate), Math.floor(len * 0.1));

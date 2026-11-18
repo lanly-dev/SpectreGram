@@ -23,7 +23,7 @@ import type { FolderFile } from './types/desktop';
 import { playDrumroll, type Drumroll } from './drumroll';
 import { MAX_MESSAGE_CHARS, randomPhrase } from './message/phrases';
 import { rasterizeText, type TextMask } from './message/raster';
-import { layoutMessage, MESSAGE_STYLES, type MessageStyle } from './message/encode';
+import { layoutMessage } from './message/encode';
 import type { EmbedMessage, EmbedRequest } from './message/embed-worker';
 
 // Tick step candidates for the rulers. The spectrogram's frequency axis is
@@ -1031,13 +1031,7 @@ function closeMessageModal(): void {
 }
 
 /** Add the message to copies of the decoded channels and encode a WAV, in a worker. */
-/** The sound style picked in the dialog (R3b); hiss if none is checked. */
-function selectedMessageStyle(): MessageStyle {
-  const v = document.querySelector<HTMLInputElement>('input[name="message-style"]:checked')?.value;
-  return (MESSAGE_STYLES as readonly string[]).includes(v ?? '') ? (v as MessageStyle) : 'hiss';
-}
-
-function embedInWorker(buffer: AudioBuffer, mask: TextMask, style: MessageStyle): Promise<ArrayBuffer> {
+function embedInWorker(buffer: AudioBuffer, mask: TextMask): Promise<ArrayBuffer> {
   // Locked Vite module-worker syntax (build-conventions.md).
   const worker = new Worker(new URL('./message/embed-worker.ts', import.meta.url), { type: 'module' });
   const channels: Float32Array[] = [];
@@ -1053,7 +1047,7 @@ function embedInWorker(buffer: AudioBuffer, mask: TextMask, style: MessageStyle)
       worker.terminate();
       reject(new Error(e.message || 'The embed worker failed.'));
     };
-    const req: EmbedRequest = { type: 'embed', channels, sampleRate: buffer.sampleRate, mask, style };
+    const req: EmbedRequest = { type: 'embed', channels, sampleRate: buffer.sampleRate, mask };
     worker.postMessage(req, [...channels.map((ch) => ch.buffer), mask.data.buffer]);
   });
 }
@@ -1104,14 +1098,13 @@ async function generateMessage(): Promise<void> {
     toast('That message doesn’t fit this track — try fewer characters or a longer track.', 'error');
     return;
   }
-  const style = selectedMessageStyle();
-  const name = `${currentBaseName}-haunted-${style}.wav`;
+  const name = `${currentBaseName}-haunted.wav`;
   messageBusy = true;
   gen.disabled = true;
   gen.textContent = 'Haunting…';
   let wav: ArrayBuffer | null = null;
   try {
-    wav = await embedInWorker(buffer, mask, style);
+    wav = await embedInWorker(buffer, mask);
     if (!(await saveWavBytes(wav, name))) {
       toast('Save cancelled.');
       wav = null;
