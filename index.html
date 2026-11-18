@@ -111,6 +111,12 @@
             Scan
           </button>
         </div>
+        <!-- Loading state (spec: .kiro/specs/folder-report/, R1c): replaces the list while a folder is walked. -->
+        <div id="folder-loading" class="folder-loading" role="status" aria-live="polite" hidden>
+          <div class="folder-loading-ghost" aria-hidden="true">👻</div>
+          <div class="folder-loading-title">Summoning the spirits…</div>
+          <div id="folder-loading-detail" class="folder-loading-detail"></div>
+        </div>
         <ul id="folder-list" class="folder-list"></ul>
       </section>
 

@@ -739,21 +739,58 @@ function setupFolderPanel(): void {
   let selectedPath = '';
 
   const refreshBtn = el<HTMLButtonElement>('refresh-btn');
+  // The loading state (below) disables the button and spins its icon for
+  // the whole walk, whichever way the load was started (R1b, R1c).
   refreshBtn?.addEventListener('click', async () => {
-    refreshBtn.disabled = true;
-    refreshBtn.classList.add('spinning');
     try {
       await desktop.refreshFolder();
     } catch (e) {
       console.error('refresh failed:', e);
       toast('Could not refresh the folder.', 'error');
-    } finally {
-      refreshBtn.disabled = false;
-      refreshBtn.classList.remove('spinning');
     }
   });
 
+  // Loading state (R1c): while a folder is walked, the list gives way to a
+  // Halloween message with a live count, and Refresh/Scan are disabled.
+  const loadingNode = el<HTMLElement>('folder-loading');
+  const loadingDetail = $('folder-loading-detail');
+  const scanBtn = el<HTMLButtonElement>('scan-btn');
+  const setFolderLoading = (active: boolean, folderName = '', found = 0): void => {
+    if (loadingNode) loadingNode.hidden = !active;
+    list.hidden = active;
+    if (refreshBtn) {
+      refreshBtn.disabled = active;
+      refreshBtn.classList.toggle('spinning', active);
+    }
+    if (scanBtn) scanBtn.disabled = active;
+    if (!active) return;
+    if (loadingDetail) {
+      const n = `${found.toLocaleString()} audio file${found !== 1 ? 's' : ''}`;
+      loadingDetail.textContent = folderName ? `Searching “${folderName}” — ${n} found` : `${n} found`;
+    }
+    // The panel may not be showing yet (first folder of the session).
+    panel.hidden = false;
+    box.classList.add('folder-open');
+    document.querySelector('main')?.classList.add('folder-open');
+  };
+  desktop.onFolderLoading(({ active, folderName, found, refreshed }) => {
+    if (active && !panel.hidden && !loadingNode?.hidden) {
+      setFolderLoading(true, folderName, found); // progress update only
+      return;
+    }
+    if (active) {
+      // A load is starting: whatever is scanning is about to be out of date.
+      if (scanning) scanCancelRequested = true;
+      if (!refreshed && nameNode) {
+        nameNode.textContent = folderName ?? '';
+        nameNode.title = folderName ?? '';
+      }
+    }
+    setFolderLoading(active, folderName, found);
+  });
+
   desktop.onFolderLoaded(({ folderName, files, truncated, refreshed }) => {
+    setFolderLoading(false);
     onFolderForScan(folderName, files);
     nameNode.textContent = folderName;
     nameNode.title = folderName;

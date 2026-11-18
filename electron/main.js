@@ -36,6 +36,9 @@ const SMOKE_SAVE_DIR = process.env.SPECTREGRAM_SMOKE_SAVE_DIR || '';
 const SMOKE_FOLDER = process.env.SPECTREGRAM_SMOKE_FOLDER || '';
 // Folder refresh smoke: copy this file into SMOKE_FOLDER, then click Refresh.
 const SMOKE_REFRESH_ADD = process.env.SPECTREGRAM_SMOKE_REFRESH_ADD || '';
+// Slow the folder walk by this many ms per folder, so the loading state can
+// be observed (test-only; 0 in normal use).
+const SMOKE_WALK_DELAY_MS = Number(process.env.SPECTREGRAM_SMOKE_WALK_DELAY_MS) || 0;
 // Spectral-message smoke: haunt SMOKE_FILE with this text, then reopen it.
 const SMOKE_MESSAGE = process.env.SPECTREGRAM_SMOKE_MESSAGE || '';
 
@@ -229,12 +232,19 @@ const MAX_FOLDER_FILES = 1000;
  * Returns `{ files, truncated }`; each file is `{ path, name }`, where `name`
  * is the path relative to `root` with "/" separators, sorted by name.
  */
-async function walkAudioFiles(root, cap) {
+async function walkAudioFiles(root, cap, onProgress) {
   const files = [];
   let truncated = false;
   const stack = [root];
+  let lastReport = 0;
   while (stack.length) {
     const dir = stack.pop();
+    // Live count for the loading message (R1c), at most every ~150 ms.
+    if (onProgress && Date.now() - lastReport > 150) {
+      lastReport = Date.now();
+      onProgress(files.length);
+    }
+    if (SMOKE_WALK_DELAY_MS) await new Promise((r) => setTimeout(r, SMOKE_WALK_DELAY_MS));
     let entries;
     try {
       entries = await fs.promises.readdir(dir, { withFileTypes: true });
@@ -266,6 +276,8 @@ let currentFolderPath = '';
 // The options it was opened with (limit, display name), so Refresh lists it
 // exactly the same way (spec: .kiro/specs/folder-report/, R1b).
 let currentFolderOptions = {};
+// Bumped per folder load; see loadFolder (R1c).
+let folderLoadSeq = 0;
 
 /**
  * List the audio files in `folderPath` and its subfolders (optionally only
@@ -274,10 +286,22 @@ let currentFolderOptions = {};
  */
 async function loadFolder(folderPath, { limit = Infinity, displayName, refreshed = false } = {}) {
   if (!mainWindow) return;
+  // Only the latest load may report (R1c): a slow walk replaced by a newer
+  // one must not flash its progress or overwrite the newer list.
+  const seq = ++folderLoadSeq;
+  const folderName = displayName || path.basename(folderPath);
+  const loading = (data) => {
+    if (seq === folderLoadSeq && mainWindow) mainWindow.webContents.send('sg:folder-loading', data);
+  };
+  loading({ active: true, folderName, found: 0, refreshed });
   try {
     const cap = Math.min(limit, MAX_FOLDER_FILES);
-    const { files, truncated } = await walkAudioFiles(folderPath, cap);
+    const { files, truncated } = await walkAudioFiles(folderPath, cap, (found) =>
+      loading({ active: true, folderName, found, refreshed }),
+    );
+    if (seq !== folderLoadSeq || !mainWindow) return;
     if (!files.length) {
+      loading({ active: false });
       sendToast('No audio files in that folder or its subfolders.', 'error');
       return;
     }
@@ -295,6 +319,8 @@ async function loadFolder(folderPath, { limit = Infinity, displayName, refreshed
     });
   } catch (e) {
     console.error('read folder failed:', e);
+    if (seq !== folderLoadSeq) return;
+    loading({ active: false });
     sendToast('Could not read that folder.', 'error');
   }
 }
@@ -593,7 +619,39 @@ async function runFolderSmoke() {
   const js = (code) => mainWindow.webContents.executeJavaScript(code);
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const started = Date.now();
-  await loadFolder(path.resolve(SMOKE_FOLDER));
+  const loadDone = loadFolder(path.resolve(SMOKE_FOLDER));
+  if (SMOKE_WALK_DELAY_MS) {
+    // Loading-state check (R1c): sample the panel while the slowed walk runs.
+    const seen = [];
+    for (;;) {
+      const s = JSON.parse(
+        await mainWindow.webContents.executeJavaScript(`JSON.stringify({
+          loading: !document.getElementById('folder-loading').hidden,
+          listHidden: document.getElementById('folder-list').hidden,
+          refreshDisabled: document.getElementById('refresh-btn').disabled,
+          scanDisabled: document.getElementById('scan-btn').disabled,
+          detail: document.getElementById('folder-loading-detail').textContent,
+          rows: document.querySelectorAll('#folder-list li').length
+        })`),
+      );
+      seen.push(s);
+      if (!s.loading && s.rows > 0) break;
+      if (Date.now() - started > 60000) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    const during = seen.filter((s) => s.loading);
+    console.log(
+      'SMOKE_LOADING',
+      JSON.stringify({
+        samples: seen.length,
+        loadingSamples: during.length,
+        allDisabled: during.every((s) => s.refreshDisabled && s.scanDisabled && s.listHidden),
+        details: [...new Set(during.map((s) => s.detail))].slice(0, 4).concat(['…']).concat([during.at(-1)?.detail]),
+        end: seen.at(-1),
+      }),
+    );
+  }
+  await loadDone;
   try {
     // Wait for the panel to list the files, then start the scan.
     for (;;) {
