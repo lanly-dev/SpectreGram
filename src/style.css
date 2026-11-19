@@ -1247,7 +1247,6 @@ main.folder-open .controls {
   gap: 2px 12px;
   margin: 6px 0 0;
   padding-top: 6px;
-  padding-bottom: 10px;
   border-top: 1px solid var(--border);
 }
 
@@ -1271,6 +1270,35 @@ main.folder-open .controls {
   font-size: 0.68rem;
   font-variant-numeric: tabular-nums;
   text-align: center;
+}
+
+/* Export is the card's primary action: filled accent with a warm glow, so it
+   reads as the button to press next to the quiet Cancel. */
+#export-go, #message-generate {
+  color: #1b1016;
+  background: linear-gradient(180deg, #ffa463, var(--accent));
+  border-color: rgba(255, 122, 61, 0.85);
+  font-weight: 600;
+}
+
+#export-go:hover, #message-generate:hover {
+  background: linear-gradient(180deg, #ffb582, #ff8a4d);
+  border-color: #ffa163;
+  box-shadow: 0 0 0 1px rgba(255, 122, 61, 0.4), 0 0 18px rgba(255, 122, 61, 0.5);
+}
+
+#export-go:focus-visible {
+  outline: 2px solid #ffc79c;
+  outline-offset: 2px;
+}
+
+#export-go:disabled {
+  color: var(--muted);
+  background: var(--panel-2);
+  border-color: var(--border);
+  font-weight: 400;
+  box-shadow: none;
+  cursor: default;
 }
 
 /* --- About card (Help > About, desktop) ----------------------------------- */

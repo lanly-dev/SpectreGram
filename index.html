@@ -157,8 +157,8 @@
           changed.
         </p>
         <div class="report-actions">
-          <button id="message-generate" type="submit">Generate &amp; save</button>
           <button id="message-cancel" type="button">Cancel</button>
+          <button id="message-generate" type="submit">Generate &amp; save</button>
         </div>
       </form>
     </div>
@@ -214,7 +214,6 @@
               <option value="10">10</option>
             </select>
           </div>
-          <p id="export-summary" class="export-summary"></p>
         </div>
         <div class="export-extras">
           <label class="export-check">
@@ -226,6 +225,8 @@
             dB legend
           </label>
         </div>
+        <!-- Output size for whichever mode is picked; stays visible in both. -->
+        <p id="export-summary" class="export-summary"></p>
         <div class="report-actions">
           <button id="export-cancel" type="button">Cancel</button>
           <button id="export-go" type="button">Export</button>
