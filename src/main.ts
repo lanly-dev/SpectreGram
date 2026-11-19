@@ -29,7 +29,7 @@ import type {
   ZoomRequest,
 } from './audio/stft-worker';
 import { bandRanges, planExport, type ExportPlan, type SplitMode } from './export-bands';
-import { composeExportImage, exportLayout, type ExportRow } from './export-image';
+import { composeExportImage, exportBandHeight, exportLayout, type ExportRow } from './export-image';
 import { runScan } from './scan';
 import { buildReportMarkdown, CLASS_INFO, countClasses, rateCollection } from './report';
 import type { FolderFile } from './types/desktop';
@@ -932,7 +932,13 @@ function updateExportPanel(): void {
     return;
   }
   const { rulers, legend } = exportDecorations();
-  const lay = exportLayout(plan.strips, plan.columns, rulers, legend);
+  const lay = exportLayout(
+    plan.strips,
+    plan.columns,
+    rulers,
+    legend,
+    exportBandHeight(fullGrid?.bins ?? 0, getViewMode() === 'phase'),
+  );
   if (split === 'speed') {
     // One strip covering the file; the speed setting compresses the time axis.
     const label = value === 'slowest' ? 'slowest (½×)' : `${value}×`;

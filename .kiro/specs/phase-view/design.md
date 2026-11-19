@@ -86,3 +86,29 @@ legend column go back to the palette, which is still the level axis.
 Checks for this shape: the lit-pixel count and mean brightness must stay close
 to the magnitude render (structure preserved), while the hue spread inside a
 single narrow brightness band must jump (phase actually displayed).
+
+## Amendment — native-height strips for phase exports (2026-11-19)
+
+The tint survives only while no two bin rows are blended into one pixel
+row. The main canvas is fixed at 512 rows for 1025 bins, so the on-screen
+graph (and any screenshot of it) blends bin pairs and the phase is lost
+there — measured externally: a ground-truth simulation of the whole
+pipeline (STFT → tint render → decode) recovers phase at R = 1.000 from
+the native grid, but only R ≈ 0.10 after the 1025 → 512 canvas scale.
+The stacked export used the same 512 strip height, so it threw the phase
+away too.
+
+`composeExportImage` now sizes grid strips through
+`exportBandHeight(bins, phase)` (`src/export-image.ts`): in phase mode a
+strip is painted at the grid's native bin height (1025), so
+`drawGridStrip` scales 1:1 vertically and every bin row is one pixel row;
+magnitude mode keeps the fixed 512. `exportLayout` takes the band height
+as a parameter (the layout maths stays pure), and the export panel's size
+summary in `src/main.ts` passes the same helper's result, so the quoted
+pixel size matches the file. Current-view exports (a live-canvas source
+row, no grid) are unchanged. At the 10-part maximum the composed image is
+10 × (1025 + 18) ≈ 10.4k px tall, inside canvas limits.
+
+A native-height phase export is therefore a pixel-exact copy of the
+segment grids — an external decoder can recover magnitude + phase per bin
+from it (inverse STFT per strip), which no 512-tall render allows.

@@ -34,3 +34,15 @@ Design: `./design.md`.
   same-level brightness band 14 → 36 hue buckets, and 1:1 crops of the two
   exports show identical structure with magenta/pink phase ripple in the
   orange.
+- ✅ **6** — 2026-11-19, maintainer's follow-up (external phase
+  reconstruction testing). Design amended in the same change
+  (native-height amendment). Stacked PNG exports in phase mode now paint
+  each strip at the grid's native bin height (`exportBandHeight` in
+  `src/export-image.ts`; `exportLayout` takes the band height; the panel
+  summary in `src/main.ts` quotes the same size). Magnitude exports and
+  current-view exports unchanged. Verified: build ✓, Vitest 10/10 ✓;
+  temporary Vitest (5/5, deleted) for `exportBandHeight` / `exportLayout`
+  (phase → 1025, magnitude → 512, no grid → 512, 10 strips →
+  10 × (1025 + 18) px). Not verified: the export from a running app
+  (maintainer's click-through) and an external decode of a real
+  native-height export.

@@ -448,6 +448,15 @@ wheel. Confirmed on 1:1 crops of the two exports: the vertical structure is
 identical between them, and the phase version carries magenta/pink ripple
 through the orange instead of one flat hue.
 
+**Exports in phase mode.** The stacked PNG export paints each strip at
+the grid's native bin height (1025 rows) instead of the fixed 512
+(`exportBandHeight` in `src/export-image.ts`), because scaling the bin
+rows blends neighbouring bins into single pixels and the blend destroys
+the hue-carried phase. At native height every bin row is one pixel row,
+so the export is a pixel-exact copy of the segment grids and the phase
+tint survives intact; magnitude exports keep the 512 strip height. The
+export panel's size summary quotes the same height it will write.
+
 ## Export panel
 
 Spec: `.kiro/specs/export-panel/` (feature-branch spec, merged to main via PR
