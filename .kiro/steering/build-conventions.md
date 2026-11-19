@@ -34,14 +34,34 @@ idea, not the source.
   no Next.js. (Electron pivot DECIDED 2026-11-06 — supersedes the earlier
   static-only lock; see `AGENTS.md`.)
 
-## File structure (spec tasks map 1:1)
+## File structure (evolved from spec-first tasks)
 ```
-src/main.ts              — drop zone, file pick, wiring
-src/audio/decode.ts      — decodeAudioData + file facts (format/duration/sample rate/channels)
-src/audio/stft-worker.ts — STFT via fft.js, posts progress + magnitude grid
-src/audio/cutoff.ts      — cutoff estimate + verdict text (always "estimate"); Vitest-tested
+src/main.ts              — drop zone, file pick, wiring, zoom, playback, cache
 src/render.ts            — canvas spectrogram, palette switch, playhead, PNG export
+src/audio/decode.ts      — decodeAudioData + file facts
+src/audio/stft-worker.ts — STFT via fft.js, posts progress + magnitude grid, zoom, classify
+src/audio/stft.ts        — shared STFT params, computeStftSegment (for zoom)
+src/audio/cutoff.ts      — cutoff estimate + verdict text (always "estimate"); Vitest-tested
+src/audio/cutoff.test.ts — Vitest suite for cutoff logic
+src/scan.ts              — folder scan worker coordinator
+src/report.ts            — classify rows, rating tiers, Markdown builder (pure)
+src/drumroll.ts          — synthesized drumroll sound for folder report reveal
+src/export-bands.ts      — multi-strip grid request for export panel
+src/export-image.ts      — compose export image with decorations (rulers, legend)
+src/message/encode.ts    — spectral message layout, fit check, tone synthesis (pure)
+src/message/raster.ts    — text → 32-row 0/1 mask (canvas)
+src/message/phrases.ts   — dice phrases, grapheme counter
+src/message/wav.ts       — 16-bit PCM WAV writer (pure)
+src/message/embed-worker.ts — worker running embed + WAV generation
+src/types/desktop.d.ts   — Electron preload bridge types
+src/types/fft.js.d.ts    — fft.js type declarations
 index.html / src/style.css
+electron/main.js         — Electron main process (ESM)
+electron/preload.cjs     — sandboxed preload (CommonJS, bridge to renderer)
+electron/icon.png        — app icon (512×512, for window/taskbar in unpackaged runs)
+build/icon.png           — installer icon (512×512, electron-builder)
+public/icon.png          — web favicon (256×256)
+public/screensaver.mp4   — idle screensaver video
 ```
 
 ## Code conventions
