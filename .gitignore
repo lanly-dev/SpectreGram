@@ -4,3 +4,4 @@ release
 *.local
 package-lock.json
 lab
+.agents
