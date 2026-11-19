@@ -69,8 +69,7 @@ run, `npm run test:watch` while tuning thresholds.
 ## Recent-file cache
 
 Reopening a file you already opened this session paints its spectrogram
-and verdict at once, with no decode, STFT or cutoff pass. The code is the
-"Recent-file cache" section of `src/main.ts`.
+and verdict at once, with no decode, STFT or cutoff pass.
 
 **Memory only.** Nothing is written to disk or browser storage. The cache
 lives in ordinary variables and is gone when the app closes, so the next
@@ -271,10 +270,9 @@ open.
 
 ## Ruler seek
 
-Spec: `.kiro/specs/ruler-seek/`. Code: `setupRulerSeek()`, `showCue()` and
-the playback functions in `src/main.ts`; `#seek-hover` / `#seek-tooltip` in
-`index.html`; the "Ruler seek" block at the end of `src/style.css`.
+Spec: `.kiro/specs/ruler-seek/`.
 
+### Hover and seek
 - **Hover** the bottom (time) ruler: a crimson line with a 🧛 rider follows
   the cursor down the spectrogram (`#seek-hover`, separate from the white 👻
   playhead), and a tooltip beside the cursor shows the time at that point
@@ -282,38 +280,48 @@ the playback functions in `src/main.ts`; `#seek-hover` / `#seek-tooltip` in
   both.
 - **Click** the ruler: sets the cue (`cueSec`). Stopped → the playhead moves
   to the cue. Playing → playback restarts from the cue.
-- **Back / Skip** (`#prev-btn` / `#next-btn`, left of Play) step through the
-  open folder's listing in panel order — they open the neighbouring file the
+
+### Transport controls
+All buttons live in the controls row at the bottom of the UI.
+
+- **Back / Skip** (`#prev-btn` / `#next-btn`, left of Play) — step through the
+  open folder's listing in panel order. They open the neighbouring file the
   same way a row click does, and the selected row follows. Both are disabled
   when no folder is open (and after a single file is opened, which ends the
   folder session); Back disables on the first file and Skip on the last.
   `folderPaths` / `folderSelectedPath` hold the order and the current row, and
   `updateTransportButtons()` is what sets the two `disabled` flags.
-- **Play/Pause** (`#play-btn`, right end of the controls row, pause icon while
-  playing) starts from the cue (`source.start(0, offset)`) and otherwise
-  resumes a paused track where it stopped (`pausedAt`). **Stop** (`#stop-btn`,
-  beside it) returns the playhead to the cue (hidden when the cue is 0:00) and
-  clears `pausedAt`, which is the difference between the two buttons: pause
-  freezes in place, stop rewinds to the marked position. **Back to start**
-  (`#start-btn`, just left of Play) is the full rewind: `backToStart()` clears
-  the cue and the pause point and stops, so Play starts at 0:00. A new cue, a
-  new file and reaching the end of the track all clear `pausedAt` too.
-  Zooming keeps a paused or cued playhead in place, or hides it when it is out
+- **Play/Pause** (`#play-btn`, right end of the controls row, shows pause icon
+  while playing) — starts from the cue (`source.start(0, offset)`) and
+  otherwise resumes a paused track where it stopped (`pausedAt`).
+- **Stop** (`#stop-btn`, beside Play) — returns the playhead to the cue (button
+  is hidden when the cue is 0:00) and clears `pausedAt`. This is the
+  difference: pause freezes in place, stop rewinds to the marked position.
+- **Back to start** (`#start-btn`, just left of Play) — the full rewind.
+  `backToStart()` clears the cue and the pause point and stops, so Play starts
+  at 0:00. A new cue, a new file and reaching the end of the track all clear
+  `pausedAt` too.
+- **Space bar** — plays and pauses, same as the play button
+  (`setupPlayShortcut()`). It is skipped while typing in a field, while any
+  `.report-modal` dialog or the idle screensaver is up (`overlayOpen()`), and
+  while a button has focus — a focused button already activates on space, so
+  toggling here too would cancel it out. The key's default is prevented so the
+  page never scrolls.
+
+### Behavior details
+- Zooming keeps a paused or cued playhead in place, or hides it when it is out
   of view.
-- **Space** plays and pauses, same as the play button (`setupPlayShortcut()`).
-  It is skipped while typing in a field, while any `.report-modal` dialog or
-  the idle screensaver is up (`overlayOpen()`), and while a button has focus —
-  a focused button already activates on space, so toggling here too would
-  cancel it out. The key's default is prevented so the page never scrolls.
+- Times come from `viewRange()`, so hover and click work while zoomed. The
+  ruler and spectrogram share left/right edges, so a fraction across one is
+  the same fraction across the other.
 - **Disabled states:** Stop is live only while a track is playing or paused
   (there is something to stop); Back to start is live unless the app is idle
   at 0:00 with no cue. Both come from `updatePlayButton()`, which `showCue()`
   also calls, so a new cue or a rewind updates them without extra plumbing.
-- Times come from `viewRange()`, so hover and click work while zoomed. The
-  ruler and spectrogram share left/right edges, so a fraction across one is
-  the same fraction across the other.
-- Not included: drag-scrubbing, keyboard seeking, seeking from the
-  spectrogram itself (dragging there zooms).
+
+### Not included
+- Drag-scrubbing, keyboard seeking, seeking from the spectrogram itself
+  (dragging there zooms).
 
 **Smoke test.** `SPECTREGRAM_SMOKE=1 SPECTREGRAM_SMOKE_FILE=<track>
 SPECTREGRAM_SMOKE_SEEK=1 npx electron . --user-data-dir=<temp>` analyzes the
@@ -322,6 +330,109 @@ prints the hover line, tooltip and playhead positions at each step
 (`SEEK_HOVER` / `SEEK_CUED` / `SEEK_PLAYING` / `SEEK_STOPPED` / `SEEK_LEFT`).
 Test-only. The separate `--user-data-dir` lets it run while another
 SpectreGram window is open.
+
+## Zoom controls
+
+### Drag to zoom
+Drag across the spectrogram to zoom into that time segment. The zoomed view is
+**re-analyzed, not stretched**: the worker keeps the file's mono samples after
+the full analysis and answers `zoom` requests with `computeStftSegment`
+(`src/audio/stft.ts`) — about one column per canvas pixel, window centers
+evenly spaced across the segment, zero-padded at the track edges.
+
+**Minimum zoom:** 20 STFT windows (`MIN_ZOOM_WINDOWS` in `src/main.ts`,
+TUNABLE) — ≈0.93 s at 44.1 kHz, ≈0.85 s at 48 kHz. Below that the 2048-sample
+(~46 ms) window just smears wider.
+
+### Ctrl+wheel zoom
+Ctrl/⌘ + wheel over the spectrogram zooms in and out around the pointer, like
+a map. `zoomByAt()` in `src/main.ts` handles it, with steepness controlled by
+`ZOOM_WHEEL_RATE` (TUNABLE, ×1.42 per 100-unit notch, exponential so trackpad
+pinch and wheel notches both feel even).
+
+**Behavior:**
+- The time under the cursor stays fixed as you zoom
+- The span clamps at the 20-window minimum and at the whole track (zooming out
+  past the end is Reset zoom)
+- Plain wheel still pans horizontally
+- Works from the full view too, so no drag is needed to start zooming
+- Holding Ctrl/⌘ swaps the crosshair for a `zoom-in` magnifier (`.zoom-mod` on
+  `#canvas-wrap`)
+
+**preventDefault fix:** Both Ctrl+wheel and plain wheel call `preventDefault()`
+so the browser's own page zoom never triggers (it used to in Electron and the
+web demo before this was added).
+
+### Reset zoom
+Button (top-right of spectrogram) or Esc returns to the full track. The zoomed
+verdict is never recomputed — it always describes the whole file. Zoom failures
+post `zoom-error` (toast only) so they never clear the verdict.
+
+### Wheel panning
+Plain mouse wheel or trackpad scroll moves the zoomed view horizontally. One
+request in flight; scrolling coalesces to the latest view. Frequency stays
+full-range in all zoom states.
+
+## Export panel
+
+Spec: `.kiro/specs/export-panel/` (feature-branch spec, merged to main via PR
+#6). The PNG button (toolbar) or File › Export PNG… (menu, Ctrl/⌘+S) opens a
+settings card instead of saving immediately.
+
+### Export modes
+
+**Current view** — the canvas pixels as they appear, zoom included. No
+re-analysis; this is the fastest option.
+
+**Whole track** comes in two shapes:
+- *by speed* — the entire file in ONE strip at a compression level: 1× =
+  1,024 columns (`BASE_COLUMNS`, TUNABLE, the on-screen width), "slowest" (½×)
+  = 2,048, 2× = 512, 3× = 341, 5× = 205 (floor 128).
+- *equal parts* — 1–10 strips of `duration / N` each, stacked top to bottom in
+  one image (`1024 × 512·N`).
+
+Every strip is `computeStftSegment` at its own column count, so it carries real
+detail rather than a stretched overview, in the active palette and dB range.
+The worker gained an `export-bands` request that answers with all grids in one
+message; `drawGridStrip()` in `src/render.ts` takes the strip width and paints
+each onto the composite canvas.
+
+### Decorations (optional, both on by default)
+
+- **Rulers** — time ticks/labels under every strip, frequency labels down a 48
+  px left gutter
+- **dB legend** — palette bar with the display range's labels in a 44 px right
+  column
+
+Applied to every export shape including the current view. The export is a
+composed image rather than a canvas copy: `src/export-image.ts` takes either
+grids or the live canvas as rows, with the layout maths pure (`exportLayout`)
+and the axes/legend drawn as canvas text.
+
+### Advanced Export toggle
+
+Options › **Advanced Export** (checkbox menu item, on by default) decides what
+the Export button and Ctrl/⌘+S do:
+- **On:** opens the panel
+- **Off:** saves the current view instantly (plain 1024×512 canvas copy, no
+  rulers/legend, no prompt), then shows a toast
+
+The shell sends `sg:menu-action('advanced-export', checked)` and the renderer
+holds the flag (session-only).
+
+## About card
+
+Help › About is no longer a native message box. The shell sends `sg:about` and
+the renderer shows a `.report-modal` card with the app icon on the left, text
+panel on the right, cobwebs, a drifting 🦇, ghost title and pumpkin glow. The
+icon column is a stretched flex item (its height = text panel height), and the
+image sits on the card with `object-fit: contain` — the PNG is transparent (no
+plinth, no border) and fills the full height uncropped at its natural 924:916
+ratio. Close button is pinned bottom-right. Esc or the backdrop closes it and
+swallows the key so it doesn't also reset zoom.
+
+Native dialogs can't carry the app's styling, so this was built in-renderer
+instead.
 
 ## Packaging
 
@@ -333,10 +444,10 @@ electron-builder configuration lives in the `build` key of
 - `npm run dist` — the installer for the host OS: Windows NSIS,
   macOS dmg, Linux AppImage.
 - The installer registers file associations for the common audio
-  extensions (mp3 / flac / wav / ogg / m4a / opus / aac); opening a file
+  extensions (mp3 / flac / wav / ogg / m4a / opus / aac / wma); opening a file
   with the app routes it through the same analysis path as drag & drop.
-- App icon: `build/icon.png` (placeholder ghost mark; the final icon is
-  a Halloween flair-pass item).
+- App icon: `build/icon.png` — AI-generated ghost mark (white sheet ghost
+  dissolving into glowing hellfire-orange spectrogram bars on black).
 - Installers are **unsigned** in v1: Windows SmartScreen and macOS
   Gatekeeper warn on first launch. That's expected until signing is set
   up.
