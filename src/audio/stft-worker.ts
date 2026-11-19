@@ -6,7 +6,7 @@
 //   new Worker(new URL('./audio/stft-worker.ts', import.meta.url), { type: 'module' });
 
 import { computeStft, computeStftSegment } from './stft';
-import type { StftParams } from './stft';
+import type { DbGrid, StftParams } from './stft';
 import { analyze } from './cutoff';
 
 // Requests posted from the main thread (main -> worker).
@@ -56,7 +56,21 @@ export type ClassifyRequest = {
   claimedFormat: string;
 };
 
-export type WorkerRequest = AnalyzeRequest | ZoomRequest | HoldRequest | ClassifyRequest;
+/**
+ * Re-analyze the whole track as N strips for the stacked PNG export: one
+ * segment per strip, each sized for the full canvas width.
+ */
+export type ExportBandsRequest = {
+  type: 'export-bands';
+  /** Echoed back so the main thread can match the reply. */
+  id: number;
+  /** Time ranges in samples, top strip first. */
+  ranges: { startSample: number; endSample: number }[];
+  /** Target column count per strip (the canvas width). */
+  columns: number;
+};
+
+export type WorkerRequest = AnalyzeRequest | ZoomRequest | HoldRequest | ClassifyRequest | ExportBandsRequest;
 
 // Responses posted from the worker (worker -> main). The grid and the verdict are
 // separate messages: the grid is already computed when the cutoff pass starts,
@@ -70,7 +84,9 @@ export type WorkerMessage =
   | { type: 'zoom-result'; id: number; data: Float32Array; frames: number; bins: number }
   | { type: 'zoom-error'; id: number; message: string }
   | { type: 'classify-result'; id: number; cutoffHz: number; verdict: string }
-  | { type: 'classify-error'; id: number; message: string };
+  | { type: 'classify-error'; id: number; message: string }
+  | { type: 'export-result'; id: number; bands: DbGrid[] }
+  | { type: 'export-error'; id: number; message: string };
 
 // Minimal worker-global shape so we can target the worker's postMessage
 // signature without pulling in the WebWorker lib (which conflicts with the
@@ -146,6 +162,23 @@ function handleZoom(msg: ZoomRequest): void {
   }
 }
 
+function handleExportBands(msg: ExportBandsRequest): void {
+  try {
+    const samples = heldSamples;
+    if (!samples) throw new Error('audio is not ready yet');
+    const bands = msg.ranges.map((r) =>
+      computeStftSegment(samples, r.startSample, r.endSample, msg.columns, heldParams),
+    );
+    scope.postMessage(
+      { type: 'export-result', id: msg.id, bands } satisfies WorkerMessage,
+      bands.map((b) => b.data.buffer),
+    );
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    scope.postMessage({ type: 'export-error', id: msg.id, message } satisfies WorkerMessage, []);
+  }
+}
+
 function handleClassify(msg: ClassifyRequest): void {
   try {
     const grid = computeStft(msg.samples, msg.params);
@@ -165,6 +198,7 @@ scope.onmessage = (ev: MessageEvent) => {
   if (msg?.type === 'analyze') handleAnalyze(msg);
   else if (msg?.type === 'zoom') handleZoom(msg);
   else if (msg?.type === 'classify') handleClassify(msg);
+  else if (msg?.type === 'export-bands') handleExportBands(msg);
   else if (msg?.type === 'hold') {
     heldSamples = msg.samples;
     heldParams = msg.params;

@@ -26,7 +26,7 @@ let pendingOpenPath = null;
 // Remember the directory of the last file the user picked via File > Open so
 // the dialog reopens there next time.
 let lastOpenDir = '';
-// Whether the renderer currently has a spectrogram to export. Gates Save as PNG.
+// Whether the renderer currently has a spectrogram to export. Gates the Export item.
 let hasSpectrogram = false;
 
 // Test-only hooks (used by the headless smoke run; inert otherwise).
@@ -182,10 +182,10 @@ function registerIpc() {
     return true;
   });
 
-  // Renderer reports whether a spectrogram is present, gating Save as PNG.
+  // Renderer reports whether a spectrogram is present, gating the Export item.
   ipcMain.handle('sg:spectrogram-state', (_event, present) => {
     hasSpectrogram = Boolean(present);
-    const item = Menu.getApplicationMenu()?.getMenuItemById('save-png');
+    const item = Menu.getApplicationMenu()?.getMenuItemById('export-png');
     if (item) item.enabled = hasSpectrogram;
     return true;
   });
@@ -343,6 +343,12 @@ function menuOpenFolder() {
 const SAMPLE_DIR = path.join(__dirname, '..', 'lab');
 const SAMPLE_LIMIT = 10;
 
+// Checkbox reads "Advanced Export": checked = Export opens the panel (default).
+// Unchecked, the renderer saves the current view straight away instead.
+function menuToggleAdvancedExport(item) {
+  sendMenuAction('advanced-export', item.checked);
+}
+
 function menuToggleScreensaver(item) {
   // Checkbox reads "Disable Screensaver": checked = screensaver off.
   sendMenuAction('screensaver-enabled', !item.checked);
@@ -365,9 +371,10 @@ function menuLoadSampleFolder() {
 }
 
 
-function menuSave() {
+// File > Export PNG…: opens the same export panel as the toolbar button.
+function menuExport() {
   if (!hasSpectrogram) return;
-  if (mainWindow) mainWindow.webContents.send('sg:save-png');
+  if (mainWindow) mainWindow.webContents.send('sg:export-open');
 }
 
 function menuExit() {
@@ -412,11 +419,11 @@ function buildMenu() {
           click: menuOpenFolder,
         },
         {
-          id: 'save-png',
-          label: 'Save as PNG',
+          id: 'export-png',
+          label: 'Export PNG…',
           accelerator: process.platform === 'darwin' ? 'Cmd+S' : 'Ctrl+S',
           enabled: false,
-          click: menuSave,
+          click: menuExport,
         },
         { type: 'separator' },
         {
@@ -429,6 +436,13 @@ function buildMenu() {
     {
       label: 'Options',
       submenu: [
+        {
+          id: 'advanced-export',
+          label: 'Advanced Export',
+          type: 'checkbox',
+          checked: true,
+          click: menuToggleAdvancedExport,
+        },
         {
           id: 'disable-screensaver',
           label: 'Disable Screensaver',
