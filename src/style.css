@@ -1196,7 +1196,7 @@ main.folder-open .controls {
    switch modes and a focus ring is drawn on the tile. */
 .export-options {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 6px;
 }
 
@@ -1267,7 +1267,7 @@ main.folder-open .controls {
 }
 
 .export-card select {
-  min-width: 118px;
+  min-width: 140px;
   padding: 2px 5px;
   font: inherit;
   font-size: 0.7rem;
