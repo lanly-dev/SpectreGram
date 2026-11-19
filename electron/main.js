@@ -600,8 +600,10 @@ async function runSmoke() {
       const state = JSON.parse(raw);
       // A real verdict, not the loading note ("Decoding…" / "Analyzing… N%"),
       // which also lives in #verdict (with the 'pending' class). Every real
-      // verdict carries "(estimate)" — guaranteed by cutoff.ts and its tests.
-      const done = !/\bpending\b/.test(state.verdictClass) && state.verdict.includes('(estimate)');
+      // verdict names the claim, a missing cutoff, or a too-short file (the
+      // trailing "(estimate)" marker was dropped from the verdict strings).
+      const done =
+        !/\bpending\b/.test(state.verdictClass) && /Claims |No clear cutoff|too short/.test(state.verdict);
       if (done) {
         console.log('SMOKE_ANALYSIS_OK', JSON.stringify(state));
         if (SMOKE_MESSAGE) {
@@ -614,6 +616,13 @@ async function runSmoke() {
         }
         if (SMOKE_SAVE_DIR) {
           await mainWindow.webContents.executeJavaScript(`document.getElementById('png-btn').click()`);
+          // Advanced Export is on by default, so the button opens the panel —
+          // confirm it there (the panel's Export button does the write).
+          await new Promise((r) => setTimeout(r, 400));
+          await mainWindow.webContents.executeJavaScript(`(() => {
+            const m = document.getElementById('export-modal');
+            if (m && !m.hidden) document.getElementById('export-go').click();
+          })()`);
           await new Promise((r) => setTimeout(r, 1500));
           const base = path.basename(SMOKE_FILE).replace(/\.[^.]+$/, '');
           const savedPath = path.join(SMOKE_SAVE_DIR, `${base}-spectrogram.png`);
@@ -715,7 +724,10 @@ async function runMessageSmoke() {
         toast: (document.getElementById('toast') || {}).textContent || ''
       })`);
       const s = JSON.parse(raw);
-      const ready = s.title.includes('-haunted') && !/\bpending\b/.test(s.verdictClass) && s.verdict.includes('(estimate)');
+      const ready =
+        s.title.includes('-haunted') &&
+        !/\bpending\b/.test(s.verdictClass) &&
+        /Claims |No clear cutoff|too short/.test(s.verdict);
       if (ready) {
         console.log('SMOKE_MESSAGE_OK', `ms=${Date.now() - t0}`, raw);
         break;

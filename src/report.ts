@@ -3,8 +3,9 @@
 // collector rating, and the Markdown report the user can save.
 //
 // Verdict wording stays owned by cutoff.ts; this file only reads the same
-// phrases main.ts's verdict stamps key on. Every rating string carries
-// "(estimate)", like every verdict.
+// phrases main.ts's verdict stamps key on. Like the verdicts, rating blurbs
+// no longer carry an "(estimate)" suffix (dropped 2026-11-19 so the app reads
+// one way); the estimate framing lives in the report's caveat bullets.
 
 import type { ScanRow } from './scan';
 
@@ -50,7 +51,7 @@ export const HOARDER_MAX_COSTUME_SHARE = 0.5;
 export interface CollectorRating {
   emoji: string;
   title: string;
-  /** One line; always ends with "(estimate)". */
+  /** One line about the collection, ending at the finding. */
   blurb: string;
 }
 
@@ -61,7 +62,7 @@ export function rateCollection(c: ClassCounts): CollectorRating {
     return {
       emoji: '🦇',
       title: 'Lossy Lurker',
-      blurb: 'Nothing here claims to be lossless, so there was nothing to unmask. Honest lossy files, no costumes. (estimate)',
+      blurb: 'Nothing here claims to be lossless, so there was nothing to unmask. Honest lossy files, no costumes.',
     };
   }
   const judged = c.genuine + c.costume;
@@ -69,7 +70,7 @@ export function rateCollection(c: ClassCounts): CollectorRating {
     return {
       emoji: '🌫️',
       title: 'Lost in the Fog',
-      blurb: 'Every lossless claim came back inconclusive, so the spirits can’t tell either way. (estimate)',
+      blurb: 'Every lossless claim came back inconclusive, so the spirits can’t tell either way.',
     };
   }
   const share = c.costume / judged;
@@ -77,27 +78,27 @@ export function rateCollection(c: ClassCounts): CollectorRating {
     return {
       emoji: '👑',
       title: 'Crypt Keeper — a true collector',
-      blurb: 'Every lossless file that could be judged is the real thing. The crypt is in order. (estimate)',
+      blurb: 'Every lossless file that could be judged is the real thing. The crypt is in order.',
     };
   }
   if (share <= AVID_MAX_COSTUME_SHARE) {
     return {
       emoji: '🧛',
       title: 'Avid Collector',
-      blurb: 'Mostly the real thing, with a few costumes slipped into the crypt. (estimate)',
+      blurb: 'Mostly the real thing, with a few costumes slipped into the crypt.',
     };
   }
   if (share <= HOARDER_MAX_COSTUME_SHARE) {
     return {
       emoji: '🧟',
       title: 'Haunted Hoarder',
-      blurb: 'Plenty of “lossless”, but a good chunk of it is an MP3 in a costume. (estimate)',
+      blurb: 'Plenty of “lossless”, but a good chunk of it is an MP3 in a costume.',
     };
   }
   return {
     emoji: '🎃',
     title: 'Costume Party Noob',
-    blurb: 'Most of your “lossless” files are lossy files wearing a costume. (estimate)',
+    blurb: 'Most of your “lossless” files are lossy files wearing a costume.',
   };
 }
 

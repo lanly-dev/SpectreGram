@@ -178,7 +178,9 @@ export function estimateCutoff(
 }
 
 /**
- * Build a verdict string. Every returned string contains "estimate".
+ * Build a verdict string. The estimate framing is the `≈` on every stated
+ * cutoff (the maintainer had the trailing "(estimate)" label removed); only
+ * the "too short" note in `analyze` still uses the word.
  * `cutoffHz <= 0` covers the "no clear cutoff" case; the "too short" case is
  * handled by `analyze`, which sees the empty grid.
  */
@@ -190,10 +192,10 @@ export function buildVerdict(
   const fmt = canonicalFormat(claimedFormat);
 
   if (sampleRate <= 0) {
-    return 'No clear cutoff detected. (estimate)';
+    return 'No clear cutoff detected.';
   }
   if (cutoffHz <= 0) {
-    return 'No clear cutoff detected. (estimate)';
+    return 'No clear cutoff detected.';
   }
 
   const nyquist = sampleRate / 2;
@@ -204,23 +206,23 @@ export function buildVerdict(
   const lossless = fmt === 'flac' || fmt === 'wav';
   if (lossless) {
     if (ratio >= LOSSLESS_HIGH_RATIO) {
-      return `Claims ${claim}. Cutoff ≈${khz} kHz — consistent with genuine lossless. (estimate)`;
+      return `Claims ${claim}. Cutoff ≈${khz} kHz — consistent with genuine lossless.`;
     }
     if (ratio < SUSPICIOUS_RATIO) {
-      return `Claims ${claim}. Cutoff ≈${khz} kHz — smells like a 128k MP3 in a costume. (estimate)`;
+      return `Claims ${claim}. Cutoff ≈${khz} kHz — smells like a 128k MP3 in a costume.`;
     }
-    return `Claims ${claim}. Cutoff ≈${khz} kHz — inconclusive; could be filtered or upsampled. (estimate)`;
+    return `Claims ${claim}. Cutoff ≈${khz} kHz — inconclusive; could be filtered or upsampled.`;
   }
 
   if (fmt === 'm4a') {
-    return `Claims ${claim}. Cutoff ≈${khz} kHz — format is lossy-or-lossless ambiguous; no disguise call made. (estimate)`;
+    return `Claims ${claim}. Cutoff ≈${khz} kHz — format is lossy-or-lossless ambiguous; no disguise call made.`;
   }
   if (fmt === 'unknown') {
-    return `Claims ${claim}. Cutoff ≈${khz} kHz — format unknown; no disguise call made. (estimate)`;
+    return `Claims ${claim}. Cutoff ≈${khz} kHz — format unknown; no disguise call made.`;
   }
 
   // mp3, ogg — lossy; no "costume" accusation.
-  return `Claims ${claim}. Cutoff ≈${khz} kHz — normal for lossy compression. (estimate)`;
+  return `Claims ${claim}. Cutoff ≈${khz} kHz — normal for lossy compression.`;
 }
 
 /** Full analysis: cutoff + verdict. The empty-grid ("too short") case is decided here. */
@@ -233,7 +235,7 @@ export function analyze(
   if (grid.frames === 0) {
     return {
       cutoff: { cutoffBin: 0, cutoffHz: 0 },
-      verdict: 'Audio too short to estimate a cutoff. (estimate)',
+      verdict: 'Audio too short to estimate a cutoff.',
     };
   }
   const cutoff = estimateCutoff(grid, sampleRate, params);

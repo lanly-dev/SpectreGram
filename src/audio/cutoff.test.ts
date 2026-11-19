@@ -183,7 +183,7 @@ describe('edge-case verdicts', () => {
 });
 
 describe('estimate invariant', () => {
-  it('every verdict branch contains "estimate" (case-insensitive)', () => {
+  it('every stated cutoff is hedged with ≈ and no branch ends in "(estimate)"', () => {
     const verdicts: string[] = [
       analyze({ data: new Float32Array(0), frames: 0, bins: BINS }, SAMPLE_RATE, 'FLAC').verdict, // too short
       analyze(flatGrid(-60), SAMPLE_RATE, 'FLAC').verdict, // no clear cutoff
@@ -197,8 +197,17 @@ describe('estimate invariant', () => {
       buildVerdict(16000, SAMPLE_RATE, 'Unknown'), // unknown
       buildVerdict(16000, 0, 'FLAC'), // non-positive sample rate
     ];
-    for (const v of verdicts) {
-      expect(v.toLowerCase()).toContain('estimate');
+    const claims = verdicts.filter((v) => v.includes('Cutoff ≈'));
+    // Every branch that names a cutoff must hedge it: an estimate, not a reading.
+    expect(claims.length).toBeGreaterThanOrEqual(8);
+    for (const v of claims) {
+      expect(v).toContain('≈');
     }
+    // The trailing label was removed at the maintainer's request — keep it gone.
+    for (const v of verdicts) {
+      expect(v).not.toContain('(estimate)');
+    }
+    // The too-short note still says what the number would have been: an estimate.
+    expect(verdicts[0].toLowerCase()).toContain('estimate');
   });
 });

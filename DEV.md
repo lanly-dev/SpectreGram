@@ -178,7 +178,9 @@ Collector, ≤ 50% → 🧟 Haunted Hoarder, more → 🎃 Costume Party Noob; n
 lossless claims → 🦇 Lossy Lurker; only inconclusive → 🌫️ Lost in the Fog.
 Inconclusive is deliberately neutral (genuine 44.1 kHz files can read
 inconclusive on 48 kHz devices — AGENTS.md #3). The share thresholds are
-TUNABLE constants in `report.ts`. Every rating ends with "(estimate)".
+TUNABLE constants in `report.ts`. Like the verdicts, the rating blurbs end at
+the finding — no "(estimate)" suffix (dropped 2026-11-19); the saved report's
+caveat bullets still call every verdict and the rating estimates.
 
 **Report.** `spectregram-report.md`: folder name (not its full path), scan
 time, rating, class counts, one row per file (relative path, claimed

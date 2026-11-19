@@ -55,16 +55,20 @@ of the user's files.
   themed collector rating (from true collector to noob) is revealed on the
   crash, with a one-line explanation and the count per class. The sound is
   synthesized in the app (no audio file, so nothing to license). The rating
-  is labelled an **estimate**, like every verdict. *(Amended 2026-11-16 at
-  the maintainer's request: originally the drumroll played automatically
-  and silently.)*
+  is an **estimate**, like every verdict. *(Amended 2026-11-16 at the
+  maintainer's request: originally the drumroll played automatically and
+  silently. Amended 2026-11-19: the visible "(estimate)" suffix was dropped
+  from the blurb, matching the verdicts, so the rating line ends at the
+  finding.)*
 - **R5 — Save report.** **Save report** opens the save dialog **in the
   opened folder**, defaulting to `spectregram-report.md`. Nothing is written
   without that dialog; nothing is overwritten silently. The report holds the
   rating, the class counts, one row per file (relative path, claimed
   format, duration, cutoff, class, verdict) and the caveats.
-- **R6 — Honesty and privacy.** Every verdict and the rating carry
-  "(estimate)". The report states the decode sample rate and the known
+- **R6 — Honesty and privacy.** Every stated cutoff is hedged with `≈`, and
+  the report's caveats call every verdict and the rating **estimates** (the
+  per-string "(estimate)" suffixes were removed 2026-11-19). The report states
+  the decode sample rate and the known
   limitation that genuine 44.1 kHz files can read "Inconclusive" on 48 kHz
   devices (AGENTS.md open decision #3). Files are read locally only; the
   report is the only file written, and only where the user chooses.

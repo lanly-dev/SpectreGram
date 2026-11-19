@@ -70,7 +70,7 @@ checked between files; the worker is terminated on finish or cancel.
 - Report modal (`role="dialog"`): stage 1 drumroll screen (🥁 still, "n
   files judged", **Reveal** button, focused). Reveal → the drum shakes and
   `src/drumroll.ts` plays the sound; stage 2 reveal (rating emoji + title +
-  blurb + class counts + "(estimate)") appears on the crash, with buttons
+  blurb + class counts) appears on the crash, with buttons
   **Save report** and **Close**; Esc closes and stops the sound. Sits below
   the screensaver, above everything else.
 
