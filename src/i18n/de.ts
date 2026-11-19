@@ -49,6 +49,8 @@ export const DE: Partial<Record<I18nKey, string>> = {
   stopScan: 'Scan stoppen',
   refreshFolder: 'Ordner aktualisieren',
   folderLoading: 'Die Geister werden gerufen …',
+  folderFilter: 'Dateien filtern…',
+  folderFilterClear: 'Filter löschen',
   audioFileOne: '{n} Audiodatei',
   audioFileMany: '{n} Audiodateien',
   toastFolder: 'Ordner „{name}“ — {count}',

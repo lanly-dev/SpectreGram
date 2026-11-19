@@ -58,6 +58,8 @@ export const EN = {
   stopScan: 'Stop the scan',
   refreshFolder: 'Refresh folder',
   folderLoading: 'Summoning the spirits…',
+  folderFilter: 'Filter files…',
+  folderFilterClear: 'Clear filter',
   audioFileOne: '{n} audio file',
   audioFileMany: '{n} audio files',
   toastFolder: 'Folder "{name}" — {count}',

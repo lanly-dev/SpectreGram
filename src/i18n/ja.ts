@@ -47,6 +47,8 @@ export const JA: Partial<Record<I18nKey, string>> = {
   stopScan: 'スキャンを停止',
   refreshFolder: 'フォルダを更新',
   folderLoading: '霊を呼び出しています…',
+  folderFilter: 'ファイルを絞り込む…',
+  folderFilterClear: 'フィルターをクリア',
   audioFileOne: '{n} 個の音声ファイル',
   audioFileMany: '{n} 個の音声ファイル',
   toastFolder: 'フォルダ「{name}」 — {count}',

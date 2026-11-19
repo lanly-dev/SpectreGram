@@ -48,6 +48,8 @@ export const VI: Partial<Record<I18nKey, string>> = {
   stopScan: 'Dừng quét',
   refreshFolder: 'Làm mới thư mục',
   folderLoading: 'Đang triệu hồi các linh hồn…',
+  folderFilter: 'Lọc tệp…',
+  folderFilterClear: 'Xóa bộ lọc',
   audioFileOne: '{n} tệp âm thanh',
   audioFileMany: '{n} tệp âm thanh',
   toastFolder: 'Thư mục "{name}" — {count}',

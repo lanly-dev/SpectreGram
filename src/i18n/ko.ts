@@ -48,6 +48,8 @@ export const KO: Partial<Record<I18nKey, string>> = {
   stopScan: '스캔 중지',
   refreshFolder: '폴더 새로고침',
   folderLoading: '영혼을 불러오는 중…',
+  folderFilter: '파일 필터…',
+  folderFilterClear: '필터 지우기',
   audioFileOne: '오디오 파일 {n}개',
   audioFileMany: '오디오 파일 {n}개',
   toastFolder: '폴더 "{name}" — {count}',

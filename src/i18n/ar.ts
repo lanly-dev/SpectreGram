@@ -48,6 +48,8 @@ export const AR: Partial<Record<I18nKey, string>> = {
   stopScan: 'إيقاف الفحص',
   refreshFolder: 'تحديث المجلد',
   folderLoading: 'نستدعي الأرواح…',
+  folderFilter: 'تصفية الملفات…',
+  folderFilterClear: 'مسح التصفية',
   audioFileOne: '{n} ملف صوتي',
   audioFileMany: '{n} ملفات صوتية',
   toastFolder: 'المجلد "{name}" — {count}',

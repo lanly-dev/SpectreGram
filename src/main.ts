@@ -1216,6 +1216,27 @@ function selectFolderRow(path: string): void {
   updateTransportButtons();
 }
 
+let folderFilterQuery = '';
+
+/** Folder panel's second row: show rows matching the text, count shown/total. */
+function applyFolderFilter(): void {
+  const list = el<HTMLUListElement>('folder-list');
+  if (!list) return;
+  const q = folderFilterQuery.trim().toLowerCase();
+  let shown = 0;
+  const rows = list.querySelectorAll<HTMLLIElement>('li');
+  for (const li of rows) {
+    const hay = li.dataset.search ?? li.textContent ?? '';
+    const hit = !q || hay.toLowerCase().includes(q);
+    li.hidden = !hit;
+    if (hit) shown++;
+  }
+  const count = $('folder-filter-count');
+  if (count) count.textContent = `${shown} / ${rows.length}`;
+  const clear = el<HTMLButtonElement>('folder-filter-clear');
+  if (clear) clear.hidden = folderFilterQuery.length === 0;
+}
+
 /** Open the previous (-1) or next (+1) audio file in the folder listing. */
 function stepFolder(delta: -1 | 1): void {
   const desktop = window.spectregramDesktop;
@@ -1243,6 +1264,17 @@ function clearFolderPanel(): void {
     list.replaceChildren();
     list.hidden = false;
   }
+  folderFilterQuery = '';
+  const filterRow = el<HTMLElement>('folder-filter-row');
+  const filterInput = el<HTMLInputElement>('folder-filter');
+  const filterClear = el<HTMLButtonElement>('folder-filter-clear');
+  if (filterRow) filterRow.hidden = false;
+  if (filterInput) {
+    filterInput.value = '';
+    filterInput.disabled = false;
+  }
+  if (filterClear) filterClear.disabled = false;
+  applyFolderFilter();
   if (nameNode) {
     nameNode.textContent = '';
     nameNode.title = '';
@@ -1269,6 +1301,23 @@ function setupFolderPanel(): void {
   const list = el<HTMLUListElement>('folder-list');
   const nameNode = el<HTMLSpanElement>('folder-name');
   if (!box || !panel || !list || !nameNode) return;
+  const filterRow = el<HTMLElement>('folder-filter-row');
+  const filterInput = el<HTMLInputElement>('folder-filter');
+  const filterClear = el<HTMLButtonElement>('folder-filter-clear');
+  if (filterInput) {
+    filterInput.addEventListener('input', () => {
+      folderFilterQuery = filterInput.value;
+      applyFolderFilter();
+    });
+  }
+  filterClear?.addEventListener('click', () => {
+    folderFilterQuery = '';
+    if (filterInput) {
+      filterInput.value = '';
+      filterInput.focus();
+    }
+    applyFolderFilter();
+  });
 
   const refreshBtn = el<HTMLButtonElement>('refresh-btn');
   // The loading state (below) disables the button and spins its icon for
@@ -1290,6 +1339,9 @@ function setupFolderPanel(): void {
   const setFolderLoading = (active: boolean, folderName = '', found = 0): void => {
     if (loadingNode) loadingNode.hidden = !active;
     list.hidden = active;
+    if (filterRow) filterRow.hidden = active;
+    if (filterInput) filterInput.disabled = active;
+    if (filterClear) filterClear.disabled = active;
     if (refreshBtn) {
       refreshBtn.disabled = active;
       refreshBtn.classList.toggle('spinning', active);
@@ -1327,6 +1379,11 @@ function setupFolderPanel(): void {
     nameNode.textContent = folderName;
     nameNode.title = folderName;
     list.replaceChildren();
+    // A new folder starts with a clean filter; a refresh keeps it.
+    if (!refreshed) {
+      folderFilterQuery = '';
+      if (filterInput) filterInput.value = '';
+    }
     // Back/Skip walk this order; a refresh keeps the current row selected (R1b).
     folderPaths = files.map((f) => f.path);
     if (!refreshed) folderSelectedPath = '';
@@ -1350,8 +1407,10 @@ function setupFolderPanel(): void {
         }
       });
       li.dataset.path = filePath;
+      li.dataset.search = name;
       list.appendChild(li);
     }
+    applyFolderFilter();
     // Re-apply the selection (a refresh keeps it, and it scrolls back into view).
     selectFolderRow(folderSelectedPath);
     panel.hidden = false;

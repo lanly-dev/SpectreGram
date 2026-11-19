@@ -145,6 +145,16 @@ followed, unreadable subfolders are skipped, and the list stops at 1,000
 files (`MAX_FOLDER_FILES`; the user gets a "list capped" toast). Panel rows
 show the path relative to the opened folder.
 
+**Filter.** A second row under the panel header filters the listing as you
+type (case-insensitive substring of the relative path) and shows `shown /
+total` beside the box. Rows are hidden, not removed, so Back/Skip, the
+selection and Scan still use the full listing. A new folder clears the
+query; Refresh keeps it. During the loading state the row is hidden and
+disabled, and its placeholder is translated with the rest of the interface.
+The clear × is a real button (Chromium's native search cross is hidden), so
+it is white with a pointer cursor; clicking it resets the query, restores
+`total / total`, and focuses the box again.
+
 **Refresh.** The circular-arrow button right of Scan re-lists the open
 folder (`sg:refresh-folder`) with the same rules, cap and display name it
 was opened with, so files added, removed or renamed since show up without
