@@ -298,7 +298,20 @@ Spec: `.kiro/specs/ruler-seek/`.
   to the cue. Playing → playback restarts from the cue.
 
 ### Transport controls
-All buttons live in the controls row at the bottom of the UI.
+All buttons live in the controls row at the bottom of the UI. The row reads
+left to right as: tools (palette, PNG export, spectral message), the open
+file's **name** (`#track-name`, set by `setTrackName(file.name)` in the load
+path, 11 px muted, one line with an ellipsis at 42ch and the full name in its
+`title`), then the transport group (`.transport`, a nowrap flex box holding
+Back, Skip, Back-to-start, play/pause and Stop). The name sits directly after
+the tools (8 px gap) — not centred in the row — and `.transport`'s
+`margin-left: auto` absorbs the slack, so the group stays flush with the right
+edge. The row itself is `flex-wrap: nowrap` and `.transport` is
+`flex: 0 0 auto`, so the five transport buttons cannot split across lines:
+`.track-name` is the only shrinkable item (`flex: 0 1 auto; min-width: 0`), so
+a long name — or a narrow window, or the folder panel's 200 px — ellipses the
+name instead. Empty name = zero width, so the row looks unchanged before a
+track is opened.
 
 - **Back / Skip** (`#prev-btn` / `#next-btn`, left of Play) — step through the
   open folder's listing in panel order. They open the neighbouring file the

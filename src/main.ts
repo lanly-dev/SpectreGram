@@ -206,6 +206,14 @@ function setupDbRangeKeys(): void {
   });
 }
 
+/** Name of the open file, in the gap between the tools and the transport. */
+function setTrackName(name: string): void {
+  const span = $('track-name');
+  if (!span) return;
+  span.textContent = name;
+  span.title = name; // full name when the row clips it
+}
+
 // Module-level state so a palette switch can re-render without recomputing.
 let worker: Worker | null = null;
 let audioBuffer: AudioBuffer | null = null;
@@ -605,6 +613,7 @@ async function handleFile(file: File): Promise<void> {
   pendingCache = null;
   const dot = file.name.lastIndexOf('.');
   currentBaseName = dot > 0 ? file.name.slice(0, dot) : file.name || 'spectregram';
+  setTrackName(file.name);
   const desktop = window.spectregramDesktop;
   if (desktop) void desktop.reportSpectrogramState(false);
 

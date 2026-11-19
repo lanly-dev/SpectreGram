@@ -576,7 +576,9 @@ main.folder-open .controls {
 
 .controls {
   display: flex;
-  flex-wrap: wrap;
+  /* One line, always: tools, file name, transport. The name is the only item
+     that can give ground, so a narrow window squeezes it instead of wrapping. */
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
   gap: 4px;
@@ -610,12 +612,36 @@ main.folder-open .controls {
   height: 12px;
 }
 
-/* Play/pause toggle: one icon at a time — pause while playing, play while
-   paused or stopped. The transport group (Back, Skip, play/pause, Stop) is
-   pushed to the right end of the row by the first button's auto margin,
-   leaving the tools on the left. */
-#prev-btn {
-  margin-left: auto;
+/* Name of the open file, right after the tools and in the gap before the
+   transport (not centred in the row): the transport's own auto margin absorbs
+   the slack, and this span shrinks to nothing when the window is narrow. */
+.track-name {
+  flex: 0 1 auto;
+  margin: auto;
+  /* max-width: 42ch; */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+/* The transport is one unit: its five buttons never wrap or shrink, and its
+   auto margin pins the group to the right end of the row. The file name (the
+   only shrinkable item) gives ground instead, so no name length can spill
+   buttons onto a second line. */
+.transport {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.icon-btn {
+  flex: 0 0 auto;
 }
 
 .play-btn .icon-pause,
