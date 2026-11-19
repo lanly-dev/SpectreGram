@@ -20,6 +20,10 @@ export interface SpectreGramDesktop {
   saveReport(text: string, defaultName: string): Promise<boolean>;
   /** Folder panel: grant read access + open a file from the folder. */
   openFolderFile(filePath: string): Promise<boolean>;
+  /** Folder panel: fires when a single file replaces the open folder. */
+  onFolderCleared(callback: () => void): () => void;
+  /** Folder panel: forget the open folder (a file was dropped/picked instead). */
+  resetFolder(): Promise<boolean>;
   /** Folder panel: re-list the open folder; false if none is open. */
   refreshFolder(): Promise<boolean>;
   /** Folder panel: listing progress while a folder is being walked. */

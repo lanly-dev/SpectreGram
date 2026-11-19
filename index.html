@@ -113,15 +113,6 @@
             stroke-linecap="round" stroke-linejoin="round" />
         </svg>
       </button>
-      <!-- One toggle: shows the play icon while stopped, the stop icon while playing. -->
-      <button id="play-btn" class="icon-btn play-btn" type="button" aria-label="Play" title="Play">
-        <svg class="icon-play" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-          <path d="M5 3.2v9.6L12.6 8z" fill="currentColor" />
-        </svg>
-        <svg class="icon-stop" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-          <rect x="4" y="4" width="8" height="8" rx="1" fill="currentColor" />
-        </svg>
-      </button>
       <!-- Spectral message (spec: .kiro/specs/spectral-message/). Enabled once a track is loaded. -->
       <button id="message-btn" class="icon-btn" type="button" aria-label="Haunt this track with a hidden message"
         title="Haunt this track with a hidden message" disabled>
@@ -129,6 +120,44 @@
           <path d="M3 13 6.5 3h1L11 13M4.4 9.5h5.2" fill="none" stroke="currentColor" stroke-width="1.6"
             stroke-linecap="round" stroke-linejoin="round" />
           <path d="M12.5 3.5v3M11 5h3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+        </svg>
+      </button>
+      <!-- Transport: Back/Skip step through the open folder's listing (disabled
+           at either end), then the play/pause toggle and Stop. Pinned to the
+           right end of the row by #prev-btn's auto margin. -->
+      <button id="prev-btn" class="icon-btn" type="button" aria-label="Previous file" title="Previous file"
+        disabled>
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M4.2 3.6v8.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          <path d="M12.6 3.8v8.4L5.6 8z" fill="currentColor" />
+        </svg>
+      </button>
+      <button id="next-btn" class="icon-btn" type="button" aria-label="Next file" title="Next file" disabled>
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M11.8 3.6v8.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          <path d="M3.4 3.8v8.4L10.4 8z" fill="currentColor" />
+        </svg>
+      </button>
+      <button id="start-btn" class="icon-btn" type="button" aria-label="Back to start" title="Back to start"
+        disabled>
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M12.4 3.8v8.4L7.4 8z" fill="currentColor" />
+          <path d="M7.6 3.8v8.4L2.6 8z" fill="currentColor" />
+        </svg>
+      </button>
+      <button id="play-btn" class="icon-btn play-btn" type="button" aria-label="Play" title="Play">
+        <svg class="icon-play" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M5 3.2v9.6L12.6 8z" fill="currentColor" />
+        </svg>
+        <svg class="icon-pause" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <rect x="4.6" y="3.4" width="2.2" height="9.2" rx="0.7" fill="currentColor" />
+          <rect x="9.2" y="3.4" width="2.2" height="9.2" rx="0.7" fill="currentColor" />
+        </svg>
+      </button>
+      <button id="stop-btn" class="icon-btn stop-btn" type="button" aria-label="Stop" title="Stop"
+        disabled>
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <rect x="4" y="4" width="8" height="8" rx="1" fill="currentColor" />
         </svg>
       </button>
     </section>

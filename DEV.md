@@ -282,10 +282,33 @@ the playback functions in `src/main.ts`; `#seek-hover` / `#seek-tooltip` in
   both.
 - **Click** the ruler: sets the cue (`cueSec`). Stopped → the playhead moves
   to the cue. Playing → playback restarts from the cue.
-- **Play** starts from the cue (`source.start(0, offset)`). **Stop** returns
-  the playhead to the cue (hidden when the cue is 0:00). Reaching the end of
-  the track resets the cue to 0. Opening a new file resets it too. Zooming
-  keeps a cued playhead in place, or hides it when the cue is out of view.
+- **Back / Skip** (`#prev-btn` / `#next-btn`, left of Play) step through the
+  open folder's listing in panel order — they open the neighbouring file the
+  same way a row click does, and the selected row follows. Both are disabled
+  when no folder is open (and after a single file is opened, which ends the
+  folder session); Back disables on the first file and Skip on the last.
+  `folderPaths` / `folderSelectedPath` hold the order and the current row, and
+  `updateTransportButtons()` is what sets the two `disabled` flags.
+- **Play/Pause** (`#play-btn`, right end of the controls row, pause icon while
+  playing) starts from the cue (`source.start(0, offset)`) and otherwise
+  resumes a paused track where it stopped (`pausedAt`). **Stop** (`#stop-btn`,
+  beside it) returns the playhead to the cue (hidden when the cue is 0:00) and
+  clears `pausedAt`, which is the difference between the two buttons: pause
+  freezes in place, stop rewinds to the marked position. **Back to start**
+  (`#start-btn`, just left of Play) is the full rewind: `backToStart()` clears
+  the cue and the pause point and stops, so Play starts at 0:00. A new cue, a
+  new file and reaching the end of the track all clear `pausedAt` too.
+  Zooming keeps a paused or cued playhead in place, or hides it when it is out
+  of view.
+- **Space** plays and pauses, same as the play button (`setupPlayShortcut()`).
+  It is skipped while typing in a field, while any `.report-modal` dialog or
+  the idle screensaver is up (`overlayOpen()`), and while a button has focus —
+  a focused button already activates on space, so toggling here too would
+  cancel it out. The key's default is prevented so the page never scrolls.
+- **Disabled states:** Stop is live only while a track is playing or paused
+  (there is something to stop); Back to start is live unless the app is idle
+  at 0:00 with no cue. Both come from `updatePlayButton()`, which `showCue()`
+  also calls, so a new cue or a rewind updates them without extra plumbing.
 - Times come from `viewRange()`, so hover and click work while zoomed. The
   ruler and spectrogram share left/right edges, so a fraction across one is
   the same fraction across the other.

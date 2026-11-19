@@ -59,8 +59,12 @@ function pathFromArgv(argv) {
   return null;
 }
 
-function queueOpenFile(filePath) {
+// `fromFolder` marks an open started by clicking a row in the folder panel: the
+// listing still describes what is on screen, so the folder stays selected.
+// Every other single-file open ends the folder session.
+function queueOpenFile(filePath, { fromFolder = false } = {}) {
   if (!filePath) return;
+  if (!fromFolder) clearFolder();
   allowedReadPaths.add(filePath);
   if (mainWindow && rendererReady) {
     mainWindow.webContents.send('sg:open-file', filePath);
@@ -178,7 +182,13 @@ function registerIpc() {
   });
 
   ipcMain.handle('sg:open-folder-file', async (_event, filePath) => {
-    queueOpenFile(filePath);
+    queueOpenFile(filePath, { fromFolder: true });
+    return true;
+  });
+
+  // A file picked/dropped in the renderer leaves the folder listing stale too.
+  ipcMain.handle('sg:reset-folder', async () => {
+    clearFolder();
     return true;
   });
 
@@ -280,6 +290,18 @@ let currentFolderPath = '';
 let currentFolderOptions = {};
 // Bumped per folder load; see loadFolder (R1c).
 let folderLoadSeq = 0;
+
+/**
+ * Forget the open folder: a single file was opened, so the panel no longer
+ * shows what the app is playing. Bumping the load sequence also drops a walk
+ * that is still running, and the renderer clears its panel.
+ */
+function clearFolder() {
+  currentFolderPath = '';
+  currentFolderOptions = {};
+  folderLoadSeq++;
+  if (mainWindow && rendererReady) mainWindow.webContents.send('sg:folder-cleared');
+}
 
 /**
  * List the audio files in `folderPath` and its subfolders (optionally only

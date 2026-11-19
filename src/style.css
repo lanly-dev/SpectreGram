@@ -614,13 +614,20 @@ main.folder-open .controls {
   height: 12px;
 }
 
-/* Play/stop toggle: one icon at a time. */
-.play-btn .icon-stop,
+/* Play/pause toggle: one icon at a time — pause while playing, play while
+   paused or stopped. The transport group (Back, Skip, play/pause, Stop) is
+   pushed to the right end of the row by the first button's auto margin,
+   leaving the tools on the left. */
+#prev-btn {
+  margin-left: auto;
+}
+
+.play-btn .icon-pause,
 .play-btn.playing .icon-play {
   display: none;
 }
 
-.play-btn.playing .icon-stop {
+.play-btn.playing .icon-pause {
   display: block;
 }
 

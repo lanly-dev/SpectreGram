@@ -197,6 +197,11 @@ let playSource: AudioBufferSourceNode | null = null;
 let playStartCtxTime = 0;
 let rafId = 0;
 let isPlaying = false;
+/**
+ * Where a paused track sits, in seconds; -1 when nothing is paused, so Play
+ * starts at the cue instead. Stop clears it, which is what makes Stop rewind.
+ */
+let pausedAt = -1;
 /** Where Play starts, in seconds (set by clicking the time ruler — ruler seek). */
 let cueSec = 0;
 
@@ -635,7 +640,10 @@ function setupWindowDrop(): void {
   window.addEventListener('drop', (e) => {
     e.preventDefault();
     const file = e.dataTransfer?.files?.[0];
-    if (file) void handleFile(file);
+    if (!file) return;
+    // A dropped single file is not the folder that was listed.
+    void window.spectregramDesktop?.resetFolder?.();
+    void handleFile(file);
   });
 }
 
@@ -644,7 +652,11 @@ function setupIntake(): void {
   if (!input) return;
   input.addEventListener('change', () => {
     const file = input.files?.[0];
-    if (file) void handleFile(file);
+    if (file) {
+      // Picking a single file ends the folder session (same as a drop).
+      void window.spectregramDesktop?.resetFolder?.();
+      void handleFile(file);
+    }
     input.value = ''; // allow re-picking the same file
   });
 }
@@ -993,6 +1005,83 @@ function setupMenuExport(): void {
   desktop.onExportOpen(startExport);
 }
 
+// The open folder's listing, in panel order, and the row selected in it — what
+// Back/Skip step through (the panel owns the rows, src/main.ts the state).
+let folderPaths: string[] = [];
+let folderSelectedPath = '';
+
+/**
+ * Back/Skip follow the folder listing, so both stay disabled when no folder is
+ * open, and one end disables at the first or last file.
+ */
+function updateTransportButtons(): void {
+  const i = folderPaths.indexOf(folderSelectedPath);
+  const prev = el<HTMLButtonElement>('prev-btn');
+  const next = el<HTMLButtonElement>('next-btn');
+  if (prev) prev.disabled = i <= 0;
+  if (next) next.disabled = i < 0 || i >= folderPaths.length - 1;
+}
+
+/** Highlight the row for `path` (and scroll it into view); '' clears it. */
+function selectFolderRow(path: string): void {
+  const list = el<HTMLUListElement>('folder-list');
+  let found: HTMLElement | null = null;
+  if (list) {
+    for (const li of list.querySelectorAll<HTMLElement>('li')) {
+      const on = Boolean(path) && li.dataset.path === path;
+      li.classList.toggle('selected', on);
+      if (on) found = li;
+    }
+  }
+  folderSelectedPath = found ? path : '';
+  found?.scrollIntoView({ block: 'nearest' });
+  updateTransportButtons();
+}
+
+/** Open the previous (-1) or next (+1) audio file in the folder listing. */
+function stepFolder(delta: -1 | 1): void {
+  const desktop = window.spectregramDesktop;
+  const i = folderPaths.indexOf(folderSelectedPath);
+  const target = i >= 0 ? folderPaths[i + delta] : '';
+  if (!desktop || !target) return;
+  selectFolderRow(target);
+  void desktop.openFolderFile(target);
+}
+
+/**
+ * A single file was opened instead of the folder (File ▸ Open, open-with, a
+ * drop, the file picker): the panel no longer describes what is on screen, so
+ * it goes back to "no folder selected" and any scan of the old folder stops.
+ */
+function clearFolderPanel(): void {
+  const panel = el<HTMLElement>('folder-panel');
+  const list = el<HTMLUListElement>('folder-list');
+  const loading = el<HTMLElement>('folder-loading');
+  const nameNode = el<HTMLSpanElement>('folder-name');
+  const refreshBtn = el<HTMLButtonElement>('refresh-btn');
+  const scanBtn = el<HTMLButtonElement>('scan-btn');
+  if (loading) loading.hidden = true;
+  if (list) {
+    list.replaceChildren();
+    list.hidden = false;
+  }
+  if (nameNode) {
+    nameNode.textContent = '';
+    nameNode.title = '';
+  }
+  if (refreshBtn) {
+    refreshBtn.disabled = false;
+    refreshBtn.classList.remove('spinning');
+  }
+  if (scanBtn) scanBtn.disabled = false;
+  if (panel) panel.hidden = true;
+  el<HTMLElement>('spectrogram-box')?.classList.remove('folder-open');
+  document.querySelector('main')?.classList.remove('folder-open');
+  onFolderForScan('', []);
+  folderPaths = [];
+  selectFolderRow('');
+}
+
 /** Folder panel: list audio files from an opened folder; clicking one opens it. */
 function setupFolderPanel(): void {
   const desktop = window.spectregramDesktop;
@@ -1002,10 +1091,6 @@ function setupFolderPanel(): void {
   const list = el<HTMLUListElement>('folder-list');
   const nameNode = el<HTMLSpanElement>('folder-name');
   if (!box || !panel || !list || !nameNode) return;
-
-  let selectedLi: HTMLElement | null = null;
-  // Path of the selected row, so a refresh can select it again (R1b).
-  let selectedPath = '';
 
   const refreshBtn = el<HTMLButtonElement>('refresh-btn');
   // The loading state (below) disables the button and spins its icon for
@@ -1064,8 +1149,9 @@ function setupFolderPanel(): void {
     nameNode.textContent = folderName;
     nameNode.title = folderName;
     list.replaceChildren();
-    selectedLi = null;
-    if (!refreshed) selectedPath = '';
+    // Back/Skip walk this order; a refresh keeps the current row selected (R1b).
+    folderPaths = files.map((f) => f.path);
+    if (!refreshed) folderSelectedPath = '';
     for (const { path: filePath, name } of files) {
       const li = document.createElement('li');
       // `name` is relative to the opened folder (subfolders included);
@@ -1075,30 +1161,21 @@ function setupFolderPanel(): void {
       li.tabIndex = 0;
       const open = () => void desktop.openFolderFile(filePath);
       li.addEventListener('click', () => {
-        selectLi(li);
+        selectFolderRow(filePath);
         open();
       });
       li.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          selectLi(li);
+          selectFolderRow(filePath);
           open();
         }
       });
       li.dataset.path = filePath;
       list.appendChild(li);
-      if (filePath === selectedPath) selectLi(li);
     }
-
-    function selectLi(li: HTMLElement): void {
-      if (selectedLi) selectedLi.classList.remove('selected');
-      selectedLi = li;
-      selectedPath = li.dataset.path ?? '';
-      li.classList.add('selected');
-    }
-    // A refreshed list keeps the selected file in view.
-    const sel = list.querySelector<HTMLElement>('li.selected');
-    if (refreshed && sel) sel.scrollIntoView({ block: 'nearest' });
+    // Re-apply the selection (a refresh keeps it, and it scrolls back into view).
+    selectFolderRow(folderSelectedPath);
     panel.hidden = false;
     box.classList.add('folder-open');
     document.querySelector('main')?.classList.add('folder-open');
@@ -1107,6 +1184,9 @@ function setupFolderPanel(): void {
     if (truncated) toast(`${what} — showing the first ${count} (list capped).`);
     else toast(`${what} — ${count}`);
   });
+
+  // The shell opened a single file, so the listing it had is gone.
+  desktop.onFolderCleared(clearFolderPanel);
 }
 
 // --- Folder report: Scan → drumroll → collector rating -----------------------
@@ -1875,6 +1955,8 @@ function startPlayback(): void {
     if (fullGrid) toast('Audio is still loading — try again in a moment.');
     return;
   }
+  // A paused track resumes where it was; otherwise Play starts at the cue.
+  const resume = pausedAt;
   stopPlayback();
   const Ctor = playbackCtor();
   if (!Ctor) return;
@@ -1884,8 +1966,10 @@ function startPlayback(): void {
   playSource = playCtx.createBufferSource();
   playSource.buffer = audioBuffer;
   playSource.connect(playCtx.destination);
-  // Start from the cue (ruler seek, R3); a cue right at the end restarts.
-  const offset = cueSec < audioBuffer.duration - 0.05 ? Math.max(0, cueSec) : 0;
+  // Start from the paused position or the cue (ruler seek, R3); a position
+  // right at the end restarts from the top.
+  const from = resume >= 0 ? resume : cueSec;
+  const offset = from < audioBuffer.duration - 0.05 ? Math.max(0, from) : 0;
   const src = playSource;
   playSource.onended = () => {
     // Only a source that played to the end resets the cue — not one that
@@ -1900,12 +1984,8 @@ function startPlayback(): void {
   rafLoop();
 }
 
-/**
- * Stop playback. `'end'` (the track finished) resets the cue to 0:00 and
- * hides the playhead; a user stop puts the playhead back at the cue
- * (hidden at 0:00) — ruler seek, R3.
- */
-function stopPlayback(reason: 'user' | 'end' = 'user'): void {
+/** Tear down the playing source and its animation loop, leaving state alone. */
+function endPlaybackSource(): void {
   if (playSource) {
     try {
       playSource.stop();
@@ -1919,15 +1999,50 @@ function stopPlayback(reason: 'user' | 'end' = 'user'): void {
     cancelAnimationFrame(rafId);
     rafId = 0;
   }
+}
+
+/**
+ * Stop playback. `'end'` (the track finished) resets the cue to 0:00 and
+ * hides the playhead; a user stop puts the playhead back at the cue
+ * (hidden at 0:00) — ruler seek, R3.
+ */
+function stopPlayback(reason: 'user' | 'end' = 'user'): void {
+  endPlaybackSource();
   isPlaying = false;
+  pausedAt = -1;
   updatePlayButton();
   if (reason === 'end') cueSec = 0;
   showCue();
 }
 
-/** Show the stopped playhead at the cue (hidden when the cue is 0:00). */
+/** Jump to 0:00: stop, clear the cue and forget the pause point. */
+function backToStart(): void {
+  if (!fullGrid) return;
+  cueSec = 0;
+  stopPlayback();
+}
+
+/** Pause where we are: the sound stops, the playhead and resume point stay. */
+function pausePlayback(): void {
+  if (!isPlaying || !playCtx) return;
+  const pos = Math.max(0, playCtx.currentTime - playStartCtxTime);
+  pausedAt = audioBuffer ? Math.min(pos, audioBuffer.duration) : pos;
+  endPlaybackSource();
+  isPlaying = false;
+  updatePlayButton();
+  movePlayhead(pausedAt, pausedAt > 0);
+}
+
+/**
+ * Show the playhead where a stopped track sits: a paused track keeps its own
+ * position, a stopped one returns to the cue (hidden at 0:00).
+ */
 function showCue(): void {
-  if (!isPlaying) movePlayhead(cueSec, cueSec > 0);
+  if (isPlaying) return;
+  const pos = pausedAt >= 0 ? pausedAt : cueSec;
+  movePlayhead(pos, pos > 0);
+  // The cue is what decides whether Back to start has anywhere to go.
+  updatePlayButton();
 }
 
 function rafLoop(): void {
@@ -1953,11 +2068,20 @@ function movePlayhead(timeSec: number, visible: boolean): void {
   if (inView) ph.style.left = `${(((timeSec - r.start) / span) * wrap.clientWidth).toFixed(1)}px`;
 }
 
-/** Play/stop toggle: icon, tooltip and label follow the playback state. */
+/**
+ * Play/pause toggle: icon, tooltip and label follow the playback state. Stop
+ * is live only while a track is playing or paused (there is something to
+ * stop); Back to start is live unless we are already idle at 0:00.
+ */
 function updatePlayButton(): void {
+  const busy = isPlaying || pausedAt >= 0;
+  const stop = el<HTMLButtonElement>('stop-btn');
+  const start = el<HTMLButtonElement>('start-btn');
+  if (stop) stop.disabled = !busy;
+  if (start) start.disabled = !fullGrid || (!busy && cueSec <= 0);
   const btn = $('play-btn');
   if (!btn) return;
-  const label = isPlaying ? 'Stop' : 'Play';
+  const label = isPlaying ? 'Pause' : 'Play';
   btn.classList.toggle('playing', isPlaying);
   btn.title = label;
   btn.setAttribute('aria-label', label);
@@ -2015,17 +2139,58 @@ function setupRulerSeek(): void {
   ruler.addEventListener('click', (e) => {
     if (!ready()) return;
     cueSec = Math.max(0, Math.min(pointAt(e.clientX).time, trackDuration()));
+    pausedAt = -1; // a new cue wins over a paused position
     if (isPlaying) startPlayback();
     else showCue();
   });
 }
 
-function setupPlay(): void {
-  $('play-btn')?.addEventListener('click', () => {
-    if (isPlaying) stopPlayback();
+/** Is a dialog (or the idle screensaver) covering the view right now? */
+function overlayOpen(): boolean {
+  const sav = $('screensaver');
+  return Boolean(document.querySelector('.report-modal:not([hidden])')) || Boolean(sav && !sav.hidden);
+}
+
+/**
+ * Space plays and pauses, like the play button. Skipped while typing, while a
+ * dialog or the screensaver is up, and while a button has focus — a focused
+ * button already activates on space, so toggling here too would undo it.
+ */
+function setupPlayShortcut(): void {
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== ' ' && e.key !== 'Spacebar') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target as HTMLElement | null;
+    if (
+      t &&
+      (t.tagName === 'INPUT' ||
+        t.tagName === 'TEXTAREA' ||
+        t.tagName === 'SELECT' ||
+        t.tagName === 'BUTTON' ||
+        t.isContentEditable)
+    )
+      return;
+    if (overlayOpen()) return;
+    e.preventDefault(); // a page scroll under the graph would be surprising
+    if (isPlaying) pausePlayback();
     else startPlayback();
   });
+}
+
+function setupPlay(): void {
+  $('play-btn')?.addEventListener('click', () => {
+    if (isPlaying) pausePlayback();
+    else startPlayback();
+  });
+  // Stop rewinds to the cue; Back to start goes all the way to 0:00.
+  $('stop-btn')?.addEventListener('click', () => stopPlayback());
+  $('start-btn')?.addEventListener('click', () => backToStart());
+  // Back/Skip move through the folder listing; both start disabled (no folder).
+  $('prev-btn')?.addEventListener('click', () => stepFolder(-1));
+  $('next-btn')?.addEventListener('click', () => stepFolder(1));
+  setupPlayShortcut();
   updatePlayButton();
+  updateTransportButtons();
 }
 
 // --- Screensaver --------------------------------------------------------------

@@ -33,6 +33,14 @@ contextBridge.exposeInMainWorld('spectregramDesktop', {
     ipcRenderer.on('sg:folder-loading', listener);
     return () => ipcRenderer.removeListener('sg:folder-loading', listener);
   },
+  /** Folder panel: fires when a single file replaces the open folder. */
+  onFolderCleared: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('sg:folder-cleared', listener);
+    return () => ipcRenderer.removeListener('sg:folder-cleared', listener);
+  },
+  /** Folder panel: drop the folder after a file picked/dropped in the page. */
+  resetFolder: () => ipcRenderer.invoke('sg:reset-folder'),
   /** Folder panel: re-list the open folder (fires onFolderLoaded again). */
   refreshFolder: () => ipcRenderer.invoke('sg:refresh-folder'),
   /** Folder panel: ask main to grant read access + open a file from the folder. */
