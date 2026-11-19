@@ -588,6 +588,13 @@ not markup: analysis stores `cutoffHz` (and the claimed format in the cache),
 and `renderVerdict()` rebuilds it with `buildVerdict()` in the new language.
 The report dialog maps `report.ts`'s English rating and class names to keys.
 
+The native menu bar is Electron chrome, not DOM, so the renderer also sends the
+pick to the shell (`spectregramDesktop.setLanguage` → `sg:set-language`).
+`electron/main.js` keeps the current language, rebuilds the menu from
+`electron/menu-labels.js`, and preserves the Options checkbox states.
+`SPECTREGRAM_SMOKE_MENU_LANG=de` prints the built menu in a chosen language for
+checks (test-only, alongside `SPECTREGRAM_SMOKE_MENU`).
+
 Halloween is spooky English: same keys, English grammar. Arabic translates the
 copy but keeps the LTR composition — the panels are absolutely positioned, so
 a mirrored layout would break them. The saved Markdown report, the folder

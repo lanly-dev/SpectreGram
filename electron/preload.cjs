@@ -64,6 +64,8 @@ contextBridge.exposeInMainWorld('spectregramDesktop', {
     ipcRenderer.on('sg:language', listener);
     return () => ipcRenderer.removeListener('sg:language', listener);
   },
+  /** Page picked an interface language: rebuild the native menu in it. */
+  setLanguage: (code) => ipcRenderer.send('sg:set-language', code),
   /** Options menu actions (screensaver toggle, development helpers, toasts). */
   onMenuAction: (callback) => {
     const listener = (_event, action, value) => callback(action, value);

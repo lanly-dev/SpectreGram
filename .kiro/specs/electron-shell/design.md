@@ -84,3 +84,10 @@ stored cutoff and claimed format when the language changes, and the renderer
 re-renders facts, tooltips, the Scan button and the export summary. Arabic
 keeps the LTR layout. The saved Markdown report, folder loading counter and
 message-fit error stay English.
+
+The native menu bar is not DOM: the renderer also reports the pick through
+`spectregramDesktop.setLanguage` (`sg:set-language`), and main rebuilds the
+application menu from `electron/menu-labels.js` — 18 labels in the same twelve
+languages — keeping the Options checkbox states. The existing
+`SPECTREGRAM_SMOKE_MENU` harness accepts `SPECTREGRAM_SMOKE_MENU_LANG` to print
+the menu in a chosen language.

@@ -2485,6 +2485,8 @@ function setupMenuActions(screensaver: ScreensaverControls | null): void {
  */
 function applyInterfaceLanguage(code: string): void {
   setLanguage(code as Lang);
+  // The native menu bar lives in the shell, not the DOM, so tell it too.
+  window.spectregramDesktop?.setLanguage(code);
   // Static markup is re-translated by setLanguage; re-render the labels this
   // module builds itself, then the verdict (which is generated, not markup).
   updatePaletteButton();

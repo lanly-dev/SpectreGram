@@ -8,6 +8,7 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol } from 'electr
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { MENU_LABELS } from './menu-labels.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, '..', 'dist');
@@ -28,6 +29,11 @@ let pendingOpenPath = null;
 let lastOpenDir = '';
 // Whether the renderer currently has a spectrogram to export. Gates the Export item.
 let hasSpectrogram = false;
+// Interface language picked in the renderer; the native menu is rebuilt in it.
+let uiLanguage = 'en';
+// Menu checkbox state, preserved when the menu is rebuilt for a language.
+let advancedExportEnabled = true;
+let screensaverDisabled = false;
 
 // Test-only hooks (used by the headless smoke run; inert otherwise).
 const SMOKE_FILE = process.env.SPECTREGRAM_SMOKE_FILE || '';
@@ -199,6 +205,13 @@ function registerIpc() {
     if (item) item.enabled = hasSpectrogram;
     return true;
   });
+
+  // The renderer picked an interface language: rebuild the native menu in it.
+  ipcMain.on('sg:set-language', (_event, code) => {
+    if (typeof code !== 'string' || !MENU_LABELS[code] || code === uiLanguage) return;
+    uiLanguage = code;
+    buildMenu();
+  });
 }
 
 // --- Native menu (File / Help) --------------------------------------------
@@ -212,7 +225,7 @@ function menuOpen() {
     .showOpenDialog(mainWindow, {
       properties: ['openFile'],
       defaultPath: lastOpenDir,
-      filters: [{ name: 'Audio files', extensions: audioFilters }],
+      filters: [{ name: menuT('audioFiles'), extensions: audioFilters }],
     })
     .then((result) => {
       if (result.canceled || !result.filePaths.length) return;
@@ -368,11 +381,13 @@ const SAMPLE_LIMIT = 10;
 // Checkbox reads "Advanced Export": checked = Export opens the panel (default).
 // Unchecked, the renderer saves the current view straight away instead.
 function menuToggleAdvancedExport(item) {
+  advancedExportEnabled = item.checked;
   sendMenuAction('advanced-export', item.checked);
 }
 
 function menuToggleScreensaver(item) {
   // Checkbox reads "Disable Screensaver": checked = screensaver off.
+  screensaverDisabled = item.checked;
   sendMenuAction('screensaver-enabled', !item.checked);
 }
 
@@ -440,63 +455,71 @@ function menuDevTools() {
   if (mainWindow) mainWindow.webContents.toggleDevTools();
 }
 
+/** One native-menu label in the current language, English when missing. */
+function menuT(key) {
+  return MENU_LABELS[uiLanguage]?.[key] ?? MENU_LABELS.en[key];
+}
+
 function buildMenu() {
+  // Test-only: print the menu in a chosen language (SPECTREGRAM_SMOKE_MENU).
+  const smokeLang = process.env.SPECTREGRAM_SMOKE_MENU_LANG;
+  if (smokeLang && MENU_LABELS[smokeLang]) uiLanguage = smokeLang;
   const template = [
     {
-      label: 'File',
+      label: menuT('file'),
       submenu: [
         {
-          label: 'Open',
+          label: menuT('open'),
           accelerator: process.platform === 'darwin' ? 'Cmd+O' : 'Ctrl+O',
           click: menuOpen,
         },
         {
-          label: 'Open Folder',
+          label: menuT('openFolder'),
           accelerator: process.platform === 'darwin' ? 'Cmd+Shift+O' : 'Ctrl+Shift+O',
           click: menuOpenFolder,
         },
         {
           id: 'export-png',
-          label: 'Export PNG…',
+          label: menuT('exportPng'),
           accelerator: process.platform === 'darwin' ? 'Cmd+S' : 'Ctrl+S',
-          enabled: false,
+          enabled: hasSpectrogram,
           click: menuExport,
         },
         { type: 'separator' },
         {
-          label: 'Exit',
+          label: menuT('exit'),
           accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
           click: menuExit,
         },
       ],
     },
     {
-      label: 'Options',
+      label: menuT('options'),
       submenu: [
         {
           id: 'advanced-export',
-          label: 'Advanced Export',
+          label: menuT('advancedExport'),
           type: 'checkbox',
-          checked: true,
+          checked: advancedExportEnabled,
           click: menuToggleAdvancedExport,
         },
         {
           id: 'disable-screensaver',
-          label: 'Disable Screensaver',
+          label: menuT('disableScreensaver'),
           type: 'checkbox',
-          checked: false,
+          checked: screensaverDisabled,
           click: menuToggleScreensaver,
         },
         {
-          label: 'Development',
+          label: menuT('development'),
           submenu: [
-            { label: 'Show Screensaver', click: menuShowScreensaver },
-            { label: 'Show Error Toast', click: menuTestErrorToast },
-            { label: 'Load Sample Audio', click: menuLoadSampleAudio },
-            { label: 'Load Sample Folder', click: menuLoadSampleFolder },
+            { label: menuT('showScreensaver'), click: menuShowScreensaver },
+            { label: menuT('showErrorToast'), click: menuTestErrorToast },
+            { label: menuT('loadSampleAudio'), click: menuLoadSampleAudio },
+            { label: menuT('loadSampleFolder'), click: menuLoadSampleFolder },
             { type: 'separator' },
             {
-              label: 'Developer Tools',
+              label: menuT('devTools'),
               accelerator: process.platform === 'darwin' ? 'Alt+Command+I' : 'F12',
               click: menuDevTools,
             },
@@ -505,10 +528,10 @@ function buildMenu() {
       ],
     },
     {
-      label: 'Help',
+      label: menuT('help'),
       submenu: [
-        { label: 'Language', click: menuLanguage },
-        { label: 'About', click: menuAbout },
+        { label: menuT('language'), click: menuLanguage },
+        { label: menuT('about'), click: menuAbout },
       ],
     },
   ];
