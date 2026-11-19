@@ -34,6 +34,12 @@ export interface DbGrid {
   frames: number;
   /** Number of frequency bins = fftSize / 2 + 1. */
   bins: number;
+  /**
+   * Row-major phase of the same bins, one byte each (`-pi..pi` → `0..255`),
+   * present only when the caller asked for it (`withPhase`). The phase view
+   * paints hue from these bytes; the cutoff analysis never reads them.
+   */
+  phase?: Uint8Array;
 }
 
 /** Frame count the full-track view is sized for (the canvas width). */
@@ -70,6 +76,8 @@ function isPowerOfTwo(n: number): boolean {
  * @param samples  mono time-domain samples (e.g. decode's mixdown)
  * @param params   optional overrides for DEFAULT_STFT
  * @param onProgress optional callback receiving a fraction in [0,1]
+ * @param withPhase  also fill `phase` (one byte per bin) for the phase view;
+ *                   off by default so the folder scan doesn't pay for it
  * @returns a DbGrid (empty `{ frames: 0 }` if too short for one frame)
  * @throws RangeError if fftSize is not a power of two or hopSize/dynRangeDb <= 0
  */
@@ -77,6 +85,7 @@ export function computeStft(
   samples: Float32Array,
   params?: Partial<StftParams>,
   onProgress?: (fraction: number) => void,
+  withPhase = false,
 ): DbGrid {
   const p: StftParams = { ...DEFAULT_STFT, ...params };
   const N = p.fftSize;
@@ -119,6 +128,9 @@ export function computeStft(
   const frame = new Float64Array(N); // real, length N, overwritten per frame
 
   const data = new Float32Array(frames * bins);
+  // One byte per bin: cheap enough (~1 MB for a full-track grid) to keep next
+  // to the magnitudes, and small enough to transfer to the main thread.
+  const phase = withPhase ? new Uint8Array(frames * bins) : undefined;
   const floor = -p.dynRangeDb;
   // Normalizes a full-scale sine landing exactly on a bin to ~1.0 (0 dBFS).
   // The factor of 2 accounts for the single-sided spectrum (energy is split
@@ -147,6 +159,11 @@ export function computeStft(
       if (db < floor) db = floor;
       if (db > 0) db = 0;
       data[base + k] = db;
+      if (phase) {
+        // -pi..pi → 0..255. The stored angle is the bin's phase at the centre
+        // of the window, which is what the phase view paints as hue.
+        phase[base + k] = Math.round(((Math.atan2(im, re) + Math.PI) / (2 * Math.PI)) * 255);
+      }
     }
 
     if (onProgress && (f + 1) % PROGRESS_EVERY === 0) {
@@ -155,7 +172,7 @@ export function computeStft(
   }
   if (onProgress) onProgress(1);
 
-  return { data, frames, bins };
+  return phase ? { data, frames, bins, phase } : { data, frames, bins };
 }
 
 /**
@@ -172,6 +189,7 @@ export function computeStftSegment(
   endSample: number,
   columns: number,
   params?: Partial<StftParams>,
+  withPhase = false,
 ): DbGrid {
   const p: StftParams = { ...DEFAULT_STFT, ...params };
   const N = p.fftSize;
@@ -196,5 +214,5 @@ export function computeStftSegment(
     if (b > a) seg.set(samples.subarray(a, b), a - lo);
   }
   const hopSize = Math.max(1, Math.ceil(span / columns));
-  return computeStft(seg, { ...p, hopSize });
+  return computeStft(seg, { ...p, hopSize }, undefined, withPhase);
 }

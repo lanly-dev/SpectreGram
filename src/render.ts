@@ -143,11 +143,87 @@ let lastCtx: CanvasRenderingContext2D | null = null;
 let lastGrid: DbGrid | null = null;
 
 /**
+ * What the graph paints (spec: .kiro/specs/phase-view/).
+ * - `magnitude` (default): the palette, colour = dBFS level.
+ * - `phase`: hue = the bin's phase angle, brightness = its dBFS level, so the
+ *   level axis (legend, u/l keys) keeps working while the hue shows phase.
+ */
+export type ViewMode = 'magnitude' | 'phase';
+let viewMode: ViewMode = 'magnitude';
+
+/**
+ * How far a bin's phase rotates its palette colour's hue, as a fraction of
+ * the hue circle for a full turn of phase. 0.35 ≈ ±63°, strong enough to read
+ * the phase structure while the palette's own hue ramp still shows the level.
+ * TUNABLE.
+ */
+const PHASE_HUE_SPAN = 0.35;
+/** Cached tint table (256 palette steps × 256 phase steps) + the palette it
+ *  was built from, so a palette switch rebuilds it and nothing else does. */
+let tintTable: Uint8ClampedArray | null = null;
+let tintPalette: Uint8ClampedArray | null = null;
+
+/** RGB (0…255) → hue (0…1), saturation, value (0…1). */
+function rgbToHsv(r: number, g: number, b: number): [number, number, number] {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  if (d === 0) return [0, 0, max / 255];
+  const h =
+    max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h / 6, d / max, max / 255];
+}
+
+/** Hue (0…1), saturation, value → RGB (0…255). */
+function hsvToRgb(h: number, s: number, v: number): [number, number, number] {
+  const f = ((h % 1) + 1) % 1;
+  const i = Math.floor(f * 6);
+  const q = v * (1 - s * (f * 6 - i));
+  const t = v * (1 - s * (1 - (f * 6 - i)));
+  const p = v * (1 - s);
+  const rgb =
+    i === 0 ? [v, t, p]
+      : i === 1 ? [q, v, p]
+        : i === 2 ? [p, v, t]
+          : i === 3 ? [p, q, v]
+            : i === 4 ? [t, p, v] : [v, p, q];
+  return [rgb[0] * 255, rgb[1] * 255, rgb[2] * 255];
+}
+
+/**
+ * Phase tint table: for every palette colour (the level), the same colour with
+ * its hue rotated by the bin's phase. Built once per palette (256 × 256
+ * entries), so the pixel loop stays a single table lookup. Brightness and
+ * saturation are untouched — the palette's shading *is* the spectrogram — so
+ * the picture reads exactly like the normal graph, with phase showing as hue
+ * ripples across it.
+ */
+function getTintTable(palette: Uint8ClampedArray): Uint8ClampedArray {
+  if (tintTable && tintPalette === palette) return tintTable;
+  const table = new Uint8ClampedArray(256 * 256 * 4);
+  for (let pi = 0; pi < 256; pi++) {
+    const [hue, sat, val] = rgbToHsv(palette[pi * 4], palette[pi * 4 + 1], palette[pi * 4 + 2]);
+    for (let ph = 0; ph < 256; ph++) {
+      const shift = (ph / 255 - 0.5) * PHASE_HUE_SPAN;
+      const [r, g, b] = hsvToRgb(hue + shift, sat, val);
+      const i = (pi * 256 + ph) * 4;
+      table[i] = r;
+      table[i + 1] = g;
+      table[i + 2] = b;
+      table[i + 3] = 255;
+    }
+  }
+  tintTable = table;
+  tintPalette = palette;
+  return table;
+}
+
+/**
  * Paint a grid's pixels onto an offscreen canvas at its native frames×bins,
  * using the active palette and display range. Null for an empty grid.
  */
 function gridToCanvas(grid: DbGrid, palette: Uint8ClampedArray): OffscreenCanvas | null {
-  const { frames, bins, data } = grid;
+  const { frames, bins, data, phase } = grid;
   if (frames === 0 || bins === 0) return null;
 
   // Paint at native frames×bins; the caller scales it. Low frequency at the
@@ -173,6 +249,17 @@ function gridToCanvas(grid: DbGrid, palette: Uint8ClampedArray): OffscreenCanvas
   }
   const scale = (LUT_SIZE - 1) / span;
 
+  // Phase tint: the palette colour for this level, hue-rotated by the bin's
+  // phase. Level, brightness and the palette stay exactly as they are, so the
+  // spectrogram keeps its familiar shape and phase rides on top of it.
+  const phaseBytes = viewMode === 'phase' ? phase : undefined;
+  const tintLut = phaseBytes ? getTintTable(palette) : null;
+  // dB key → palette index, so the tint table can be indexed directly.
+  const paletteIndex = new Uint8Array(LUT_SIZE);
+  if (tintLut) {
+    for (let i = 0; i < LUT_SIZE; i++) paletteIndex[i] = Math.round((i / (LUT_SIZE - 1)) * 255);
+  }
+
   for (let t = 0; t < frames; t++) {
     const colBase = t * bins;
     for (let k = 0; k < bins; k++) {
@@ -182,6 +269,14 @@ function gridToCanvas(grid: DbGrid, palette: Uint8ClampedArray): OffscreenCanvas
       else if (key >= LUT_SIZE) key = LUT_SIZE - 1;
       const row = bins - 1 - k;
       const p = (row * frames + t) * 4;
+      if (tintLut && phaseBytes) {
+        const ci = (paletteIndex[key] * 256 + phaseBytes[colBase + k]) * 4;
+        px[p] = tintLut[ci];
+        px[p + 1] = tintLut[ci + 1];
+        px[p + 2] = tintLut[ci + 2];
+        px[p + 3] = 255;
+        continue;
+      }
       const ci = key * 4;
       px[p] = lut[ci];
       px[p + 1] = lut[ci + 1];
@@ -268,6 +363,28 @@ export function getActivePaletteName(): PaletteName {
   return activePaletteName;
 }
 
+/** The active view mode (magnitude colours by default, or phase). */
+export function getViewMode(): ViewMode {
+  return viewMode;
+}
+
+/**
+ * Switch the view mode and repaint from the last grid (no recompute). Returns
+ * the phase data's availability so the caller can explain a fallback.
+ */
+export function setViewMode(mode: ViewMode): { hasPhase: boolean } {
+  viewMode = mode;
+  if (lastCtx && lastGrid) drawGrid(lastCtx, lastGrid, activePalette);
+  return { hasPhase: Boolean(lastGrid?.phase) };
+}
+
+/** Whether the grid on screen carries phase bytes (the phase view needs them). */
+export function hasPhaseData(): boolean {
+  return Boolean(lastGrid?.phase);
+}
+
+
+
 export interface DbRange {
   lower: number;
   upper: number;
@@ -298,7 +415,8 @@ export function adjustDbRange(which: 'lower' | 'upper', deltaDb: number): DbRang
 
 /**
  * Paint the active palette as a vertical color bar: top = upper limit (loudest
- * color), bottom = lower limit. Drawn at the canvas's own pixel size.
+ * color), bottom = lower limit. Drawn at the canvas's own pixel size. The
+ * phase tint only rotates hues, so this bar still describes the level axis.
  */
 export function paintLegend(canvas: HTMLCanvasElement): void {
   const ctx = canvas.getContext('2d');
@@ -307,13 +425,14 @@ export function paintLegend(canvas: HTMLCanvasElement): void {
   const h = canvas.height;
   const img = ctx.createImageData(w, h);
   const px = img.data;
+  const lut = activePalette;
   for (let y = 0; y < h; y++) {
     const ci = Math.round((1 - y / Math.max(1, h - 1)) * 255) * 4;
     for (let x = 0; x < w; x++) {
       const p = (y * w + x) * 4;
-      px[p] = activePalette[ci];
-      px[p + 1] = activePalette[ci + 1];
-      px[p + 2] = activePalette[ci + 2];
+      px[p] = lut[ci];
+      px[p + 1] = lut[ci + 1];
+      px[p + 2] = lut[ci + 2];
       px[p + 3] = 255;
     }
   }

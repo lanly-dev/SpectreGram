@@ -78,10 +78,17 @@ export type WorkerRequest = AnalyzeRequest | ZoomRequest | HoldRequest | Classif
 // so a failed zoom never looks like a failed analysis.
 export type WorkerMessage =
   | { type: 'progress'; fraction: number }
-  | { type: 'result'; data: Float32Array; frames: number; bins: number }
+  | { type: 'result'; data: Float32Array; frames: number; bins: number; phase?: Uint8Array }
   | { type: 'verdict'; cutoffHz: number; verdict: string }
   | { type: 'error'; message: string }
-  | { type: 'zoom-result'; id: number; data: Float32Array; frames: number; bins: number }
+  | {
+      type: 'zoom-result';
+      id: number;
+      data: Float32Array;
+      frames: number;
+      bins: number;
+      phase?: Uint8Array;
+    }
   | { type: 'zoom-error'; id: number; message: string }
   | { type: 'classify-result'; id: number; cutoffHz: number; verdict: string }
   | { type: 'classify-error'; id: number; message: string }
@@ -107,9 +114,15 @@ function handleAnalyze(msg: AnalyzeRequest): void {
   heldSamples = msg.samples;
   heldParams = msg.params;
   try {
-    const grid = computeStft(msg.samples, msg.params, (fraction) => {
-      scope.postMessage({ type: 'progress', fraction } satisfies WorkerMessage, []);
-    });
+    // Phase bytes ride along for the on-screen phase view (one byte per bin).
+    const grid = computeStft(
+      msg.samples,
+      msg.params,
+      (fraction) => {
+        scope.postMessage({ type: 'progress', fraction } satisfies WorkerMessage, []);
+      },
+      true,
+    );
     // The cutoff pass reads the same grid, but the transfer below detaches it,
     // so keep a copy first. Copying here is what lets the grid reach the main
     // thread at once instead of waiting on the percentile sort. (An empty grid —
@@ -118,8 +131,14 @@ function handleAnalyze(msg: AnalyzeRequest): void {
     // Zero-copy transfer of the magnitude grid back to the main thread
     // (matters for long tracks). The buffer is detached here after transfer.
     scope.postMessage(
-      { type: 'result', data: grid.data, frames: grid.frames, bins: grid.bins } satisfies WorkerMessage,
-      [grid.data.buffer],
+      {
+        type: 'result',
+        data: grid.data,
+        frames: grid.frames,
+        bins: grid.bins,
+        phase: grid.phase,
+      } satisfies WorkerMessage,
+      grid.phase ? [grid.data.buffer, grid.phase.buffer] : [grid.data.buffer],
     );
     const { cutoff, verdict } = analyze(
       { data: forCutoff, frames: grid.frames, bins: grid.bins },
@@ -145,6 +164,7 @@ function handleZoom(msg: ZoomRequest): void {
       msg.endSample,
       msg.columns,
       heldParams,
+      true,
     );
     scope.postMessage(
       {
@@ -153,8 +173,9 @@ function handleZoom(msg: ZoomRequest): void {
         data: grid.data,
         frames: grid.frames,
         bins: grid.bins,
+        phase: grid.phase,
       } satisfies WorkerMessage,
-      [grid.data.buffer],
+      grid.phase ? [grid.data.buffer, grid.phase.buffer] : [grid.data.buffer],
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -166,12 +187,13 @@ function handleExportBands(msg: ExportBandsRequest): void {
   try {
     const samples = heldSamples;
     if (!samples) throw new Error('audio is not ready yet');
+    // Phase too, so a stacked export matches the on-screen view mode.
     const bands = msg.ranges.map((r) =>
-      computeStftSegment(samples, r.startSample, r.endSample, msg.columns, heldParams),
+      computeStftSegment(samples, r.startSample, r.endSample, msg.columns, heldParams, true),
     );
     scope.postMessage(
       { type: 'export-result', id: msg.id, bands } satisfies WorkerMessage,
-      bands.map((b) => b.data.buffer),
+      bands.flatMap((b) => (b.phase ? [b.data.buffer, b.phase.buffer] : [b.data.buffer])),
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
