@@ -51,6 +51,15 @@ Everything else is untouched. DevDeps added: `electron`, `electron-builder` (pin
 
 ---
 
+## Amendment — folder chooser from the start screen (2026-11-19)
+
+The renderer can ask for a folder without the menu: `chooseFolder()` in
+`electron/preload.cjs` invokes `sg:choose-folder`, whose handler awaits the
+same native `dialog.showOpenDialog({ properties: ['openDirectory'] })` path
+as File ▸ Open Folder (shared `chooseFolder()` in `electron/main.js`) and
+loads the pick. It resolves `false` on cancel. The start screen's ghost
+double-click uses it; the web build has no bridge and hides the hint.
+
 ## Amendment — themed Language card (2026-11-19)
 
 Help > Language originally opened a native `dialog.showMessageBox` placeholder

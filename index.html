@@ -38,10 +38,86 @@
           </svg>
         </button>
       </section>
-      <div id="empty-state" class="empty-state" aria-hidden="true">
-        <div class="empty-ghost">👻</div>
-        <div class="empty-text">Drop a file… if you dare</div>
+      <div id="empty-state" class="empty-state">
+        <button id="empty-ghost" class="empty-ghost" type="button"
+          aria-label="Click: open a file · Double-click: open a folder"
+          title="Click: open a file · Double-click: open a folder">
+          <!-- Cute vector ghost, idle pose. -->
+          <svg class="ghost-pose ghost-pose-idle" viewBox="0 0 128 128" aria-hidden="true" focusable="false">
+            <defs>
+              <linearGradient id="ghostBodyIdle" x1="64" y1="20" x2="64" y2="110" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#ffffff" />
+                <stop offset="1" stop-color="#d9d2ff" />
+              </linearGradient>
+              <radialGradient id="ghostGlowIdle" cx="64" cy="62" r="56" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#9a86ff" stop-opacity=".32" />
+                <stop offset="1" stop-color="#9a86ff" stop-opacity="0" />
+              </radialGradient>
+            </defs>
+            <circle cx="64" cy="62" r="56" fill="url(#ghostGlowIdle)" />
+            <ellipse cx="64" cy="116" rx="27" ry="5" fill="#7b68d9" opacity=".25" />
+            <path d="M32 65c-8 1-14 6-15 12-.4 3 3 5 6 4 6-2 10-8 13-13Z" fill="#f7f4ff" stroke="#b7abf2"
+              stroke-width="2.4" stroke-linejoin="round" />
+            <path d="M96 65c8 1 14 6 15 12 .4 3-3 5-6 4-6-2-10-8-13-13Z" fill="#f7f4ff" stroke="#b7abf2"
+              stroke-width="2.4" stroke-linejoin="round" />
+            <path
+              d="M27 61c0-21 16-38 37-38s37 17 37 38v37c0 6-7 9-11 4l-6-7c-2-2-5-2-7 0l-6 8c-2 2-6 2-8 0l-6-8c-2-2-5-2-7 0l-6 7c-4 5-11 2-11-4Z"
+              fill="url(#ghostBodyIdle)" stroke="#b7abf2" stroke-width="2.6" stroke-linejoin="round" />
+            <path d="M48 34c5-6 13-8 20-6" fill="none" stroke="#fff" stroke-width="4.6" stroke-linecap="round"
+              opacity=".85" />
+            <ellipse cx="51" cy="58" rx="5.4" ry="6.6" fill="#2b2440" />
+            <ellipse cx="77" cy="58" rx="5.4" ry="6.6" fill="#2b2440" />
+            <circle cx="53" cy="55.6" r="1.8" fill="#fff" />
+            <circle cx="79" cy="55.6" r="1.8" fill="#fff" />
+            <ellipse cx="41" cy="69" rx="5.4" ry="3.3" fill="#ff9db1" opacity=".6" />
+            <ellipse cx="87" cy="69" rx="5.4" ry="3.3" fill="#ff9db1" opacity=".6" />
+            <path d="M57 70c2.4 3.2 11.6 3.2 14 0" fill="none" stroke="#2b2440" stroke-width="2.4"
+              stroke-linecap="round" />
+            <path d="M105 26l1.8 6.2 6.2 1.8-6.2 1.8-1.8 6.2-1.8-6.2-6.2-1.8 6.2-1.8Z" fill="#ffb36b"
+              opacity=".9" />
+          </svg>
+          <!-- Hover pose: arms up, winking, cheering. -->
+          <svg class="ghost-pose ghost-pose-hover" viewBox="0 0 128 128" aria-hidden="true" focusable="false">
+            <defs>
+              <linearGradient id="ghostBodyHover" x1="64" y1="20" x2="64" y2="110" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#ffffff" />
+                <stop offset="1" stop-color="#e6ddff" />
+              </linearGradient>
+              <radialGradient id="ghostGlowHover" cx="64" cy="62" r="58" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#b39cff" stop-opacity=".4" />
+                <stop offset="1" stop-color="#b39cff" stop-opacity="0" />
+              </radialGradient>
+            </defs>
+            <circle cx="64" cy="62" r="58" fill="url(#ghostGlowHover)" />
+            <ellipse cx="64" cy="116" rx="27" ry="5" fill="#7b68d9" opacity=".25" />
+            <path d="M33 61C22 58 15 49 16 39c.3-3 4-4 6-1 4 6 7 11 12 14Z" fill="#f7f4ff" stroke="#b7abf2"
+              stroke-width="2.4" stroke-linejoin="round" />
+            <path d="M95 61c11-3 18-12 17-22-.3-3-4-4-6-1-4 6-7 11-12 14Z" fill="#f7f4ff" stroke="#b7abf2"
+              stroke-width="2.4" stroke-linejoin="round" />
+            <path
+              d="M27 61c0-21 16-38 37-38s37 17 37 38v37c0 6-7 9-11 4l-6-7c-2-2-5-2-7 0l-6 8c-2 2-6 2-8 0l-6-8c-2-2-5-2-7 0l-6 7c-4 5-11 2-11-4Z"
+              fill="url(#ghostBodyHover)" stroke="#b7abf2" stroke-width="2.6" stroke-linejoin="round" />
+            <path d="M48 34c5-6 13-8 20-6" fill="none" stroke="#fff" stroke-width="4.6" stroke-linecap="round"
+              opacity=".85" />
+            <ellipse cx="51" cy="58" rx="5.4" ry="6.6" fill="#2b2440" />
+            <circle cx="53" cy="55.6" r="1.8" fill="#fff" />
+            <path d="M70 58c2.5-5.5 10.5-5.5 13 0" fill="none" stroke="#2b2440" stroke-width="2.8"
+              stroke-linecap="round" />
+            <ellipse cx="41" cy="69" rx="5.4" ry="3.3" fill="#ff9db1" opacity=".7" />
+            <ellipse cx="87" cy="69" rx="5.4" ry="3.3" fill="#ff9db1" opacity=".7" />
+            <path d="M55 68c0 8 18 8 18 0Z" fill="#2b2440" />
+            <path d="M60 73c2 3.2 6 3.2 8 0Z" fill="#ff8fa8" />
+            <path d="M20 28l1.4 4.8 4.8 1.4-4.8 1.4L20 40.4l-1.4-4.8L13.8 34.2l4.8-1.4Z" fill="#b7a4ff"
+              opacity=".9" />
+            <path d="M108 28l1.8 6.2 6.2 1.8-6.2 1.8-1.8 6.2-1.8-6.2-6.2-1.8 6.2-1.8Z" fill="#ffb36b" />
+            <path d="M15 52c-3 3-4 7-3 11M113 52c3 3 4 7 3 11" fill="none" stroke="#b7a4ff"
+              stroke-width="2.2" stroke-linecap="round" opacity=".55" />
+          </svg>
+        </button>
+        <div id="empty-text" class="empty-text">Drop a file… if you dare</div>
       </div>
+      <!-- Browser/demo file picker (the desktop File menu is not always there). -->
+      <input id="file-input" type="file" accept="audio/*" hidden />
       <div id="ruler-bottom" class="ruler ruler-bottom" aria-hidden="true"></div>
       <div id="seek-tooltip" class="seek-tooltip" aria-hidden="true" hidden></div>
       <!-- Legend title/label are rewritten by the view-mode toggle: hue means

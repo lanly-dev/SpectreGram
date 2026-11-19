@@ -2,6 +2,9 @@ import type { I18nKey } from './en';
 
 export const AR: Partial<Record<I18nKey, string>> = {
   dropHint: 'أفلِت ملفًا هنا… إن كنت تجرؤ',
+  emptyGhostHint: 'نقرة: فتح ملف · نقرتان: فتح مجلد',
+  emptyClickHint: 'أو انقر لاختيار ملف…',
+  emptyFolderHint: 'أو انقر لاختيار ملف… وانقر نقرتين لفتح مجلد الأرواح',
   fileFacts: 'بيانات الملف',
   spectrogram: 'مخطط الطيف',
   zoomReset: 'إعادة التكبير إلى المقطع كاملًا',

@@ -66,6 +66,23 @@ Vitest covers `src/audio/cutoff.ts` only (locked scope — see
 `.kiro/steering/build-conventions.md`): `npm run test` for a one-shot
 run, `npm run test:watch` while tuning thresholds.
 
+## Start screen
+
+The black start screen is also the intake. Its ghost is a hand-authored SVG
+button with two poses: idle, and a cheering wink while hovered or focused.
+Hovering also swaps the caption from “Drop a file… if you dare” to “Or click
+for a file… double-click for a folder of souls” (on the web, where there is
+no folder bridge, just “Or click for a file…”). **Click** opens the file
+picker after a 300 ms hold, so the first half of a double-click can't open two
+dialogs; **double-click** opens the folder picker (desktop). Keyboard
+activation opens the file picker immediately. Text on the start screen can't
+be selected. The hidden `#file-input` is what the renderer's change handler
+reads, and dropping a file anywhere still works. `chooseFolder()` in the
+bridge opens the same native directory dialog as File ▸ Open Folder. All of
+the start-screen copy (`dropHint` and the three empty-state keys) follows the
+language picker, including while the hover hint is showing; the ghost's
+`aria-label`/`title` translate too.
+
 ## Recent-file cache
 
 Reopening a file you already opened this session paints its spectrogram

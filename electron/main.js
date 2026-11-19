@@ -192,6 +192,9 @@ function registerIpc() {
     return true;
   });
 
+  // Empty state: double-clicking the ghost opens the native folder chooser.
+  ipcMain.handle('sg:choose-folder', () => chooseFolder());
+
   // A file picked/dropped in the renderer leaves the folder listing stale too.
   ipcMain.handle('sg:reset-folder', async () => {
     clearFolder();
@@ -362,12 +365,16 @@ async function loadFolder(folderPath, { limit = Infinity, displayName, refreshed
   }
 }
 
+async function chooseFolder() {
+  if (!mainWindow) return false;
+  const result = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] });
+  if (result.canceled || !result.filePaths.length) return false;
+  await loadFolder(path.resolve(result.filePaths[0]));
+  return true;
+}
+
 function menuOpenFolder() {
-  if (!mainWindow) return;
-  void dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] }).then((result) => {
-    if (result.canceled || !result.filePaths.length) return;
-    void loadFolder(path.resolve(result.filePaths[0]));
-  });
+  void chooseFolder();
 }
 
 // --- Options menu -----------------------------------------------------------

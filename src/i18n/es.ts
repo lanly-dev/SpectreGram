@@ -2,6 +2,9 @@ import type { I18nKey } from './en';
 
 export const ES: Partial<Record<I18nKey, string>> = {
   dropHint: 'Suelta un archivo… si te atreves',
+  emptyGhostHint: 'Clic: abrir un archivo · Doble clic: abrir una carpeta',
+  emptyClickHint: 'O haz clic para elegir un archivo…',
+  emptyFolderHint: 'O haz clic para elegir un archivo… doble clic para abrir una carpeta de almas',
   fileFacts: 'Datos del archivo',
   spectrogram: 'Espectrograma',
   zoomReset: 'Restablecer el zoom a la pista completa',

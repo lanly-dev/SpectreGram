@@ -2,6 +2,9 @@ import type { I18nKey } from './en';
 
 export const JA: Partial<Record<I18nKey, string>> = {
   dropHint: 'ファイルをドロップ… 度胸があるなら',
+  emptyGhostHint: 'クリック：ファイルを開く · ダブルクリック：フォルダーを開く',
+  emptyClickHint: 'またはクリックしてファイルを選ぶ…',
+  emptyFolderHint: 'またはクリックしてファイルを選ぶ…ダブルクリックで魂のフォルダーを開く',
   fileFacts: 'ファイル情報',
   spectrogram: 'スペクトログラム',
   zoomReset: 'ズームを曲全体に戻す',

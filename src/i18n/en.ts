@@ -6,6 +6,9 @@
 export const EN = {
   // --- Main screen ---------------------------------------------------------
   dropHint: 'Drop a file… if you dare',
+  emptyGhostHint: 'Click: open a file · Double-click: open a folder',
+  emptyClickHint: 'Or click for a file…',
+  emptyFolderHint: 'Or click for a file… double-click for a folder of souls',
   fileFacts: 'File facts',
   spectrogram: 'Spectrogram',
   zoomReset: 'Reset zoom to the full track',

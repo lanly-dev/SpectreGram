@@ -2,6 +2,9 @@ import type { I18nKey } from './en';
 
 export const ZH: Partial<Record<I18nKey, string>> = {
   dropHint: '拖入音频文件……如果你敢',
+  emptyGhostHint: '单击：打开文件 · 双击：打开文件夹',
+  emptyClickHint: '或单击选择一个文件…',
+  emptyFolderHint: '或单击选择一个文件…双击打开一个灵魂文件夹',
   fileFacts: '文件信息',
   spectrogram: '频谱图',
   zoomReset: '缩放重置为整首曲目',

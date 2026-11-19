@@ -2,6 +2,9 @@ import type { I18nKey } from './en';
 
 export const DE: Partial<Record<I18nKey, string>> = {
   dropHint: 'Datei hier ablegen … wenn du dich traust',
+  emptyGhostHint: 'Klick: Datei öffnen · Doppelklick: Ordner öffnen',
+  emptyClickHint: 'Oder klicken, um eine Datei zu wählen…',
+  emptyFolderHint: 'Oder klicken, um eine Datei zu wählen… Doppelklick öffnet einen Ordner voller Seelen',
   fileFacts: 'Dateiinfos',
   spectrogram: 'Spektrogramm',
   zoomReset: 'Zoom auf die ganze Spur zurücksetzen',

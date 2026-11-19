@@ -332,6 +332,30 @@ No `fetch`/XHR/WebSocket anywhere; the file is read with
 is an explicit invariant owned by "there is no networking code in the repo"
 (searchable: no fetch/XHR imports). A PR adding any fetch is a violation.
 
+## Empty-state intake (added 2026-11-19, maintainer's ask)
+
+- The start screen never lets its copy be selected (`user-select: none` on
+  `.empty-state`); the ghost is a real `<button>` with `cursor: pointer`.
+- The ghost is a hand-authored inline SVG in two poses: idle (arms down, open
+  eyes, small smile, one sparkle) and hover/focus (arms up, a wink, open
+  smile with tongue, sparkles). CSS cross-fades the poses and keeps the
+  button floating; reduced motion turns both off.
+- **Hovering or focusing** the ghost swaps the caption from “Drop a file… if
+  you dare” to “Or click for a file… double-click for a folder of souls” in
+  the accent colour; leaving/blurring restores the idle copy. The web build
+  has no `chooseFolder`, so its hover copy ends at “Or click for a file…”.
+- **Click** the ghost opens the hidden `#file-input` picker after a 300 ms
+  hold, so the first click of a double-click cannot open two dialogs.
+  Keyboard activation (`detail === 0`) opens it immediately.
+- **Double-click** cancels that hold and calls `chooseFolder()` on the
+  desktop bridge. Dropping a file anywhere still works.
+- Every start-screen string follows the language picker: `dropHint` for the
+  idle caption, `emptyGhostHint` for the ghost's `aria-label`/`title`, and
+  `emptyClickHint` / `emptyFolderHint` for the hover copy (the folder variant
+  only when the bridge exists). `applyInterfaceLanguage()` calls
+  `refreshEmptyStateText()` after `translateDom()`, so a language change
+  updates the caption even mid-hover.
+
 ## Error handling (concrete, per operation)
 
 | Operation | Failure condition | Recoverable? | Caller receives | Logged where |

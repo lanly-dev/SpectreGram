@@ -2,6 +2,9 @@ import type { I18nKey } from './en';
 
 export const RU: Partial<Record<I18nKey, string>> = {
   dropHint: 'Перетащите файл… если осмелитесь',
+  emptyGhostHint: 'Щелчок: открыть файл · Двойной щелчок: открыть папку',
+  emptyClickHint: 'Или щёлкните, чтобы выбрать файл…',
+  emptyFolderHint: 'Или щёлкните, чтобы выбрать файл… двойной щелчок откроет папку душ',
   fileFacts: 'Сведения о файле',
   spectrogram: 'Спектрограмма',
   zoomReset: 'Сбросить масштаб на всю дорожку',

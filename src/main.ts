@@ -736,6 +736,59 @@ function setupWindowDrop(): void {
   });
 }
 
+let emptyStateHinting = false;
+
+/** Start-screen copy in the current language (hover shows the click hints). */
+function refreshEmptyStateText(): void {
+  const ghost = el<HTMLButtonElement>('empty-ghost');
+  const text = $('empty-text');
+  if (!text) return;
+  const folder = Boolean(window.spectregramDesktop?.chooseFolder);
+  text.textContent = emptyStateHinting
+    ? t(folder ? 'emptyFolderHint' : 'emptyClickHint')
+    : t('dropHint');
+  text.classList.toggle('hint', emptyStateHinting);
+  ghost?.classList.toggle('hinting', emptyStateHinting);
+}
+
+/**
+ * The haunted start screen is also the intake: click the ghost to pick a file,
+ * double-click it to pick a folder (desktop). A single click is held briefly so
+ * a double-click can cancel the file dialog instead of opening two pickers.
+ */
+function setupEmptyState(): void {
+  const ghost = el<HTMLButtonElement>('empty-ghost');
+  const input = el<HTMLInputElement>('file-input');
+  if (!ghost || !input) return;
+  let clickTimer = 0;
+  ghost.addEventListener('click', (e) => {
+    if (e.detail > 1) {
+      clearTimeout(clickTimer);
+      return;
+    }
+    if (e.detail === 0) {
+      input.click(); // keyboard activation: no double-click to wait for
+      return;
+    }
+    clearTimeout(clickTimer);
+    clickTimer = window.setTimeout(() => input.click(), 300);
+  });
+  ghost.addEventListener('dblclick', () => {
+    clearTimeout(clickTimer);
+    void window.spectregramDesktop?.chooseFolder?.();
+  });
+
+  // Hovering turns the ghost and its caption into the click/double-click hint.
+  const showHint = (on: boolean): void => {
+    emptyStateHinting = on;
+    refreshEmptyStateText();
+  };
+  ghost.addEventListener('mouseenter', () => showHint(true));
+  ghost.addEventListener('mouseleave', () => showHint(false));
+  ghost.addEventListener('focus', () => showHint(true));
+  ghost.addEventListener('blur', () => showHint(false));
+}
+
 function setupIntake(): void {
   const input = el<HTMLInputElement>('file-input');
   if (!input) return;
@@ -2546,6 +2599,8 @@ function applyInterfaceLanguage(code: string): void {
   setLanguage(code as Lang);
   // The native menu bar lives in the shell, not the DOM, so tell it too.
   window.spectregramDesktop?.setLanguage(code);
+  // The start-screen caption is built by JS, so translateDom can't update it.
+  refreshEmptyStateText();
   // Static markup is re-translated by setLanguage; re-render the labels this
   // module builds itself, then the verdict (which is generated, not markup).
   updatePaletteButton();
@@ -2629,6 +2684,7 @@ function setupAbout(): void {
 // --- Init -------------------------------------------------------------------
 
 function init(): void {
+  setupEmptyState();
   setupIntake();
   setupPaletteToggle();
   setupPhaseToggle();

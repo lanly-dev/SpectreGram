@@ -45,6 +45,8 @@ contextBridge.exposeInMainWorld('spectregramDesktop', {
   refreshFolder: () => ipcRenderer.invoke('sg:refresh-folder'),
   /** Folder panel: ask main to grant read access + open a file from the folder. */
   openFolderFile: (filePath) => ipcRenderer.invoke('sg:open-folder-file', filePath),
+  /** Empty state: native folder chooser (double-clicking the ghost). */
+  chooseFolder: () => ipcRenderer.invoke('sg:choose-folder'),
   /** Report whether a spectrogram is present (gates Export in the menu). */
   reportSpectrogramState: (present) =>
     ipcRenderer.invoke('sg:spectrogram-state', present),

@@ -2,6 +2,9 @@ import type { I18nKey } from './en';
 
 export const VI: Partial<Record<I18nKey, string>> = {
   dropHint: 'Thả một tệp vào đây… nếu bạn dám',
+  emptyGhostHint: 'Nhấp: mở tệp · Nhấp đúp: mở thư mục',
+  emptyClickHint: 'Hoặc nhấp để chọn một tệp…',
+  emptyFolderHint: 'Hoặc nhấp để chọn một tệp… nhấp đúp để mở thư mục của những linh hồn',
   fileFacts: 'Thông tin tệp',
   spectrogram: 'Phổ đồ',
   zoomReset: 'Đặt lại thu phóng về toàn bộ bản nhạc',

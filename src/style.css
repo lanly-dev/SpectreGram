@@ -836,6 +836,9 @@ main.folder-open .controls {
   gap: 8px;
   overflow: hidden;
   z-index: 10;
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .empty-state[hidden] {
@@ -843,18 +846,76 @@ main.folder-open .controls {
 }
 
 .empty-ghost {
-  font-size: 56px;
+  position: relative;
+  width: 128px;
+  height: 128px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
   line-height: 1;
-  opacity: 0.92;
-  filter: drop-shadow(0 6px 14px rgba(140, 120, 255, 0.35));
+  cursor: pointer;
+  filter: drop-shadow(0 8px 18px rgba(140, 120, 255, 0.3));
   animation: ghost-float 3.6s ease-in-out infinite;
 }
 
+.empty-ghost:hover {
+  filter: drop-shadow(0 0 22px rgba(200, 210, 255, 0.55));
+}
+
+.empty-ghost:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 6px;
+  border-radius: 10px;
+}
+
+/* Two hand-drawn poses: idle, and a cheering wink on hover/focus. */
+.ghost-pose {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: opacity 0.18s ease, transform 0.24s ease;
+}
+
+.ghost-pose-hover {
+  opacity: 0;
+  transform: scale(0.9) translateY(3px);
+}
+
+/* The same hint state drives the caption and the pose (mouse or keyboard). */
+.empty-ghost.hinting .ghost-pose-idle {
+  opacity: 0;
+  transform: scale(0.92) translateY(-3px);
+}
+
+.empty-ghost.hinting .ghost-pose-hover {
+  opacity: 1;
+  transform: scale(1.04) translateY(-4px);
+}
+
 .empty-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.1em;
+  max-width: 500px;
+  padding: 0 16px;
   color: var(--muted);
   font-size: 0.78rem;
+  line-height: 1.5;
   letter-spacing: 0.14em;
+  text-align: center;
   text-transform: uppercase;
+  transition: color 0.15s ease, text-shadow 0.15s ease;
+}
+
+.empty-text.hint {
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 12px rgba(255, 122, 61, 0.4);
 }
 
 .empty-state::before,
@@ -886,6 +947,15 @@ main.folder-open .controls {
   }
   50% {
     transform: translateY(-8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .empty-ghost {
+    animation: none;
+  }
+  .ghost-pose {
+    transition: none;
   }
 }
 

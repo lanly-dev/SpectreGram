@@ -2,6 +2,9 @@ import type { I18nKey } from './en';
 
 export const KO: Partial<Record<I18nKey, string>> = {
   dropHint: '파일을 끌어다 놓으세요… 용기가 있다면',
+  emptyGhostHint: '클릭: 파일 열기 · 더블클릭: 폴더 열기',
+  emptyClickHint: '또는 클릭하여 파일 선택…',
+  emptyFolderHint: '또는 클릭하여 파일 선택… 더블클릭하면 영혼의 폴더가 열립니다',
   fileFacts: '파일 정보',
   spectrogram: '스펙트로그램',
   zoomReset: '확대를 전체 트랙으로 초기화',

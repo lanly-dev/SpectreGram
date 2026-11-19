@@ -2,6 +2,9 @@ import type { I18nKey } from './en';
 
 export const HALLOWEEN: Partial<Record<I18nKey, string>> = {
   dropHint: 'Drop a file… if you dare',
+  emptyGhostHint: 'Click: summon a file · Double-click: open a folder',
+  emptyClickHint: 'Or click to summon a file…',
+  emptyFolderHint: 'Or click to summon a file… double-click for a folder of souls',
   fileFacts: 'Tome of the file',
   spectrogram: 'Spectrogram',
   zoomReset: 'Return the gaze to the whole track',
