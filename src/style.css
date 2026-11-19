@@ -1266,6 +1266,29 @@ main.folder-open .controls {
   font-size: 0.71rem;
 }
 
+/* Custom's two controls sit side by side (speed, divide into parts), label
+   above the menu, so both are visible without a mode switch. */
+.export-row-pair {
+  display: flex;
+  gap: 10px;
+  margin: 2px 0;
+}
+
+.export-row-pair > .export-row {
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 3px;
+  margin: 0;
+  min-width: 0;
+}
+
+.export-row-pair > .export-row select {
+  width: 100%;
+  min-width: 0;
+}
+
 .export-card select {
   min-width: 140px;
   padding: 2px 5px;

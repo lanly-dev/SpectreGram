@@ -28,7 +28,7 @@ import type {
   WorkerMessage,
   ZoomRequest,
 } from './audio/stft-worker';
-import { bandRanges, planExport, type ExportPlan, type SplitMode } from './export-bands';
+import { bandRanges, planExport, planLosslessExport, type ExportPlan } from './export-bands';
 import { composeExportImage, exportBandHeight, exportLayout, type ExportRow } from './export-image';
 import { runScan } from './scan';
 import { buildReportMarkdown, CLASS_INFO, countClasses, rateCollection } from './report';
@@ -711,7 +711,7 @@ function updatePaletteButton(): void {
   const swatch = $('palette-swatch');
   const active = getActivePaletteName();
   const entry = PALETTE_CYCLE.find((p) => p.name === active) ?? PALETTE_CYCLE[0];
-  const label = `${entry.label} (click to change)`;
+  const label = entry.label;
   if (btn) {
     btn.title = label;
     btn.setAttribute('aria-label', label);
@@ -731,9 +731,7 @@ function updateViewButton(): void {
   if (btn) {
     btn.classList.toggle('active', phase);
     btn.setAttribute('aria-pressed', String(phase));
-    const label = phase
-      ? 'Phase overlay: on (click to hide phase)'
-      : 'Phase overlay: off (click to show phase)';
+    const label = phase ? 'Phase overlay: on' : 'Phase overlay: off';
     btn.title = label;
     btn.setAttribute('aria-label', label);
   }
@@ -900,24 +898,32 @@ function exportModalOpen(): boolean {
 
 type ExportMode = 'current' | 'lossless' | 'custom';
 
-/** Active mode, split ('speed' | 'parts') and menu value. Lossless always
- *  splits by parts; its menu is the lossless parts select. */
-function exportModeChoice(): { mode: ExportMode; split: SplitMode; value: string } {
+/** Active mode and the custom controls: `speed` (how wide each strip is) and
+ *  `parts` (how many strips). Lossless paints at 1× and has its own parts
+ *  menu, so the custom controls only describe the custom export. */
+function exportModeChoice(): { mode: ExportMode; speed: string; parts: string } {
   const raw = document.querySelector<HTMLInputElement>("input[name='export-mode']:checked")?.value;
   const mode: ExportMode = raw === 'lossless' || raw === 'custom' ? raw : 'current';
   if (mode === 'lossless') {
-    return { mode, split: 'parts', value: el<HTMLSelectElement>('export-lossless-parts')?.value ?? '1' };
+    return { mode, speed: '1', parts: el<HTMLSelectElement>('export-lossless-parts')?.value ?? '1' };
   }
-  const split: SplitMode = el<HTMLSelectElement>('export-split')?.value === 'parts' ? 'parts' : 'speed';
-  const menu = split === 'parts' ? el<HTMLSelectElement>('export-parts') : el<HTMLSelectElement>('export-speed');
-  return { mode, split, value: menu?.value ?? (split === 'parts' ? '4' : '1') };
+  return {
+    mode,
+    speed: el<HTMLSelectElement>('export-speed')?.value ?? '1',
+    parts: el<HTMLSelectElement>('export-parts')?.value ?? '4',
+  };
 }
 
 /** Plan for the current menu selection, or null for current view / no track. */
 function currentExportPlan(): ExportPlan | null {
-  const { mode, split, value } = exportModeChoice();
+  const { mode, speed, parts } = exportModeChoice();
   if (mode === 'current') return null;
-  return planExport(trackDuration(), split, value);
+  const dur = trackDuration();
+  // Lossless ignores speed: it keeps the analysis hop, so time is never
+  // compressed; the part count only decides how the stack is cut.
+  return mode === 'lossless'
+    ? planLosslessExport(dur, parts, sampleRate)
+    : planExport(dur, speed, parts);
 }
 
 /** What the export will carry, for the panel's info line: the palette in use
@@ -931,16 +937,12 @@ function exportInfoSuffix(): string {
 
 /** Keep the panel's rows and the strip summary in step with the menu. */
 function updateExportPanel(): void {
-  const { mode, split, value } = exportModeChoice();
+  const { mode, speed } = exportModeChoice();
   const custom = $('export-custom');
   const losslessBox = $('export-lossless');
-  const speedRow = $('export-speed-row');
-  const partsRow = $('export-parts-row');
   const summary = $('export-summary');
   if (custom) custom.hidden = mode !== 'custom';
   if (losslessBox) losslessBox.hidden = mode !== 'lossless';
-  if (speedRow) speedRow.hidden = split !== 'speed';
-  if (partsRow) partsRow.hidden = split !== 'parts';
   if (!summary) return;
   const info = exportInfoSuffix();
   if (mode === 'current') {
@@ -962,16 +964,15 @@ function updateExportPanel(): void {
     legend,
     exportBandHeight(fullGrid?.bins ?? 0, mode === 'lossless'),
   );
+  // Both controls describe the same picture: speed sets each strip's width,
+  // parts sets how many strips are stacked.
+  const noun = plan.strips === 1 ? 'strip' : 'strips';
+  const each = plan.strips > 1 ? ` · ${fmtTime(plan.stripSeconds)} each` : '';
   if (mode === 'lossless') {
-    const noun = plan.strips === 1 ? 'strip' : 'strips';
-    summary.textContent = `Lossless · ${plan.strips} ${noun} · ${lay.width} × ${lay.height} px · ${fmtTime(plan.stripSeconds)} each${info}`;
-  } else if (split === 'speed') {
-    // One strip covering the file; the speed setting compresses the time axis.
-    const label = value === 'slowest' ? 'slowest (½×)' : `${value}×`;
-    summary.textContent = `${lay.width} × ${lay.height} px · one strip · ${label}${info}`;
+    summary.textContent = `Lossless · ${plan.strips} ${noun} · ${lay.width} × ${lay.height} px${each}${info}`;
   } else {
-    const noun = plan.strips === 1 ? 'strip' : 'strips';
-    summary.textContent = `${plan.strips} ${noun} · ${lay.width} × ${lay.height} px · ${fmtTime(plan.stripSeconds)} each${info}`;
+    const speedLabel = speed === 'slowest' ? 'slowest (½×)' : `${speed}×`;
+    summary.textContent = `Custom · ${plan.strips} ${noun} · ${lay.width} × ${lay.height} px${each} · ${speedLabel}${info}`;
   }
 }
 
@@ -1100,7 +1101,7 @@ function setupExportPanel(): void {
   for (const input of modal.querySelectorAll<HTMLInputElement>("input[name='export-mode']")) {
     input.addEventListener('change', updateExportPanel);
   }
-  for (const id of ['export-split', 'export-speed', 'export-parts', 'export-lossless-parts']) {
+  for (const id of ['export-speed', 'export-parts', 'export-lossless-parts']) {
     el<HTMLSelectElement>(id)?.addEventListener('change', updateExportPanel);
   }
   for (const id of ['export-rulers', 'export-legend']) {

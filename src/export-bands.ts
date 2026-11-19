@@ -1,5 +1,6 @@
-// Pure planning for the PNG export: how wide a whole-track strip is, and how
-// the track is cut into strips when it is split into equal parts.
+// Pure planning for the PNG export: how wide each strip is (speed) and how
+// many strips the track is cut into (divide into parts). The two are
+// independent — speed only compresses the time axis inside a strip.
 // No DOM, no worker — kept separate so the arithmetic is easy to read and test.
 
 /** Columns a whole-track strip gets at 1× — the same width as the on-screen graph. TUNABLE. */
@@ -22,10 +23,16 @@ export const SPEED_CHOICES: ReadonlyArray<{ value: string; multiplier: number }>
   { value: '5', multiplier: 5 },
 ];
 
-/** Equal-parts mode offers 1..10 strips; this is the menu's upper end. */
+/** The parts menu offers 1..10 strips; this is its upper end. */
 export const MAX_PARTS = 10;
 
-export type SplitMode = 'speed' | 'parts';
+/** One column per analysis hop: the lossless export's time resolution.
+ *  Matches `DEFAULT_STFT.hopSize`, so no hop is dropped or blended. TUNABLE. */
+export const NATIVE_HOP = 1024;
+
+/** Hard width ceiling for one lossless strip — a wider PNG is neither
+ *  loadable nor buildable in a canvas. */
+export const MAX_LOSSLESS_COLUMNS = 32768;
 
 export interface ExportPlan {
   /** Number of stacked strips (1 for a speed export). */
@@ -36,22 +43,56 @@ export interface ExportPlan {
   stripSeconds: number;
 }
 
+function clampParts(partsValue: string): number {
+  return Math.max(1, Math.min(MAX_PARTS, Math.round(Number(partsValue) || 1)));
+}
+
 /**
- * Work out the export shape. `value` is the active menu value: a SPEED_CHOICES
- * value for 'speed', or the part count (1..10) for 'parts'. Null with no track.
+ * Width that keeps every STFT hop its own pixel: one column per `NATIVE_HOP`
+ * samples, so the time axis is not compressed at all. Rounded up, so the
+ * actual hop is 1024 or slightly less. Unknown sample rate → graph width.
  */
-export function planExport(durationSec: number, split: SplitMode, value: string): ExportPlan | null {
+export function nativeColumns(durationSec: number, sampleRate: number): number {
+  if (!(durationSec > 0) || !(sampleRate > 0)) return BASE_COLUMNS;
+  const columns = Math.ceil((durationSec * sampleRate) / NATIVE_HOP);
+  return Math.max(MIN_COLUMNS, Math.min(MAX_LOSSLESS_COLUMNS, columns));
+}
+
+/**
+ * Lossless plan: native bin rows (the caller's band height) and native-hop
+ * columns, so neither axis is compressed. The part count only splits the
+ * stack — the total pixel width is the same for 1 part or 10.
+ */
+export function planLosslessExport(
+  durationSec: number,
+  partsValue: string,
+  sampleRate: number,
+): ExportPlan | null {
   if (!(durationSec > 0)) return null;
-  if (split === 'parts') {
-    const parts = Math.max(1, Math.min(MAX_PARTS, Math.round(Number(value) || 1)));
-    return { strips: parts, columns: BASE_COLUMNS, stripSeconds: durationSec / parts };
-  }
-  const choice = SPEED_CHOICES.find((c) => c.value === value) ?? SPEED_CHOICES[1];
+  const strips = clampParts(partsValue);
+  const stripSeconds = durationSec / strips;
+  return { strips, columns: nativeColumns(stripSeconds, sampleRate), stripSeconds };
+}
+
+/**
+ * Custom plan from the two independent controls: `speed` is a SPEED_CHOICES
+ * value (the columns each strip gets) and `parts` the number of stacked
+ * strips (1..10). Both apply at once, so 4 parts at 2× is four 512 px
+ * strips. Null with no track.
+ */
+export function planExport(
+  durationSec: number,
+  speed: string,
+  partsValue: string,
+): ExportPlan | null {
+  if (!(durationSec > 0)) return null;
+  const parts = clampParts(partsValue);
+  const choice = SPEED_CHOICES.find((c) => c.value === speed) ?? SPEED_CHOICES[1];
   const columns = Math.max(
     MIN_COLUMNS,
     Math.min(BASE_COLUMNS * 2, Math.round(BASE_COLUMNS / choice.multiplier)),
   );
-  return { strips: 1, columns, stripSeconds: durationSec };
+  return { strips: parts, columns, stripSeconds: durationSec / parts };
 }
 
 /**

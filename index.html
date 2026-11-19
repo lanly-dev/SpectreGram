@@ -106,14 +106,14 @@
     <section class="controls">
       <!-- Compact icon buttons; the label lives in aria-label + title (tooltip). -->
       <button id="palette-toggle" class="icon-btn palette-btn" type="button"
-        aria-label="Palette: Spectrum (click to change)" title="Palette: Spectrum (click to change)">
+        aria-label="Palette: Spectrum" title="Palette: Spectrum">
         <span id="palette-swatch" class="palette-swatch" aria-hidden="true"></span>
       </button>
       <!-- Phase overlay (spec: .kiro/specs/phase-view/): the same palette
            spectrogram, with each bin's phase rotating its colour's hue. -->
       <button id="phase-btn" class="icon-btn view-btn" type="button" aria-pressed="false"
-        aria-label="Phase overlay: off (click to show phase)"
-        title="Phase overlay: off (click to show phase)">
+        aria-label="Phase overlay: off"
+        title="Phase overlay: off">
         <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
           <circle cx="8" cy="8" r="5.3" fill="none" stroke="currentColor" stroke-width="1.4" />
           <path d="M8 8 10.9 4.7" fill="none" stroke="currentColor" stroke-width="1.6"
@@ -225,7 +225,7 @@
               <strong>Current view</strong>
             </span>
           </label>
-          <label class="export-option" title="The whole track as exact data: every frequency bin gets its own pixel row, nothing blended.">
+          <label class="export-option" title="The whole track as exact data: every frequency bin gets its own pixel row and every analysis hop its own column, so nothing is blended or compressed.">
             <input type="radio" name="export-mode" value="lossless" />
             <span>
               <strong>Lossless</strong>
@@ -256,37 +256,32 @@
           </div>
         </div>
         <div id="export-custom" class="export-custom" hidden>
-          <div class="export-row">
-            <label for="export-split">Split by</label>
-            <select id="export-split">
-              <option value="speed" selected>Speed (one strip)</option>
-              <option value="parts">Equal parts (stacked)</option>
-            </select>
-          </div>
-          <div id="export-speed-row" class="export-row">
-            <label for="export-speed">Speed</label>
-            <select id="export-speed" title="How far the whole track is compressed horizontally">
-              <option value="slowest">Slowest · widest</option>
-              <option value="1" selected>1× · graph width</option>
-              <option value="2">2× · half width</option>
-              <option value="3">3× · third</option>
-              <option value="5">5× · fifth</option>
-            </select>
-          </div>
-          <div id="export-parts-row" class="export-row" hidden>
-            <label for="export-parts">Parts</label>
-            <select id="export-parts">
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4" selected>4</option>
-              <option value="5">5</option>
-              <option value="6">6</option>
-              <option value="7">7</option>
-              <option value="8">8</option>
-              <option value="9">9</option>
-              <option value="10">10</option>
-            </select>
+          <div class="export-row-pair">
+            <div class="export-row">
+              <label for="export-speed">Speed</label>
+              <select id="export-speed" title="How wide each strip is: 1× is the graph width, ½× twice as wide, 5× a fifth">
+                <option value="slowest">Slowest · longest</option>
+                <option value="1" selected>1× · graph width</option>
+                <option value="2">2× · half width</option>
+                <option value="3">3× · third</option>
+                <option value="5">5× · fifth</option>
+              </select>
+            </div>
+            <div class="export-row">
+              <label for="export-parts">Divide into parts</label>
+              <select id="export-parts" title="Split the track into this many strips, stacked top to bottom">
+                <option value="1">1 · one strip</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4" selected>4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+              </select>
+            </div>
           </div>
         </div>
         <div class="export-extras">

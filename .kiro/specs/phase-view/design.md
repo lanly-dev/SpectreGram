@@ -120,8 +120,8 @@ The maintainer split the export panel into three named types:
 1. **Current view** — the canvas as shown, 1024 × 512. A picture.
 2. **Lossless** — the whole track as data: strips painted at the grid's
    native bin height (the native-height amendment above, now keyed to the
-   export *type* instead of the view mode), with one option: divide into
-   parts (1–10 stacked strips, 1024 columns each). Files are named
+   export *type* instead of the view mode),    with one option: divide into parts (1–10 stacked strips; initially 1,024
+   columns each — see the lossless-native amendment below). Files are named
    `<name>-lossless.png` / `<name>-lossless-stacked.png`.
 3. **Custom** — the previous stacked export unchanged: 512 px strip
    height, split by speed or equal parts. A picture.
@@ -131,3 +131,41 @@ receives the chosen band height from the caller instead of reading the
 view mode. The panel's info line also states what the export will carry —
 the active palette ("style") and whether the phase overlay is selected —
 in every mode, so the meaning of the pixels is visible before saving.
+
+## Amendment — custom export's two controls (2026-11-19)
+
+The maintainer asked for the Custom type to drop the "Split by" switch and
+show **speed** and **divide into parts** as two dropdowns instead, so both
+are always visible and combinable. `planExport(duration, speed, parts)` now
+takes both menu values: `parts` (1–10) sets the strip count, `columns` comes
+from the speed multiplier alone, and `stripSeconds = duration / parts`.
+Speed therefore never changes the strip count — the correction the
+maintainer made when the export panel first landed stays true — and
+4 parts at 2× means four 512 px strips.
+
+`exportModeChoice()` in `src/main.ts` returns `{ mode, speed, parts }`
+(lossless pins speed to 1× and reads its own parts menu); the panel summary
+quotes `plan.strips`, the composed size, and the speed label. Markup: the
+two `.export-row`s live in an `.export-row-pair`, each a label above a
+full-width select, so "Divide into parts" fits without wrapping. Custom's
+parts menu now includes 1 (one strip) because speed no longer implies it.
+
+## Amendment — lossless keeps the time axis too (2026-11-19)
+
+The maintainer: "for the lossless, it should not compress the horizontal
+for the output." Lossless already kept the native bin height, but it still
+squeezed each strip into `BASE_COLUMNS` (1,024) columns — every part was
+re-analysed at 1,024 frames however long it was. It now also paints at the
+analysis hop: `planLosslessExport(duration, parts, sampleRate)`
+(`src/export-bands.ts`) sizes each strip with `nativeColumns(stripSeconds,
+sampleRate)` = `ceil(samples / NATIVE_HOP)`, one column per 1,024-sample
+hop (`NATIVE_HOP` = `DEFAULT_STFT.hopSize`). `computeStftSegment` then
+picks hop = `ceil(span / columns)` ≈ 1,024, so no hop is dropped or
+blended on either axis.
+
+Consequences: lossless output is much wider — 3:02 at 48 kHz becomes
+8,532 × 1,025 px per strip instead of 1,024 × 1,025 — and the part count
+no longer changes the total width, only how the stack is cut. A per-strip
+ceiling of 32,768 columns (`MAX_LOSSLESS_COLUMNS`) keeps very long files
+buildable. Custom keeps its speed/parts semantics via `planExport`; the
+lossless panel has no speed control because speed is fixed at native.

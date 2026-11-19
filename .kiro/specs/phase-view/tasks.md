@@ -58,3 +58,23 @@ Design: `./design.md`.
   the new `exportBandHeight` semantics (lossless → 1025, custom → 512,
   no grid → 512) and explicit-height layout. Not verified: the three
   exports from a running app (maintainer's click-through).
+
+- ✅ 8. Custom export's controls (2026-11-19, maintainer's ask): the
+  "Split by" switch is gone; **Speed** and **Divide into parts** are two
+  dropdowns side by side and both apply at once. `planExport(duration,
+  speed, parts)` — parts 1–10 sets the strip count, speed sets columns —
+  replaces the `split`/`value` signature; `SplitMode` is removed;
+  `exportModeChoice()` returns `{ mode, speed, parts }`; Custom's parts
+  menu gained 1 · one strip.   Verified: build ✓, Vitest 10/10 ✓. Not
+  verified: the panel from a running app (maintainer's click-through).
+
+- ✅ 9. Lossless keeps the time axis (2026-11-19, maintainer's ask — "it
+  should not compress the horizontal"): `planLosslessExport(duration,
+  parts, sampleRate)` sizes each strip at `ceil(samples / NATIVE_HOP)`
+  columns (1,024-sample hop), so lossless is native in both axes;
+  `MAX_LOSSLESS_COLUMNS` (32,768) caps very long files; parts only cut
+  the stack. `main.ts` picks the planner per mode. Verified: build ✓,
+  Vitest 10/10 ✓; temporary Vitest (5/5, deleted) — 3:02 @ 48 kHz →
+  8,532 columns, 4 parts → ceil(width/4) per strip with the same total,
+  one-hour strip caps, custom speed/parts unchanged. Not verified: a
+  real lossless export from the app (maintainer's click-through).

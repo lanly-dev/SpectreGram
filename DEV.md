@@ -470,17 +470,28 @@ settings card instead of saving immediately.
 re-analysis; this is the fastest option.
 
 **Lossless** — the whole track as data, not a picture: strips at the
-grid's native bin height (1025 rows at FFT 2048), optionally divided
-into 1–10 equal parts. Saved as `<name>-lossless.png` (or
-`-lossless-stacked.png` when divided). With the phase overlay on, this
-is the export an external decoder can read back to audio.
+grid's native bin height (1025 rows at FFT 2048) *and* its native hop
+(one column per 1,024 samples, so the time axis is not compressed
+either), optionally divided into 1–10 equal parts. A 3:02 track at
+48 kHz is therefore 8,532 columns wide per strip, not 1,024; the part
+count only cuts the stack, it does not change the total width. Width is
+capped at 32,768 columns per strip (`MAX_LOSSLESS_COLUMNS`). Saved as
+`<name>-lossless.png` (or `-lossless-stacked.png` when divided). With
+the phase overlay on, this is the export an external decoder can read
+back to audio.
 
-**Custom** — the whole track at the 512 px display height, in two shapes:
-- *by speed* — the entire file in ONE strip at a compression level: 1× =
-  1,024 columns (`BASE_COLUMNS`, TUNABLE, the on-screen width), "slowest" (½×)
-  = 2,048, 2× = 512, 3× = 341, 5× = 205 (floor 128).
-- *equal parts* — 1–10 strips of `duration / N` each, stacked top to bottom in
-  one image (`1024 × 512·N`).
+**Custom** — the whole track at the 512 px display height, with two
+independent controls side by side (no "split by" switch — both always apply):
+- **Speed** — how wide each strip is: 1× = 1,024 columns (`BASE_COLUMNS`,
+  TUNABLE, the on-screen width), "slowest" (½×) = 2,048, 2× = 512,
+  3× = 341, 5× = 205 (floor 128).
+- **Divide into parts** — 1–10 strips of `duration / N` each, stacked top to
+  bottom in one image.
+
+So 1 part at 1× is the old single whole-track strip, 4 parts at 1× is
+`1024 × 512·4`, and 4 parts at 2× is four 512 px strips. `planExport(duration,
+ speed, parts)` takes the two menu values and applies them independently;
+speed only compresses the time axis inside a strip, never the strip count.
 
 The panel's summary line always ends with the active palette ("style")
 and whether the phase overlay is selected, so what the pixels carry is
