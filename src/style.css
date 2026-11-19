@@ -1196,7 +1196,7 @@ main.folder-open .controls {
    switch modes and a focus ring is drawn on the tile. */
 .export-options {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 6px;
 }
 
@@ -1266,8 +1266,31 @@ main.folder-open .controls {
   font-size: 0.71rem;
 }
 
+/* Custom's two controls sit side by side (speed, divide into parts), label
+   above the menu, so both are visible without a mode switch. */
+.export-row-pair {
+  display: flex;
+  gap: 10px;
+  margin: 2px 0;
+}
+
+.export-row-pair > .export-row {
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 3px;
+  margin: 0;
+  min-width: 0;
+}
+
+.export-row-pair > .export-row select {
+  width: 100%;
+  min-width: 0;
+}
+
 .export-card select {
-  min-width: 118px;
+  min-width: 140px;
   padding: 2px 5px;
   font: inherit;
   font-size: 0.7rem;
