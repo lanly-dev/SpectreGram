@@ -1,0 +1,186 @@
+// English source table for the interface. Every other language maps the same
+// keys in its own file, so a missing translation simply falls back to English.
+// The English values are also what the DOM translation matches against, so any
+// string used in index.html must stay verbatim here.
+
+export const EN = {
+  // --- Main screen ---------------------------------------------------------
+  dropHint: 'Drop a file… if you dare',
+  fileFacts: 'File facts',
+  spectrogram: 'Spectrogram',
+  zoomReset: 'Reset zoom to the full track',
+  legendAria: 'dBFS color scale',
+  legendTitle: 'dBFS scale — u / U: lower / raise upper limit, l / L: lower / raise lower limit',
+  legendPhaseAria: 'dBFS color scale, tinted by phase',
+  legendPhaseTitle:
+    'Phase overlay — hue drifts with phase, colour = dBFS (u/U, l/L still move the range)',
+
+  // --- Controls ------------------------------------------------------------
+  paletteLabel: 'Palette: {name}',
+  phaseOff: 'Phase overlay: off',
+  phaseOn: 'Phase overlay: on',
+  exportButton: 'Export PNG',
+  messageButton: 'Haunt this track with a hidden message',
+  prevFile: 'Previous file',
+  nextFile: 'Next file',
+  backToStart: 'Back to start',
+  play: 'Play',
+  pause: 'Pause',
+  stop: 'Stop',
+
+  // --- Facts + progress ----------------------------------------------------
+  factFormat: 'Format',
+  factDuration: 'Duration',
+  factSampleRate: 'Sample rate',
+  factChannels: 'Channels',
+  mono: 'mono',
+  stereo: 'stereo',
+  channelsCount: '{n} ch',
+  statusDecoding: 'Decoding…',
+  statusAnalyzing: 'Analyzing… {pct}%',
+  statusEstimating: 'Estimating cutoff…',
+
+  // --- Verdict (cutoff.ts) -------------------------------------------------
+  verdictTooShort: 'Audio too short to estimate a cutoff.',
+  verdictNone: 'No clear cutoff detected.',
+  verdictGenuine: 'Claims {format}. Cutoff ≈{khz} kHz — consistent with genuine lossless.',
+  verdictCostume: 'Claims {format}. Cutoff ≈{khz} kHz — smells like a 128k MP3 in a costume.',
+  verdictInconclusive:
+    'Claims {format}. Cutoff ≈{khz} kHz — inconclusive; could be filtered or upsampled.',
+  verdictM4a:
+    'Claims {format}. Cutoff ≈{khz} kHz — format is lossy-or-lossless ambiguous; no disguise call made.',
+  verdictUnknown: 'Claims {format}. Cutoff ≈{khz} kHz — format unknown; no disguise call made.',
+  verdictLossy: 'Claims {format}. Cutoff ≈{khz} kHz — normal for lossy compression.',
+
+  // --- Folder panel --------------------------------------------------------
+  scan: 'Scan',
+  scanTitle: 'Scan every file in this folder and its subfolders',
+  stopScan: 'Stop the scan',
+  refreshFolder: 'Refresh folder',
+  folderLoading: 'Summoning the spirits…',
+  audioFileOne: '{n} audio file',
+  audioFileMany: '{n} audio files',
+  toastFolder: 'Folder "{name}" — {count}',
+  toastRefreshed: 'Refreshed "{name}" — {count}',
+  toastFolderCapped: '{what} — showing the first {count} (list capped).',
+  toastScanStopped: 'Scan stopped early: {n} of {total} files judged.',
+
+  // --- Report modal --------------------------------------------------------
+  reportJudged: 'Your collection has been judged.',
+  reveal: 'Reveal',
+  saveReport: 'Save report',
+  close: 'Close',
+  cancel: 'Cancel',
+  drumroll: 'Drumroll…',
+  reportReady: '{n} files judged. Ready for the verdict?',
+  reportNoteDone: '{n} files judged, subfolders included.',
+  reportNoteCancelled: 'Scan stopped early: {n} of {total} files judged.',
+  classGenuine: '👻 Genuine lossless',
+  classGenuineShort: '👻 Genuine',
+  classCostume: '🎃 Costume (lossy disguised as lossless)',
+  classCostumeShort: '🎃 Costume',
+  classInconclusive: '🌫️ Inconclusive',
+  classInconclusiveShort: '🌫️ Inconclusive',
+  classLossy: '📼 Normal lossy',
+  classLossyShort: '📼 Lossy',
+  classNoCall: '🕯️ No call',
+  classNoCallShort: '🕯️ No call',
+  classFailed: '💀 Could not decode',
+  classFailedShort: '💀 Failed',
+  ratingLurkerTitle: 'Lossy Lurker',
+  ratingLurkerBlurb:
+    'Nothing here claims to be lossless, so there was nothing to unmask. Honest lossy files, no costumes.',
+  ratingFogTitle: 'Lost in the Fog',
+  ratingFogBlurb: 'Every lossless claim came back inconclusive, so the spirits can’t tell either way.',
+  ratingKeeperTitle: 'Crypt Keeper — a true collector',
+  ratingKeeperBlurb: 'Every lossless file that could be judged is the real thing. The crypt is in order.',
+  ratingAvidTitle: 'Avid Collector',
+  ratingAvidBlurb: 'Mostly the real thing, with a few costumes slipped into the crypt.',
+  ratingHoarderTitle: 'Haunted Hoarder',
+  ratingHoarderBlurb: 'Plenty of “lossless”, but a good chunk of it is an MP3 in a costume.',
+  ratingNoobTitle: 'Costume Party Noob',
+  ratingNoobBlurb: 'Most of your “lossless” files are lossy files wearing a costume.',
+
+  // --- Spectral message ----------------------------------------------------
+  messageTitle: '👻 Haunt this track',
+  messageBlurb:
+    'Hide a message in the sound. It shows up in the spectrogram of the new file, in SpectreGram or any spectrum app.',
+  messageNote:
+    '✂️ The letters are cut into the music’s highs: the track is dimmed inside the letter shapes, and nothing is added. Shows best where the track has bright highs. Saves a new WAV; your file isn’t changed.',
+  messagePlaceholder: 'Type a message… emoji welcome 👻',
+  messageAria: 'Message (up to 32 characters)',
+  messageDice: 'Random Halloween phrase',
+  messageGenerate: 'Generate & save',
+
+  // --- Export panel --------------------------------------------------------
+  exportTitle: '🖼️ Export PNG',
+  exportCurrent: 'Current view',
+  exportLossless: 'Lossless',
+  exportCustom: 'Custom',
+  exportParts: 'Divide into parts',
+  exportOneStrip: '1 · one strip',
+  exportSpeed: 'Speed',
+  exportSlowest: 'Slowest · longest',
+  export1x: '1× · graph width',
+  export2x: '2× · half width',
+  export3x: '3× · third',
+  export5x: '5× · fifth',
+  exportRulers: 'Rulers (time + frequency)',
+  exportLegend: 'dB legend',
+  exportGo: 'Export',
+  exporting: 'Exporting…',
+
+  // --- About + Language cards ---------------------------------------------
+  aboutBlurb: 'Acoustic spectrum analyser and lossy-disguise verdict.',
+  aboutPrivacy: 'Your files never leave your machine.',
+  aboutLicense: 'MIT license · Kiroween 2026',
+  languageTitle: 'Language',
+  languageBlurb: 'Choose the language of the crypt.',
+  languageNote: 'English is the default. The interface switches as soon as you pick a language.',
+  languageListAria: 'Interface language',
+
+  // --- Toasts --------------------------------------------------------------
+  toastSaveCancelled: 'Save cancelled.',
+  toastExportFailed: 'Export failed.',
+  toastOpenFirst: 'Open a file first.',
+  toastNothingExport: 'Nothing to export for this track.',
+  toastAudioLoading: 'Audio is still loading — try again in a moment.',
+  toastTypeMessage: 'Type a message or roll the dice first.',
+  toastNothingDraw: 'Nothing to draw — try some letters.',
+  toastCouldNotDraw: 'Could not draw that message.',
+  toastEmbedFailed: 'The embed worker failed.',
+  toastScanFailed: 'Scan failed.',
+  toastScanCancelled: 'Scan cancelled.',
+  toastReportSaveFailed: 'Could not save the report.',
+  toastScreensaverOn: 'Screensaver enabled',
+  toastScreensaverOff: 'Screensaver disabled',
+  toastAdvancedOn: 'Advanced export on',
+  toastAdvancedOff: 'Advanced export off — Export saves the current view',
+  toastPhaseOn: 'Phase overlay on — hue shifts with phase, colour still = level',
+  toastPhaseOff: 'Phase overlay off — colour = level',
+  toastNoPhase: 'No phase data for this file yet — reopen it to analyse again.',
+  toastLanguage: 'Language: {name}',
+  toastSaved: 'Saved {name}',
+  toastSavedStrips: 'Saved {name} — {n} strips',
+  toastSavedWidth: 'Saved {name} — {width} px wide',
+  toastDbRange: 'dB range: {lower} … {upper} dBFS (u/U upper, l/L lower)',
+  toastDbLimit: 'dB range limit reached: {lower} … {upper} dBFS (u/U upper, l/L lower)',
+  toastPlaybackUnavailable: 'Playback and zoom unavailable: {message}',
+  toastAnalysisError: 'Analysis error: {message}',
+  toastZoomFailed: 'Zoom failed: {message}',
+  exportInfoCurrent: 'Exactly what the graph shows right now.',
+  exportInfoLossless:
+    'The whole track as exact data: every frequency bin gets its own pixel row and every analysis hop its own column, so nothing is blended or compressed.',
+  exportInfoCustom:
+    'Every part of the file as its own strip, in one image, at the 512 px display height.',
+  exportLosslessPartsTitle: 'Split the track into this many stacked strips (1 = one strip)',
+  exportSpeedTitle:
+    'How wide each strip is: 1× is the graph width, ½× twice as wide, 5× a fifth',
+  exportPartsTitle: 'Split the track into this many strips, stacked top to bottom',
+  exportStripOne: 'strip',
+  exportStripMany: 'strips',
+  exportEach: '{time} each',
+  exportSlowestFactor: 'slowest (½×)',
+} as const;
+
+export type I18nKey = keyof typeof EN;

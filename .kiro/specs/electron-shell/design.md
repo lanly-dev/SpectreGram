@@ -50,3 +50,37 @@ Everything else is untouched. DevDeps added: `electron`, `electron-builder` (pin
 - **R3: decode coverage** is Chromium's (same as web) — desktop v1 does NOT gain formats. That's deliberate (constraint 5); any FFmpeg conversation is a separate, later spec with its own licensing review (Spek is GPL-3.0; do not port its code).
 
 ---
+
+## Amendment — themed Language card (2026-11-19)
+
+Help > Language originally opened a native `dialog.showMessageBox` placeholder
+("Language selection will arrive in a later release"), which could not carry
+the app styling. It now follows the About pattern: `menuLanguage()` sends
+`sg:language`, the preload exposes `onShowLanguage`, and the renderer shows
+`#language-modal` (`.report-modal` + `.report-card.language-card`) with the
+twelve available languages as hidden-radio tiles, English selected by
+default. The source list is English, Spanish, French, Chinese, Hindi,
+Vietnamese, Korean, Russian, Japanese, Arabic, German, Halloween; each tile
+shows the native name plus the English name, and Halloween maps to
+`lang="en"`.
+
+Selecting a language sets `document.documentElement.lang` and
+`data-language`, toasts the pick, and is session-only (no persistence, like
+the palette and the screensaver flag). The pick immediately translates the
+interface (next amendment), and the card's note says so. Esc/backdrop/Close
+dismiss it and swallow the key so the graph does not also reset its zoom.
+
+---
+
+## Amendment — translations (2026-11-19)
+
+The picker now performs what it promises. `src/i18n/en.ts` is the source
+table; each other language file (including a spooky-English Halloween)
+supplies the same keys, falling back to English when one is missing.
+`t(key, vars)` serves strings built in code, and `translateDom()` swaps static
+text and `title`/`aria-label`/`placeholder`/`alt`, storing the English source
+in a `WeakMap` so switching back restores it. The verdict is rebuilt from the
+stored cutoff and claimed format when the language changes, and the renderer
+re-renders facts, tooltips, the Scan button and the export summary. Arabic
+keeps the LTR layout. The saved Markdown report, folder loading counter and
+message-fit error stay English.

@@ -422,14 +422,10 @@ function menuExit() {
   app.quit();
 }
 
+// Help > Language: the renderer draws the picker card, like About, so the
+// language list wears the app's own styling instead of a native dialog.
 function menuLanguage() {
-  if (!mainWindow) return;
-  void dialog.showMessageBox(mainWindow, {
-    type: 'info',
-    title: 'Language',
-    message: 'Interface language',
-    detail: 'Language selection will arrive in a later release.',
-  });
+  if (mainWindow) mainWindow.webContents.send('sg:language');
 }
 
 // Help > About: the renderer draws the card, so it can wear the app's own

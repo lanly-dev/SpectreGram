@@ -58,6 +58,12 @@ contextBridge.exposeInMainWorld('spectregramDesktop', {
     ipcRenderer.on('sg:about', listener);
     return () => ipcRenderer.removeListener('sg:about', listener);
   },
+  /** Help > Language: show the styled in-app language card. Returns an unsubscribe. */
+  onShowLanguage: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('sg:language', listener);
+    return () => ipcRenderer.removeListener('sg:language', listener);
+  },
   /** Options menu actions (screensaver toggle, development helpers, toasts). */
   onMenuAction: (callback) => {
     const listener = (_event, action, value) => callback(action, value);

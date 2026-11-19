@@ -32,6 +32,8 @@ export interface SpectreGramDesktop {
   reportSpectrogramState(present: boolean): Promise<boolean>;
   /** Help > About: show the styled in-app About card. Returns an unsubscribe. */
   onShowAbout(callback: () => void): () => void;
+  /** Help > Language: show the styled in-app language card. Returns an unsubscribe. */
+  onShowLanguage(callback: () => void): () => void;
   /** Options menu actions; returns an unsubscribe function. */
   onMenuAction(callback: (action: MenuAction, value?: unknown) => void): () => void;
 }

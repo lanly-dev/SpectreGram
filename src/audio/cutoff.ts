@@ -7,6 +7,7 @@
 // then map cutoff/nyquist ratio to a verdict for the claimed format.
 
 import type { DbGrid } from './stft';
+import { t } from '../i18n';
 
 export interface CutoffParams {
   /** Percentile over time per bin (captures "sustained" energy). */
@@ -192,10 +193,10 @@ export function buildVerdict(
   const fmt = canonicalFormat(claimedFormat);
 
   if (sampleRate <= 0) {
-    return 'No clear cutoff detected.';
+    return t('verdictNone');
   }
   if (cutoffHz <= 0) {
-    return 'No clear cutoff detected.';
+    return t('verdictNone');
   }
 
   const nyquist = sampleRate / 2;
@@ -206,23 +207,23 @@ export function buildVerdict(
   const lossless = fmt === 'flac' || fmt === 'wav';
   if (lossless) {
     if (ratio >= LOSSLESS_HIGH_RATIO) {
-      return `Claims ${claim}. Cutoff ≈${khz} kHz — consistent with genuine lossless.`;
+      return t('verdictGenuine', { format: claim, khz });
     }
     if (ratio < SUSPICIOUS_RATIO) {
-      return `Claims ${claim}. Cutoff ≈${khz} kHz — smells like a 128k MP3 in a costume.`;
+      return t('verdictCostume', { format: claim, khz });
     }
-    return `Claims ${claim}. Cutoff ≈${khz} kHz — inconclusive; could be filtered or upsampled.`;
+    return t('verdictInconclusive', { format: claim, khz });
   }
 
   if (fmt === 'm4a') {
-    return `Claims ${claim}. Cutoff ≈${khz} kHz — format is lossy-or-lossless ambiguous; no disguise call made.`;
+    return t('verdictM4a', { format: claim, khz });
   }
   if (fmt === 'unknown') {
-    return `Claims ${claim}. Cutoff ≈${khz} kHz — format unknown; no disguise call made.`;
+    return t('verdictUnknown', { format: claim, khz });
   }
 
   // mp3, ogg — lossy; no "costume" accusation.
-  return `Claims ${claim}. Cutoff ≈${khz} kHz — normal for lossy compression.`;
+  return t('verdictLossy', { format: claim, khz });
 }
 
 /** Full analysis: cutoff + verdict. The empty-grid ("too short") case is decided here. */
@@ -235,7 +236,7 @@ export function analyze(
   if (grid.frames === 0) {
     return {
       cutoff: { cutoffBin: 0, cutoffHz: 0 },
-      verdict: 'Audio too short to estimate a cutoff.',
+      verdict: t('verdictTooShort'),
     };
   }
   const cutoff = estimateCutoff(grid, sampleRate, params);
