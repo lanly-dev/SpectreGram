@@ -384,6 +384,25 @@ function menuTestErrorToast() {
   sendToast('Test error: this is what an error toast looks like.', 'error');
 }
 
+// One track from lab/ for a quick single-file check (open-file path, the same
+// as File ▸ Open): the first audio file in name order. lab/ is local-only.
+function menuLoadSampleAudio() {
+  if (!fs.existsSync(SAMPLE_DIR)) {
+    sendToast('No sample audio: lab/ is missing (it is local-only, not in the repo).', 'error');
+    return;
+  }
+  const names = fs
+    .readdirSync(SAMPLE_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && AUDIO_EXTS.has(path.extname(entry.name).toLowerCase()))
+    .map((entry) => entry.name)
+    .sort((a, b) => a.localeCompare(b));
+  if (!names.length) {
+    sendToast('No sample audio: lab/ has no audio files.', 'error');
+    return;
+  }
+  queueOpenFile(path.join(SAMPLE_DIR, names[0]));
+}
+
 function menuLoadSampleFolder() {
   if (!fs.existsSync(SAMPLE_DIR)) {
     sendToast('No sample folder: lab/ is missing (it is local-only, not in the repo).', 'error');
@@ -477,6 +496,7 @@ function buildMenu() {
           submenu: [
             { label: 'Show Screensaver', click: menuShowScreensaver },
             { label: 'Show Error Toast', click: menuTestErrorToast },
+            { label: 'Load Sample Audio', click: menuLoadSampleAudio },
             { label: 'Load Sample Folder', click: menuLoadSampleFolder },
             { type: 'separator' },
             {
