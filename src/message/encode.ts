@@ -21,6 +21,30 @@ import type { TextMask } from './raster';
 export const BAND_LO = 0.46;
 export const BAND_HI = 0.66;
 
+/** The band's top drops to this share of the track's own cutoff when that is
+ *  lower (R3h). Dimming can only carve where the track has energy, so rows
+ *  above its real cutoff go blank and the word loses its top. */
+const BAND_TOP_OF_CUTOFF = 0.97;
+/** The band's bottom may not sink below this share of Nyquist (≈ 3.6 kHz at
+ *  48 kHz): a band-limited track gets a shorter band rather than a dimmed
+ *  bass. TUNABLE. */
+const BAND_LO_FLOOR = 0.15;
+
+/**
+ * The message's frequency band, in Hz, for a track whose own measured cutoff
+ * is `cutoffHz` (0 = unknown): R3's 46–66% of Nyquist, with the top pulled
+ * down under the track's cutoff when the file doesn't reach that high (R3h),
+ * so every row of the letters lands on music there is to dim.
+ */
+export function messageBand(cutoffHz: number, sampleRate: number): { loHz: number; hiHz: number } {
+  const nyq = sampleRate / 2;
+  const span = (BAND_HI - BAND_LO) * nyq;
+  const hiHz = cutoffHz > 0 ? Math.min(BAND_HI * nyq, cutoffHz * BAND_TOP_OF_CUTOFF) : BAND_HI * nyq;
+  let loHz = Math.max(hiHz - span, BAND_LO_FLOOR * nyq);
+  if (loHz >= hiHz) loHz = hiHz * 0.9; // track ends below the floor: squeeze instead
+  return { loHz, hiHz };
+}
+
 // Full-track view geometry (render.ts FIXED_W × FIXED_H, linear 0…Nyquist):
 // used to size the text so it reads with its natural shape there.
 const VIEW_W = 1024;
@@ -50,19 +74,22 @@ export function fullViewFrames(sampleCount: number): number {
  * (R5): every mask column must span at least one full-view frame, otherwise
  * thin strokes fall between frames and vanish.
  */
-export function layoutMessage(mask: TextMask, sampleCount: number, sampleRate: number): MessageLayout | null {
+export function layoutMessage(
+  mask: TextMask,
+  sampleCount: number,
+  sampleRate: number,
+  cutoffHz = 0,
+): MessageLayout | null {
   const frames = fullViewFrames(sampleCount);
   if (mask.cols < 1 || mask.rows < 2 || frames < 1 || !(sampleRate > 0)) return null;
   const minFrac = mask.cols / frames; // one frame per column
   if (minFrac > MAX_WIDTH_FRAC) return null;
-  const bandPx = (BAND_HI - BAND_LO) * VIEW_H;
+  const { loHz: fLo, hiHz: fHi } = messageBand(cutoffHz, sampleRate);
+  const bandPx = ((fHi - fLo) / (sampleRate / 2)) * VIEW_H;
   const naturalFrac = (mask.cols * bandPx) / mask.rows / VIEW_W;
   const widthFrac = Math.min(MAX_WIDTH_FRAC, Math.max(naturalFrac, minFrac));
   const widthSamples = widthFrac * sampleCount;
   const startSample = Math.round((sampleCount - widthSamples) / 2);
-  const nyq = sampleRate / 2;
-  const fLo = BAND_LO * nyq;
-  const fHi = BAND_HI * nyq;
   const rowFreqs = new Float64Array(mask.rows);
   for (let r = 0; r < mask.rows; r++) rowFreqs[r] = fHi - (r * (fHi - fLo)) / (mask.rows - 1);
   return {
@@ -213,10 +240,17 @@ export interface EmbedResult {
 /**
  * Cut the message into every channel in place (R3g), then check the analyzer
  * still reads the file the same (R3e) — retrying with less dimming
- * (24 → 12 → 6 dB). Throws if no attempt keeps the verdict.
+ * (24 → 12 → 6 dB). Throws if no attempt keeps the verdict, or if the mask
+ * doesn't fit the track (R5).
+ *
+ * The layout is chosen here, not by the caller, because it needs the track's
+ * own cutoff (R3h) and that comes from the analyzer run below. That run also
+ * gives `before`, so the band costs no extra analysis.
  */
-export function embedMessage(channels: Float32Array[], sampleRate: number, mask: TextMask, layout: MessageLayout): EmbedResult {
+export function embedMessage(channels: Float32Array[], sampleRate: number, mask: TextMask): EmbedResult {
   const before = verdictClassOf(mixToMono(channels), sampleRate);
+  const layout = layoutMessage(mask, channels[0]?.length ?? 0, sampleRate, before.cutoffHz);
+  if (!layout) throw new Error('The message does not fit this track.');
   for (const dimDb of [LETTER_DIM_DB, LETTER_DIM_DB / 2, LETTER_DIM_DB / 4]) {
     const work = channels.map((ch) => ch.slice());
     for (const ch of work) carveLetters(ch, sampleRate, mask, layout, dimDb);

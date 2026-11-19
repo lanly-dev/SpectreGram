@@ -42,10 +42,25 @@ import type { EmbedMessage, EmbedRequest } from './message/embed-worker';
 // Steps are picked per file so the label count stays small and readable.
 const FREQ_STEPS = [500, 1000, 2000, 2500, 5000, 10000, 20000];
 // Time tick step candidates (seconds) for the bottom ruler. The sub-second
-// steps are for zoomed views (the minimum zoom is about one second).
+// steps are for zoomed views (the minimum zoom is about one second); the
+// mid-range ones (20/45/90/180/240) keep the step close to the label target on
+// odd-length tracks instead of jumping to the next round number.
 const TIME_STEPS = [
-  0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600,
+  0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 300, 600, 1200,
+  1800, 3600,
 ];
+/** Most labels aimed for across the time ruler. Was 6; the maintainer asked
+ *  for a more granular ruler (2026-11-19), and ~10 short labels still fit the
+ *  app's window. Narrower rulers (folder panel open, small window) take fewer
+ *  — see `timeRulerMaxLabels`. */
+const TIME_RULER_MAX_LABELS = 10;
+/** Width one time label needs, including the gap to its neighbour. */
+const TIME_LABEL_PX = 52;
+
+/** How many time labels fit across a ruler `widthPx` wide (4…10). */
+function timeRulerMaxLabels(widthPx: number): number {
+  return Math.max(4, Math.min(TIME_RULER_MAX_LABELS, Math.floor(widthPx / TIME_LABEL_PX)));
+}
 
 /** Smallest step whose label count over `span` stays at or below `max`. */
 function pickStep(steps: number[], span: number, max: number): number {
@@ -56,8 +71,9 @@ function pickStep(steps: number[], span: number, max: number): number {
 }
 
 function fmtFreq(hz: number): string {
-  // Number(...) drops a trailing ".0", so 5000 reads "5 kHz", not "5.0 kHz".
-  if (hz >= 1000) return `${Number((hz / 1000).toFixed(hz >= 10000 ? 0 : 1))} kHz`;
+  // One decimal, exact for every 500 Hz tick the rulers use (12.5 kHz), and
+  // Number(...) drops a trailing ".0", so 5000 reads "5 kHz" not "5.0 kHz".
+  if (hz >= 1000) return `${Number((hz / 1000).toFixed(1))} kHz`;
   return String(Math.round(hz));
 }
 
@@ -118,14 +134,21 @@ function setTimeRuler(start: number, end: number, labelEnd = true): void {
     ruler.innerHTML = '';
     return;
   }
-  const step = pickStep(TIME_STEPS, span, 6);
+  const widthPx = ruler.clientWidth || 540;
+  const step = pickStep(TIME_STEPS, span, timeRulerMaxLabels(widthPx));
   const decimals = decimalsForStep(step);
   const values: number[] = [];
   // Integer multiples of the step (no float accumulation drift).
   const first = Math.ceil(start / step - 1e-9);
   for (let i = first; i * step < end - 1e-9; i++) values.push(i * step);
-  // Label the right edge too — unless it would crowd the last step tick.
-  if (labelEnd && (values.length === 0 || end - values[values.length - 1] >= step * 0.5)) {
+  // Always label the right edge (the track's length); if its text, which hangs
+  // leftwards from the edge, would run into the last step label, drop that step
+  // label instead. 34 px ≈ both labels' half widths plus the tick padding.
+  const EDGE_LABEL_PX = 34;
+  if (labelEnd) {
+    const last = values[values.length - 1];
+    const gapPx = values.length === 0 ? Infinity : ((end - last) / span) * widthPx;
+    if (gapPx < EDGE_LABEL_PX) values.pop();
     values.push(end);
   }
   const html = values
@@ -736,7 +759,7 @@ function composePng(rows: ExportRow[], columns: number): Promise<Blob> {
       nyquistHz: sampleRate / 2,
       dbRange: getDbRange(),
       palette: buildPalette(getActivePaletteName()),
-      timeStepFor: (span) => pickStep(TIME_STEPS, span, 6),
+      timeStepFor: (span) => pickStep(TIME_STEPS, span, timeRulerMaxLabels(columns)),
       formatTime: (sec) => fmtTime(sec),
       formatHz: fmtFreq,
     },
@@ -1510,6 +1533,8 @@ async function generateMessage(): Promise<void> {
     toast('Nothing to draw — try some letters.', 'error');
     return;
   }
+  // Fixed-band fit check; the worker re-checks after it pulls the band under
+  // the track's own cutoff (R3h), where the band can only get shorter.
   if (!layoutMessage(mask, buffer.length, buffer.sampleRate)) {
     toast('That message doesn’t fit this track — try fewer characters or a longer track.', 'error');
     return;

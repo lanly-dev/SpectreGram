@@ -2,7 +2,7 @@
 // to copies of the track's channels and encodes the result as a WAV, off the
 // UI thread. Created in main.ts with the locked Vite module-worker syntax.
 
-import { embedMessage, layoutMessage } from './encode';
+import { embedMessage } from './encode';
 import { encodeWav16 } from './wav';
 import type { TextMask } from './raster';
 
@@ -29,10 +29,7 @@ scope.onmessage = (ev: MessageEvent) => {
   const msg = ev.data as EmbedRequest;
   if (msg?.type !== 'embed') return;
   try {
-    const n = msg.channels[0]?.length ?? 0;
-    const layout = layoutMessage(msg.mask, n, msg.sampleRate);
-    if (!layout) throw new Error('The message does not fit this track.');
-    const { scale, dimDb } = embedMessage(msg.channels, msg.sampleRate, msg.mask, layout);
+    const { scale, dimDb } = embedMessage(msg.channels, msg.sampleRate, msg.mask);
     const wav = encodeWav16(msg.channels, msg.sampleRate);
     scope.postMessage({ type: 'embed-result', wav, scale, dimDb } satisfies EmbedMessage, [wav]);
   } catch (e) {

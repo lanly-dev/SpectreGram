@@ -12,9 +12,13 @@ pixel bright at (time t, frequency f), play a sine at f during t. So:
    the text in bold sans-serif on an `OffscreenCanvas`, crop to the ink,
    scale to `ROWS` = 32 rows high (width keeps the aspect), threshold to a
    0/1 mask `rows × cols`. Row 0 is the top of the text.
-2. **Layout** (`src/message/encode.ts`, pure): the band is
-   `[0.46, 0.66] × Nyquist` (R3, R3a; was `[0.22, 0.50]` before the
-   listening complaint). In the full-track view (≈ `FIXED_W` 1024
+2. **Layout** (`src/message/encode.ts`, pure): `messageBand()` gives the
+   band as `[0.46, 0.66] × Nyquist` (R3, R3a; was `[0.22, 0.50]` before the
+   listening complaint). Its top is clamped to `0.97 × cutoff` when the track
+   being haunted has a lower measured cutoff (R3h), keeping the height; the
+   bottom may not go below `0.15 × Nyquist`. The cutoff comes from the
+   analyzer (`verdictClassOf`, computed in `embedMessage` before carving), so
+   no caller has to pass it. In the full-track view (≈ `FIXED_W` 1024
    × `FIXED_H` 512 px, linear 0…Nyquist), the band is `0.20 × 512` px
    tall, so natural text width in px = `cols × bandPx / ROWS`. The message
    is centered in time, width = min(natural, 90% of the view), so short
@@ -97,8 +101,10 @@ pixel bright at (time t, frequency f), play a sine at f during t. So:
 - `src/message/phrases.ts` — the dice list (≤ 32 chars each, original
   wording) and `randomPhrase(exclude)`.
 - `src/message/raster.ts` — `rasterizeText(text): TextMask`.
-- `src/message/encode.ts` — `layoutMessage`, `messageFits`,
-  `embedMessage(channels, sampleRate, mask) → peakScale`.
+- `src/message/encode.ts` — `messageBand`, `layoutMessage`,
+  `messageFits`, `embedMessage(channels, sampleRate, mask) → peakScale`
+  (the layout, and so the cutoff-aware band, is chosen inside
+  `embedMessage`).
 - `src/message/wav.ts` — `encodeWav16(channels, sampleRate): ArrayBuffer`.
 - `src/message/embed-worker.ts` — receives channel copies + mask, runs
   `embedMessage` + `encodeWav16`, transfers the WAV bytes back. Locked

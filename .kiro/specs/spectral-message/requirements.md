@@ -36,13 +36,25 @@ its source.
   track and sized to read naturally in the full-track view. The tones are
   added to every channel; the rest of the audio is untouched, except that
   the whole mix is scaled down slightly if adding the tones would clip.
-- **R3 — Verdict safety.** The message band is fixed between **46% and 66%
-  of the Nyquist frequency**, below the analyzer's "costume" line (73%), so
-  a haunted file can never read as more lossless than its source. The
-  tones fade in and out softly, so there are no clicks (which would splash
-  energy up to Nyquist). Verified: a lossy-shaped source still reads
-  "costume" and a full-band source still reads "genuine lossless" after
-  haunting.
+- **R3 — Verdict safety.** The message band sits at **46% and 66% of the
+  Nyquist frequency** and never above that, below the analyzer's "costume"
+  line (73%), so a haunted file can never read as more lossless than its
+  source. The tones fade in and out softly, so there are no clicks (which
+  would splash energy up to Nyquist). Verified: a lossy-shaped source still
+  reads "costume" and a full-band source still reads "genuine lossless"
+  after haunting.
+  *(Amended 2026-11-19: the band's top is now pulled down to the track's own
+  cutoff when that cutoff lies inside the band — see R3h.)*
+- **R3h — The band follows the track's cutoff.** *(Added 2026-11-19, after
+  the maintainer saw a word with its top sliced off.)* The letters show by
+  dimming music that is already there, so rows above the track's real cutoff
+  have nothing to dim and go blank: on a band-limited file (a low-bitrate
+  MP3, say) the word lost its top and stopped looking like one line of text.
+  So the band keeps its 46–66% height but its top is clamped to 97% of the
+  track's measured cutoff whenever that is lower, moving the whole word down
+  into music the file actually has. Never above 66% (R3). The band's bottom
+  may not fall below 15% of Nyquist, so a heavily band-limited track doesn't
+  have its bass dimmed; below that the band squeezes instead.
 - **R3a — Comfortable to listen to.** *(Added 2026-11-17, after the
   maintainer found the first version made his ears feel bad and dizzy.)*
   The first band (22–50% of Nyquist, ≈ 5–12 kHz) sat near where hearing is

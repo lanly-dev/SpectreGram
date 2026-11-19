@@ -220,16 +220,21 @@ shapes, in the message band, the original is dimmed by `LETTER_DIM_DB`
 (24 dB), so the word shows as dark letters against the music. It's done
 with an STFT filter (2048-point sqrt-Hann frames every 512 samples) that
 reconstructs the audio exactly wherever nothing is dimmed, so other
-frequencies and other times come back unchanged. The text is centered in
+frequencies and other times come back unchanged. The band follows the file:
+its top is clamped to 97% of the track's own measured cutoff when that is
+lower than 66% of Nyquist, so the whole word sits on music that exists (a
+band-limited MP3 otherwise loses the tops of its letters, which makes one
+line of text read as a ragged block). The text is centered in
 the track and sized to read with its natural shape in the full-track view
 (squeezed if it would pass 90% of the track width). If a column would be
 narrower than one full-view STFT frame, strokes would vanish, so the app
 refuses and asks for fewer characters or a longer track. Letters use the
 heaviest system font weight, thickened by one column.
 
-**Verdict safety.** The letters live between 46% and 66% of Nyquist (≈ 11–16
-kHz at 48 kHz), below the analyzer's 73% "costume" line, and the dimming
-eases in and out over ~1 s. On top of that the app checks by construction:
+**Verdict safety.** The letters never rise above 66% of Nyquist (≈ 16 kHz at
+48 kHz), below the analyzer's 73% "costume" line — and on a band-limited file
+the band drops under its cutoff instead of reaching that high (R3h). The
+dimming eases in and out over ~1 s. On top of that the app checks by construction:
 after cutting the letters it runs the analyzer on the result and on the
 original, and keeps the result only if the cutoff class matches and the
 cutoff hasn't risen by more than 0.1 kHz — otherwise it retries at 12, then
@@ -257,7 +262,9 @@ real test tracks (loud pop, full-band orchestral). Spec R3a–R3g.
 
 **Settings (TUNABLE, `encode.ts`).** `LETTER_DIM_DB` (24; 12 was too faint),
 `BAND_LO`/`BAND_HI` = 0.46/0.66 × Nyquist — keep `BAND_HI` below 0.73 (the
-costume line).
+costume line) — plus `BAND_TOP_OF_CUTOFF` (0.97: where the band's top goes
+when the track's cutoff is lower) and `BAND_LO_FLOOR` (0.15: the band won't
+dim below this share of Nyquist; it squeezes instead).
 **Output.** 16-bit PCM at the decoded sample rate (the device rate — see
 AGENTS.md #3), same length and channels as the decoded track, default name
 `<original>-haunted.wav`. Desktop: native save dialog. Web: browser
@@ -280,6 +287,13 @@ Spec: `.kiro/specs/ruler-seek/`.
   playhead), and a tooltip beside the cursor shows the time at that point
   (same precision rule as the crosshair readout). Leaving the ruler hides
   both.
+- **Tick labels** — the time ruler aims for ~10 evenly spaced labels (was 6;
+  made denser at the maintainer's request 2026-11-19): 20 s steps on a 3:02
+  track, 45 s on a 7:10 one. Each label needs ~52 px, so a narrower ruler
+  (folder panel open, small window) takes fewer, and the track's length is
+  always labelled at the right edge — it replaces the last step label when
+  their texts would touch. `TIME_STEPS` / `TIME_RULER_MAX_LABELS` in
+  `src/main.ts` (TUNABLE).
 - **Click** the ruler: sets the cue (`cueSec`). Stopped → the playhead moves
   to the cue. Playing → playback restarts from the cue.
 
@@ -401,10 +415,14 @@ each onto the composite canvas.
 
 ### Decorations (optional, both on by default)
 
-- **Rulers** — time ticks/labels under every strip, frequency labels down a 48
-  px left gutter
-- **dB legend** — palette bar with the display range's labels in a 44 px right
-  column
+- **Rulers** — time ticks/labels under every strip (same ~10-label target as
+  the app, scaled down on narrow strips: ~52 px per label), and evenly spaced
+  frequency labels up the 58 px left gutter — one per ~48 px of strip height
+  (0, 2.5, 5 … 24 kHz at 48 kHz), Nyquist always labelled
+- **dB legend** — palette bar in a 44 px right column with a labelled tick
+  every 20 dB (10 dB on a range of 60 dB or less), so the scale reads at a
+  glance instead of top/middle/bottom only; a stacked export repeats the bar
+  and its labels beside **every** strip, so each row carries its own scale
 
 Applied to every export shape including the current view. The export is a
 composed image rather than a canvas copy: `src/export-image.ts` takes either

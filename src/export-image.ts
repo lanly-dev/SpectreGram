@@ -8,14 +8,31 @@ import { CANVAS_HEIGHT, drawGridStrip } from './render';
 
 /** Height of the time ruler under each strip. */
 export const RULER_HEIGHT = 18;
-/** Width of the frequency-label gutter. */
-export const FREQ_GUTTER = 48;
+/** Width of the frequency-label gutter (fits "12.5 kHz" at the export's
+ *  denser tick steps). */
+export const FREQ_GUTTER = 58;
 /** Width of the dB legend column. */
 export const LEGEND_WIDTH = 44;
 
 const BG = '#0a0a10';
 const LABEL = '#9a9aa8';
 const TICK = 'rgba(255, 255, 255, 0.16)';
+
+// Frequency tick step candidates (Hz) for the exported gutter. The axis is
+// LINEAR, so the steps are evenly spaced values, not 100/200/500.
+const FREQ_STEPS = [500, 1000, 2000, 2500, 5000, 10000, 20000];
+/** Vertical room one frequency label needs (px) so labels never touch. */
+const FREQ_LABEL_PX = 48;
+/** Vertical room one dB label needs (px). */
+const DB_LABEL_PX = 32;
+
+/** Smallest step whose label count over `span` stays at or below `max`. */
+function pickStep(steps: number[], span: number, max: number): number {
+  for (const s of steps) {
+    if (span / s <= max) return s;
+  }
+  return steps[steps.length - 1];
+}
 
 export interface ExportRow {
   /** Grid to paint — a stacked strip. */
@@ -98,9 +115,11 @@ export function composeExportImage(opts: ComposeOptions, rulers: boolean, legend
     }
     if (layout.rulerHeight) drawTimeRuler(ctx, row, layout, y, opts);
     if (layout.left) drawFreqRuler(ctx, layout, y, opts);
+    // One legend per strip, so a stacked image doesn't carry a single scale
+    // that only lines up with the top row.
+    if (layout.right) drawLegend(ctx, layout, opts, y);
   });
 
-  if (layout.right) drawLegend(ctx, layout, opts);
   return canvas;
 }
 
@@ -138,7 +157,8 @@ function drawTimeRuler(
   }
 }
 
-/** Frequency labels down the left gutter — one band's worth of the linear axis. */
+/** Frequency labels down the left gutter — evenly spaced values up the linear
+ *  axis, as many as the strip height can space out (Nyquist always labelled). */
 function drawFreqRuler(
   ctx: CanvasRenderingContext2D,
   layout: ExportLayout,
@@ -148,8 +168,13 @@ function drawFreqRuler(
   const top = y;
   const bottom = y + layout.bandHeight;
   ctx.textAlign = 'right';
+  const max = Math.max(3, Math.min(10, Math.floor(layout.bandHeight / FREQ_LABEL_PX)));
+  const step = pickStep(FREQ_STEPS, opts.nyquistHz, max);
+  const values: number[] = [];
+  for (let hz = 0; hz < opts.nyquistHz; hz += step) values.push(hz);
+  values.push(opts.nyquistHz);
   // Low frequency is at the bottom of the graph (conventional).
-  for (const hz of [0, opts.nyquistHz / 2, opts.nyquistHz]) {
+  for (const hz of values) {
     const at = bottom - (hz / opts.nyquistHz) * layout.bandHeight;
     ctx.fillStyle = TICK;
     ctx.fillRect(layout.left - 4, Math.round(at), 4, 1);
@@ -159,24 +184,38 @@ function drawFreqRuler(
   }
 }
 
-/** Palette bar with the display range's dB labels, down the right column. */
-function drawLegend(ctx: CanvasRenderingContext2D, layout: ExportLayout, opts: ComposeOptions): void {
+/** Palette bar with the display range's dB labels, down the right column,
+ *  beside the strip that starts at `y`. */
+function drawLegend(
+  ctx: CanvasRenderingContext2D,
+  layout: ExportLayout,
+  opts: ComposeOptions,
+  y: number,
+): void {
   const x = layout.left + opts.columns + 5;
   const h = layout.bandHeight;
   const barW = 12;
   for (let i = 0; i < h; i++) {
     const idx = Math.round((1 - i / Math.max(1, h - 1)) * 255) * 4;
     ctx.fillStyle = `rgb(${opts.palette[idx]}, ${opts.palette[idx + 1]}, ${opts.palette[idx + 2]})`;
-    ctx.fillRect(x, i, barW, 1);
+    ctx.fillRect(x, y + i, barW, 1);
   }
   ctx.strokeStyle = TICK;
-  ctx.strokeRect(x + 0.5, 0.5, barW, h - 1);
+  ctx.strokeRect(x + 0.5, y + 0.5, barW, h - 1);
 
+  // dB labels every step down the bar (the app uses the same 20/10 dB rule),
+  // as many as the height can space out, with a tick beside each.
+  const span = Math.max(1, opts.dbRange.upper - opts.dbRange.lower);
+  const dbStep = span > 60 ? 20 : 10;
+  const maxMarks = Math.max(3, Math.min(12, Math.floor(h / DB_LABEL_PX)));
+  const stepDb = Math.max(dbStep, Math.ceil(span / maxMarks / 10) * 10);
   ctx.fillStyle = LABEL;
   ctx.textAlign = 'left';
-  const marks = [opts.dbRange.upper, (opts.dbRange.upper + opts.dbRange.lower) / 2, opts.dbRange.lower];
-  marks.forEach((db, i) => {
-    const ly = Math.min(h - 6, Math.max(6, (i / (marks.length - 1)) * (h - 1)));
-    ctx.fillText(`${Math.round(db)}`, x + barW + 3, ly);
-  });
+  for (let db = opts.dbRange.upper; db >= opts.dbRange.lower - 1e-6; db -= stepDb) {
+    const at = y + ((opts.dbRange.upper - db) / span) * (h - 1);
+    ctx.fillStyle = TICK;
+    ctx.fillRect(x + barW, Math.round(at), 3, 1);
+    ctx.fillStyle = LABEL;
+    ctx.fillText(`${Math.round(db)}`, x + barW + 3, Math.min(y + h - 6, Math.max(y + 6, at)));
+  }
 }
