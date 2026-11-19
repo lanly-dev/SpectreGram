@@ -46,3 +46,15 @@ Design: `./design.md`.
   10 × (1025 + 18) px). Not verified: the export from a running app
   (maintainer's click-through) and an external decode of a real
   native-height export.
+
+- ✅ 7. Three export types (2026-11-19, maintainer's ask): the panel now
+  offers Current view / Lossless / Custom. Lossless paints strips at the
+  native bin height regardless of view mode (`exportBandHeight(bins,
+  lossless)`; the composer takes the band height from the caller), with a
+  divide-into-parts option (1–10) and `-lossless` file names; Custom keeps
+  the 512 px speed/parts behaviour. The summary line in every mode ends
+  with the active palette ("style") and the phase-overlay state.
+  Verified: build ✓, Vitest 10/10 ✓; temporary Vitest (5/5, deleted) for
+  the new `exportBandHeight` semantics (lossless → 1025, custom → 512,
+  no grid → 512) and explicit-height layout. Not verified: the three
+  exports from a running app (maintainer's click-through).

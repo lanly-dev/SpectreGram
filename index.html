@@ -214,7 +214,7 @@
       </form>
     </div>
 
-    <!-- PNG export settings: current view, or the whole track as stacked strips. -->
+    <!-- PNG export settings: current view, lossless (native-size data), or custom stacked strips. -->
     <div id="export-modal" class="report-modal" role="dialog" aria-modal="true" aria-labelledby="export-title" hidden>
       <div class="report-card export-card">
         <h2 id="export-title" class="report-title">🖼️ Export PNG</h2>
@@ -225,12 +225,35 @@
               <strong>Current view</strong>
             </span>
           </label>
-          <label class="export-option" title="Every part of the file as its own strip, in one image.">
-            <input type="radio" name="export-mode" value="custom" />
+          <label class="export-option" title="The whole track as exact data: every frequency bin gets its own pixel row, nothing blended.">
+            <input type="radio" name="export-mode" value="lossless" />
             <span>
-              <strong>Whole track, stacked</strong>
+              <strong>Lossless</strong> · native size, data not picture
             </span>
           </label>
+          <label class="export-option" title="Every part of the file as its own strip, in one image, at the 512 px display height.">
+            <input type="radio" name="export-mode" value="custom" />
+            <span>
+              <strong>Custom</strong> · whole track, stacked
+            </span>
+          </label>
+        </div>
+        <div id="export-lossless" class="export-custom" hidden>
+          <div class="export-row">
+            <label for="export-lossless-parts">Divide into parts</label>
+            <select id="export-lossless-parts" title="Split the track into this many stacked strips (1 = one strip)">
+              <option value="1" selected>1 · one strip</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="10">10</option>
+            </select>
+          </div>
         </div>
         <div id="export-custom" class="export-custom" hidden>
           <div class="export-row">

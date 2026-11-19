@@ -815,7 +815,7 @@ function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
 }
 
 /** Compose the rows into one PNG — graph pixels plus any requested rulers/legend. */
-function composePng(rows: ExportRow[], columns: number): Promise<Blob> {
+function composePng(rows: ExportRow[], columns: number, bandHeight: number = CANVAS_HEIGHT): Promise<Blob> {
   const { rulers, legend } = exportDecorations();
   const canvas = composeExportImage(
     {
@@ -830,6 +830,7 @@ function composePng(rows: ExportRow[], columns: number): Promise<Blob> {
     },
     rulers,
     legend,
+    bandHeight,
   );
   return canvasToPng(canvas);
 }
@@ -882,10 +883,13 @@ function setupPng(): void {
 }
 
 // --- PNG export panel --------------------------------------------------------
-// Two shapes of export: the current view (one 1024×512 frame, exactly what the
-// canvas shows) or the whole track cut into strips and stacked in one tall
-// image. Each strip is re-analyzed by the worker at full width, so a stacked
-// export has the same detail as a zoomed view rather than a stretched overview.
+// Three shapes of export. Current view: one 1024×512 frame, exactly what the
+// canvas shows. Lossless: the whole track as pixel-exact grid data — strips
+// keep the native bin height, so nothing is blended (phase included) — split
+// into parts if asked. Custom: the whole track at the 512 display height,
+// split by speed or parts; a picture, not data. Each strip is re-analyzed by
+// the worker at full width, so a stacked export has the same detail as a
+// zoomed view rather than a stretched overview.
 
 let exportReqId = 0;
 
@@ -894,36 +898,55 @@ function exportModalOpen(): boolean {
   return !!modal && !modal.hidden;
 }
 
-/** Active mode ('current' | 'custom'), split ('speed' | 'parts') and menu value. */
-function exportModeChoice(): { mode: string; split: SplitMode; value: string } {
-  const mode = document.querySelector<HTMLInputElement>("input[name='export-mode']:checked")?.value;
+type ExportMode = 'current' | 'lossless' | 'custom';
+
+/** Active mode, split ('speed' | 'parts') and menu value. Lossless always
+ *  splits by parts; its menu is the lossless parts select. */
+function exportModeChoice(): { mode: ExportMode; split: SplitMode; value: string } {
+  const raw = document.querySelector<HTMLInputElement>("input[name='export-mode']:checked")?.value;
+  const mode: ExportMode = raw === 'lossless' || raw === 'custom' ? raw : 'current';
+  if (mode === 'lossless') {
+    return { mode, split: 'parts', value: el<HTMLSelectElement>('export-lossless-parts')?.value ?? '1' };
+  }
   const split: SplitMode = el<HTMLSelectElement>('export-split')?.value === 'parts' ? 'parts' : 'speed';
   const menu = split === 'parts' ? el<HTMLSelectElement>('export-parts') : el<HTMLSelectElement>('export-speed');
-  return { mode: mode === 'custom' ? 'custom' : 'current', split, value: menu?.value ?? (split === 'parts' ? '4' : '1') };
+  return { mode, split, value: menu?.value ?? (split === 'parts' ? '4' : '1') };
 }
 
-/** Plan for the current menu selection, or null with no track loaded. */
+/** Plan for the current menu selection, or null for current view / no track. */
 function currentExportPlan(): ExportPlan | null {
   const { mode, split, value } = exportModeChoice();
-  if (mode !== 'custom') return null;
+  if (mode === 'current') return null;
   return planExport(trackDuration(), split, value);
+}
+
+/** What the export will carry, for the panel's info line: the palette in use
+ *  ("style") and whether the phase overlay is selected — the two facts that
+ *  decide what the pixels mean, shown before anything is saved. */
+function exportInfoSuffix(): string {
+  const entry = PALETTE_CYCLE.find((p) => p.name === getActivePaletteName()) ?? PALETTE_CYCLE[0];
+  const style = entry.label.replace(/^Palette: /, '');
+  return ` · ${style} style · Phase overlay ${getViewMode() === 'phase' ? 'on' : 'off'}`;
 }
 
 /** Keep the panel's rows and the strip summary in step with the menu. */
 function updateExportPanel(): void {
   const { mode, split, value } = exportModeChoice();
   const custom = $('export-custom');
+  const losslessBox = $('export-lossless');
   const speedRow = $('export-speed-row');
   const partsRow = $('export-parts-row');
   const summary = $('export-summary');
   if (custom) custom.hidden = mode !== 'custom';
+  if (losslessBox) losslessBox.hidden = mode !== 'lossless';
   if (speedRow) speedRow.hidden = split !== 'speed';
   if (partsRow) partsRow.hidden = split !== 'parts';
   if (!summary) return;
-  if (mode !== 'custom') {
+  const info = exportInfoSuffix();
+  if (mode === 'current') {
     const { rulers, legend } = exportDecorations();
     const lay = exportLayout(1, CANVAS_WIDTH, rulers, legend);
-    summary.textContent = `Current view · ${lay.width} × ${lay.height} px`;
+    summary.textContent = `Current view · ${lay.width} × ${lay.height} px${info}`;
     return;
   }
   const plan = currentExportPlan();
@@ -937,15 +960,18 @@ function updateExportPanel(): void {
     plan.columns,
     rulers,
     legend,
-    exportBandHeight(fullGrid?.bins ?? 0, getViewMode() === 'phase'),
+    exportBandHeight(fullGrid?.bins ?? 0, mode === 'lossless'),
   );
-  if (split === 'speed') {
+  if (mode === 'lossless') {
+    const noun = plan.strips === 1 ? 'strip' : 'strips';
+    summary.textContent = `Lossless · ${plan.strips} ${noun} · ${lay.width} × ${lay.height} px · ${fmtTime(plan.stripSeconds)} each${info}`;
+  } else if (split === 'speed') {
     // One strip covering the file; the speed setting compresses the time axis.
     const label = value === 'slowest' ? 'slowest (½×)' : `${value}×`;
-    summary.textContent = `${lay.width} × ${lay.height} px · one strip · ${label}`;
+    summary.textContent = `${lay.width} × ${lay.height} px · one strip · ${label}${info}`;
   } else {
     const noun = plan.strips === 1 ? 'strip' : 'strips';
-    summary.textContent = `${plan.strips} ${noun} · ${lay.width} × ${lay.height} px · ${fmtTime(plan.stripSeconds)} each`;
+    summary.textContent = `${plan.strips} ${noun} · ${lay.width} × ${lay.height} px · ${fmtTime(plan.stripSeconds)} each${info}`;
   }
 }
 
@@ -992,8 +1018,9 @@ function requestExportBands(
   });
 }
 
-/** Compose the strips into one tall PNG and hand it to the save path. */
-async function exportStacked(plan: ExportPlan): Promise<void> {
+/** Compose the strips into one tall PNG and hand it to the save path.
+ *  Lossless strips keep the native bin height; custom strips use 512. */
+async function exportStacked(plan: ExportPlan, lossless: boolean): Promise<void> {
   const dur = trackDuration();
   const ranges = bandRanges(plan, dur, sampleRate);
   if (!ranges.length) {
@@ -1010,9 +1037,14 @@ async function exportStacked(plan: ExportPlan): Promise<void> {
     startSec: ranges[i].startSample / sampleRate,
     endSec: ranges[i].endSample / sampleRate,
   }));
-  const blob = await composePng(rows, plan.columns);
-  const name =
-    bands.length > 1 ? `${currentBaseName}-stacked.png` : `${currentBaseName}-whole.png`;
+  const blob = await composePng(rows, plan.columns, exportBandHeight(fullGrid?.bins ?? 0, lossless));
+  const name = lossless
+    ? bands.length > 1
+      ? `${currentBaseName}-lossless-stacked.png`
+      : `${currentBaseName}-lossless.png`
+    : bands.length > 1
+      ? `${currentBaseName}-stacked.png`
+      : `${currentBaseName}-whole.png`;
   const saved = await savePngBlob(blob, name);
   toast(
     saved
@@ -1025,7 +1057,7 @@ async function exportStacked(plan: ExportPlan): Promise<void> {
 async function runExport(): Promise<void> {
   const go = el<HTMLButtonElement>('export-go');
   const { mode } = exportModeChoice();
-  if (mode !== 'custom') {
+  if (mode === 'current') {
     try {
       const saved = await savePngFromCanvas();
       toast(saved ? `Saved ${currentBaseName}-spectrogram.png` : 'Save cancelled.');
@@ -1050,7 +1082,7 @@ async function runExport(): Promise<void> {
     go.textContent = 'Exporting…';
   }
   try {
-    await exportStacked(plan);
+    await exportStacked(plan, mode === 'lossless');
   } catch (e) {
     console.error('stacked export failed:', e);
     toast(`Export failed: ${e instanceof Error ? e.message : String(e)}`, 'error');
@@ -1068,7 +1100,7 @@ function setupExportPanel(): void {
   for (const input of modal.querySelectorAll<HTMLInputElement>("input[name='export-mode']")) {
     input.addEventListener('change', updateExportPanel);
   }
-  for (const id of ['export-split', 'export-speed', 'export-parts']) {
+  for (const id of ['export-split', 'export-speed', 'export-parts', 'export-lossless-parts']) {
     el<HTMLSelectElement>(id)?.addEventListener('change', updateExportPanel);
   }
   for (const id of ['export-rulers', 'export-legend']) {

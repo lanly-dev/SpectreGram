@@ -4,7 +4,7 @@
 // Layout maths is pure (exportLayout) so it can be checked without a browser.
 
 import type { DbGrid } from './audio/stft';
-import { CANVAS_HEIGHT, drawGridStrip, getViewMode } from './render';
+import { CANVAS_HEIGHT, drawGridStrip } from './render';
 
 /** Height of the time ruler under each strip. */
 export const RULER_HEIGHT = 18;
@@ -58,14 +58,15 @@ export interface ExportLayout {
 
 /**
  * Pixel height of one exported strip. A grid strip normally gets the fixed
- * canvas height, but in phase mode it keeps the grid's native bin height:
- * scaling the bin rows into fewer pixels blends neighbouring bins into
- * single pixels, and the blend destroys the hue-carried phase. At native
- * height each bin row is one pixel row, so the phase tint survives the
- * export intact (spec: .kiro/specs/phase-view/, native-height amendment).
+ * canvas height, but a lossless (data) export keeps the grid's native bin
+ * height: scaling the bin rows into fewer pixels blends neighbouring bins
+ * into single pixels, and the blend destroys the data the rows carry —
+ * the hue-carried phase first of all. At native height each bin row is
+ * one pixel row, so the export is a pixel-exact copy of the grid
+ * (spec: .kiro/specs/phase-view/, export-types amendment).
  */
-export function exportBandHeight(bins: number, phase: boolean): number {
-  return phase && bins > 0 ? bins : CANVAS_HEIGHT;
+export function exportBandHeight(bins: number, lossless: boolean): number {
+  return lossless && bins > 0 ? bins : CANVAS_HEIGHT;
 }
 
 /** Pixel size of the composed image for `rows` strips. */
@@ -105,16 +106,15 @@ export interface ComposeOptions {
   formatHz: (hz: number) => string;
 }
 
-/** Build the export image (caller encodes it to PNG). */
-export function composeExportImage(opts: ComposeOptions, rulers: boolean, legend: boolean): HTMLCanvasElement {
-  const gridRow = opts.rows.find((r) => r.grid);
-  const layout = exportLayout(
-    opts.rows.length,
-    opts.columns,
-    rulers,
-    legend,
-    exportBandHeight(gridRow?.grid?.bins ?? 0, getViewMode() === 'phase'),
-  );
+/** Build the export image (caller encodes it to PNG). `bandHeight` is the
+ *  strip height the caller chose for this export type (see exportBandHeight). */
+export function composeExportImage(
+  opts: ComposeOptions,
+  rulers: boolean,
+  legend: boolean,
+  bandHeight: number = CANVAS_HEIGHT,
+): HTMLCanvasElement {
+  const layout = exportLayout(opts.rows.length, opts.columns, rulers, legend, bandHeight);
   const canvas = document.createElement('canvas');
   canvas.width = layout.width;
   canvas.height = layout.height;

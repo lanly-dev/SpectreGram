@@ -112,3 +112,22 @@ row, no grid) are unchanged. At the 10-part maximum the composed image is
 A native-height phase export is therefore a pixel-exact copy of the
 segment grids — an external decoder can recover magnitude + phase per bin
 from it (inverse STFT per strip), which no 512-tall render allows.
+
+## Amendment — three export types (2026-11-19)
+
+The maintainer split the export panel into three named types:
+
+1. **Current view** — the canvas as shown, 1024 × 512. A picture.
+2. **Lossless** — the whole track as data: strips painted at the grid's
+   native bin height (the native-height amendment above, now keyed to the
+   export *type* instead of the view mode), with one option: divide into
+   parts (1–10 stacked strips, 1024 columns each). Files are named
+   `<name>-lossless.png` / `<name>-lossless-stacked.png`.
+3. **Custom** — the previous stacked export unchanged: 512 px strip
+   height, split by speed or equal parts. A picture.
+
+`exportBandHeight(bins, lossless)` now takes the type flag; the composer
+receives the chosen band height from the caller instead of reading the
+view mode. The panel's info line also states what the export will carry —
+the active palette ("style") and whether the phase overlay is selected —
+in every mode, so the meaning of the pixels is visible before saving.
