@@ -327,6 +327,85 @@
       </div>
     </div>
 
+    <!-- Help > Language (desktop): the shell sends sg:language and the
+           renderer draws this card, so the picker wears the app's styling
+           instead of a native message box. English is the default. -->
+    <div id="language-modal" class="report-modal" role="dialog" aria-modal="true" aria-labelledby="language-title" hidden>
+      <div class="report-card language-card">
+        <span class="about-web about-web-left" aria-hidden="true"></span>
+        <span class="about-web about-web-right" aria-hidden="true"></span>
+        <h2 id="language-title" class="report-title about-title">
+          <span class="about-ghost" aria-hidden="true">🎃</span> Language
+        </h2>
+        <p class="report-blurb">Choose the language of the crypt.</p>
+        <fieldset class="language-list" aria-label="Interface language">
+          <label class="language-option">
+            <input type="radio" name="language" value="en" checked />
+            <span class="language-native">English</span>
+            <small class="language-english">Default</small>
+          </label>
+          <label class="language-option">
+            <input type="radio" name="language" value="es" />
+            <span class="language-native" lang="es">Español</span>
+            <small class="language-english">Spanish</small>
+          </label>
+          <label class="language-option">
+            <input type="radio" name="language" value="fr" />
+            <span class="language-native" lang="fr">Français</span>
+            <small class="language-english">French</small>
+          </label>
+          <label class="language-option">
+            <input type="radio" name="language" value="zh" />
+            <span class="language-native" lang="zh">中文</span>
+            <small class="language-english">Chinese</small>
+          </label>
+          <label class="language-option">
+            <input type="radio" name="language" value="hi" />
+            <span class="language-native" lang="hi">हिन्दी</span>
+            <small class="language-english">Hindi</small>
+          </label>
+          <label class="language-option">
+            <input type="radio" name="language" value="vi" />
+            <span class="language-native" lang="vi">Tiếng Việt</span>
+            <small class="language-english">Vietnamese</small>
+          </label>
+          <label class="language-option">
+            <input type="radio" name="language" value="ko" />
+            <span class="language-native" lang="ko">한국어</span>
+            <small class="language-english">Korean</small>
+          </label>
+          <label class="language-option">
+            <input type="radio" name="language" value="ru" />
+            <span class="language-native" lang="ru">Русский</span>
+            <small class="language-english">Russian</small>
+          </label>
+          <label class="language-option">
+            <input type="radio" name="language" value="ja" />
+            <span class="language-native" lang="ja">日本語</span>
+            <small class="language-english">Japanese</small>
+          </label>
+          <label class="language-option">
+            <input type="radio" name="language" value="ar" />
+            <span class="language-native" lang="ar">العربية</span>
+            <small class="language-english">Arabic</small>
+          </label>
+          <label class="language-option">
+            <input type="radio" name="language" value="de" />
+            <span class="language-native" lang="de">Deutsch</span>
+            <small class="language-english">German</small>
+          </label>
+          <label class="language-option">
+            <input type="radio" name="language" value="halloween" />
+            <span class="language-native">Halloween</span>
+            <small class="language-english">Spooky English</small>
+          </label>
+        </fieldset>
+        <div class="report-actions">
+          <button id="language-close" type="button">Close</button>
+        </div>
+      </div>
+    </div>
+
     <div id="screensaver" class="screensaver" hidden>
       <video id="screensaver-video" src="screensaver.mp4" loop muted playsinline preload="none"
         aria-hidden="true"></video>

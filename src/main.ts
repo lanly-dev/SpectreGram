@@ -31,12 +31,21 @@ import type {
 import { bandRanges, planExport, planLosslessExport, type ExportPlan } from './export-bands';
 import { composeExportImage, exportBandHeight, exportLayout, type ExportRow } from './export-image';
 import { runScan } from './scan';
-import { buildReportMarkdown, CLASS_INFO, countClasses, rateCollection } from './report';
+import {
+  buildReportMarkdown,
+  CLASS_INFO,
+  countClasses,
+  rateCollection,
+  type QualityClass,
+} from './report';
+import type { I18nKey } from './i18n/en';
 import type { FolderFile } from './types/desktop';
 import { playDrumroll, type Drumroll } from './drumroll';
 import { MAX_MESSAGE_CHARS, countChars, randomPhrase, truncateChars } from './message/phrases';
 import { rasterizeText, type TextMask } from './message/raster';
 import { layoutMessage } from './message/encode';
+import { buildVerdict } from './audio/cutoff';
+import { languageName, setLanguage, t, type Lang } from './i18n';
 import type { EmbedMessage, EmbedRequest } from './message/embed-worker';
 
 // Tick step candidates for the rulers. The spectrogram's frequency axis is
@@ -191,8 +200,12 @@ function updateLegend(): void {
 function setupDbRangeKeys(): void {
   window.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    const t = e.target as HTMLElement | null;
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    const target = e.target as HTMLElement | null;
+    if (
+      target &&
+      (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+    )
+      return;
     let which: 'lower' | 'upper';
     if (e.key === 'u' || e.key === 'U') which = 'upper';
     else if (e.key === 'l' || e.key === 'L') which = 'lower';
@@ -203,8 +216,9 @@ function setupDbRangeKeys(): void {
     updateLegend();
     const changed = before.lower !== after.lower || before.upper !== after.upper;
     toast(
-      `${changed ? 'dB range' : 'dB range limit reached'}: ${after.lower} … ${after.upper} dBFS ` +
-        '(u/U upper, l/L lower)',
+      changed
+        ? t('toastDbRange', { lower: after.lower, upper: after.upper })
+        : t('toastDbLimit', { lower: after.lower, upper: after.upper }),
     );
   });
 }
@@ -222,6 +236,15 @@ let worker: Worker | null = null;
 let audioBuffer: AudioBuffer | null = null;
 let sampleRate = 0;
 let currentDurationSec = 0;
+// What the file claims to be, for re-rendering the verdict in a new language.
+let currentClaimedFormat = '';
+let lastFacts: FileFacts | null = null;
+let lastVerdict: {
+  cutoffHz: number;
+  sampleRate: number;
+  claimedFormat: string;
+  tooShort: boolean;
+} | null = null;
 // Base name (no extension) of the file being analyzed — names the PNG export.
 let currentBaseName = 'spectregram';
 
@@ -263,7 +286,7 @@ function fmtSampleRate(hz: number): string {
 
 /** "mono" / "stereo" / "N ch" — the strip is one row, so spell out the common cases. */
 function fmtChannels(n: number): string {
-  return n === 1 ? 'mono' : n === 2 ? 'stereo' : `${n} ch`;
+  return n === 1 ? t('mono') : n === 2 ? t('stereo') : t('channelsCount', { n });
 }
 
 function setFacts(facts: FileFacts | null): void {
@@ -272,10 +295,10 @@ function setFacts(facts: FileFacts | null): void {
   node.replaceChildren();
   if (!facts) return;
   const rows: Array<[string, string]> = [
-    ['Format', facts.format],
-    ['Duration', fmtDuration(facts.durationSec)],
-    ['Sample rate', fmtSampleRate(facts.sampleRate)],
-    ['Channels', fmtChannels(facts.channels)],
+    [t('factFormat'), facts.format],
+    [t('factDuration'), fmtDuration(facts.durationSec)],
+    [t('factSampleRate'), fmtSampleRate(facts.sampleRate)],
+    [t('factChannels'), fmtChannels(facts.channels)],
   ];
   for (const [label, value] of rows) {
     const row = document.createElement('div');
@@ -311,6 +334,16 @@ function toast(text: string, kind: 'info' | 'error' = 'info'): void {
 // The verdict line holds a real estimate verdict (generated only in
 // cutoff.ts), or — while a file loads — a dimmed progress note set via
 // setVerdictPending. Errors go to toasts, never here.
+/** Re-render the verdict line from the stored analysis in the active language. */
+function renderVerdict(): void {
+  if (!lastVerdict) return;
+  setVerdict(
+    lastVerdict.tooShort
+      ? t('verdictTooShort')
+      : buildVerdict(lastVerdict.cutoffHz, lastVerdict.sampleRate, lastVerdict.claimedFormat),
+  );
+}
+
 function setVerdict(text: string): void {
   const node = $('verdict');
   if (!node) return;
@@ -382,7 +415,7 @@ function ensureWorker(): Worker {
   };
   worker.onerror = (e) => {
     console.error('worker error:', e.message);
-    toast(`Analysis error: ${e.message}`, 'error');
+    toast(t('toastAnalysisError', { message: e.message }), 'error');
     hideProgress();
     setVerdict('');
     teardownWorker();
@@ -400,13 +433,13 @@ function teardownWorker(): void {
 function onWorkerMessage(msg: WorkerMessage): void {
   if (msg.type === 'progress') {
     setProgress(msg.fraction);
-    setVerdictPending(`Analyzing… ${Math.round(msg.fraction * 100)}%`);
+    setVerdictPending(t('statusAnalyzing', { pct: Math.round(msg.fraction * 100) }));
   } else if (msg.type === 'result') {
     const grid: DbGrid = { data: msg.data, frames: msg.frames, bins: msg.bins, phase: msg.phase };
     const desktop = window.spectregramDesktop;
     if (desktop) void desktop.reportSpectrogramState(true);
     setProgress(1);
-    setVerdictPending('Estimating cutoff…');
+    setVerdictPending(t('statusEstimating'));
     // Paint immediately: the grid is already computed, so the pixels land in the
     // same task its result arrived in. The cutoff pass runs in the worker and
     // arrives as its own message, so it never delays the graph and never blocks
@@ -417,11 +450,21 @@ function onWorkerMessage(msg: WorkerMessage): void {
     const ctx = spectrogramCtx();
     if (ctx) renderSpectrogram(ctx, grid);
   } else if (msg.type === 'verdict') {
-    setVerdict(msg.verdict);
+    const tooShort = (fullGrid?.frames ?? 0) === 0;
+    lastVerdict = { cutoffHz: msg.cutoffHz, sampleRate, claimedFormat: currentClaimedFormat, tooShort };
+    renderVerdict();
     // Analysis complete: remember it so reopening this file is instant.
     if (pendingCache?.grid) {
       const { key, facts, params, audio, grid } = pendingCache;
-      cacheTouch(key, { facts, params, grid, verdict: msg.verdict, audio });
+      cacheTouch(key, {
+        facts,
+        params,
+        grid,
+        verdict: msg.verdict,
+        cutoffHz: msg.cutoffHz,
+        tooShort: grid.frames === 0,
+        audio,
+      });
       pendingCache = null;
     }
   } else if (msg.type === 'zoom-result') {
@@ -429,10 +472,10 @@ function onWorkerMessage(msg: WorkerMessage): void {
   } else if (msg.type === 'zoom-error') {
     console.error('zoom error:', msg.message);
     onZoomResult(msg.id, null);
-    toast(`Zoom failed: ${msg.message}`, 'error');
+    toast(t('toastZoomFailed', { message: msg.message }), 'error');
   } else if (msg.type === 'error') {
     console.error('analysis error:', msg.message);
-    toast(`Analysis error: ${msg.message}`, 'error');
+    toast(t('toastAnalysisError', { message: msg.message }), 'error');
     hideProgress();
     setVerdict('');
     const desktop = window.spectregramDesktop;
@@ -472,6 +515,8 @@ interface CachedAnalysis {
   params: Partial<StftParams>;
   grid: DbGrid;
   verdict: string;
+  cutoffHz: number;
+  tooShort: boolean;
   /** Present only for recently used files (see AUDIO_CACHE_MAX_BYTES). */
   audio: CachedAudio | null;
 }
@@ -556,6 +601,8 @@ function holdInWorker(mono: Float32Array, params: Partial<StftParams>): void {
 /** Show the file-level facts, rulers and title for a decoded file. */
 function showFileFacts(file: File, facts: FileFacts): void {
   sampleRate = facts.sampleRate;
+  currentClaimedFormat = facts.format;
+  lastFacts = facts;
   currentDurationSec = facts.durationSec;
   setFacts(facts);
   setFreqRuler(sampleRate);
@@ -578,7 +625,13 @@ async function openFromCache(file: File, key: string, hit: CachedAnalysis, gen: 
   updateMessageButton();
   const ctx = spectrogramCtx();
   if (ctx) renderSpectrogram(ctx, hit.grid);
-  setVerdict(hit.verdict);
+  lastVerdict = {
+    cutoffHz: hit.cutoffHz,
+    sampleRate: hit.facts.sampleRate,
+    claimedFormat: hit.facts.format,
+    tooShort: hit.tooShort,
+  };
+  renderVerdict();
   const desktop = window.spectregramDesktop;
   if (desktop) void desktop.reportSpectrogramState(true);
 
@@ -594,7 +647,7 @@ async function openFromCache(file: File, key: string, hit: CachedAnalysis, gen: 
   const res = await decodeFile(file);
   if (gen !== openGen) return; // another file was opened meanwhile
   if (!res.ok) {
-    toast(`Playback and zoom unavailable: ${res.message}`, 'error');
+    toast(t('toastPlaybackUnavailable', { message: res.message }), 'error');
     return;
   }
   audioBuffer = res.buffer;
@@ -628,7 +681,8 @@ async function handleFile(file: File): Promise<void> {
     return;
   }
 
-  setVerdictPending('Decoding…');
+  lastVerdict = null; // a new file has no verdict yet, even in another language
+  setVerdictPending(t('statusDecoding'));
   setProgress(0);
   const res: DecodeResult = await decodeFile(file);
   if (gen !== openGen) return;
@@ -643,7 +697,7 @@ async function handleFile(file: File): Promise<void> {
 
   audioBuffer = res.buffer;
   showFileFacts(file, res.facts);
-  setVerdictPending('Analyzing… 0%');
+  setVerdictPending(t('statusAnalyzing', { pct: 0 }));
 
   const params = stftParamsFor(res.mono.length);
 
@@ -711,7 +765,7 @@ function updatePaletteButton(): void {
   const swatch = $('palette-swatch');
   const active = getActivePaletteName();
   const entry = PALETTE_CYCLE.find((p) => p.name === active) ?? PALETTE_CYCLE[0];
-  const label = entry.label;
+  const label = t('paletteLabel', { name: entry.label.replace(/^Palette: /, '') });
   if (btn) {
     btn.title = label;
     btn.setAttribute('aria-label', label);
@@ -731,20 +785,18 @@ function updateViewButton(): void {
   if (btn) {
     btn.classList.toggle('active', phase);
     btn.setAttribute('aria-pressed', String(phase));
-    const label = phase ? 'Phase overlay: on' : 'Phase overlay: off';
+    const label = phase ? t('phaseOn') : t('phaseOff');
     btn.title = label;
     btn.setAttribute('aria-label', label);
   }
   const legend = $('legend');
   if (legend) {
     if (phase) {
-      legend.title =
-        'Phase overlay — hue drifts with phase, colour = dBFS (u/U, l/L still move the range)';
-      legend.setAttribute('aria-label', 'dBFS color scale, tinted by phase');
+      legend.title = t('legendPhaseTitle');
+      legend.setAttribute('aria-label', t('legendPhaseAria'));
     } else {
-      legend.title =
-        'dBFS scale — u / U: lower / raise upper limit, l / L: lower / raise lower limit';
-      legend.setAttribute('aria-label', 'dBFS color scale');
+      legend.title = t('legendTitle');
+      legend.setAttribute('aria-label', t('legendAria'));
     }
   }
 }
@@ -755,17 +807,13 @@ function setupPhaseToggle(): void {
   btn.addEventListener('click', () => {
     const next = getViewMode() === 'phase' ? 'magnitude' : 'phase';
     if (next === 'phase' && !hasPhaseData()) {
-      toast('No phase data for this file yet — reopen it to analyse again.', 'error');
+      toast(t('toastNoPhase'), 'error');
       return;
     }
     setViewMode(next);
     updateLegend();
     updateViewButton();
-    toast(
-      next === 'phase'
-        ? 'Phase overlay on — hue shifts with phase, colour still = level'
-        : 'Phase overlay off — colour = level',
-    );
+    toast(next === 'phase' ? t('toastPhaseOn') : t('toastPhaseOff'));
   });
   updateViewButton();
 }
@@ -860,16 +908,16 @@ function startExport(): void {
 async function quickExport(): Promise<void> {
   const canvas = el<HTMLCanvasElement>('canvas');
   if (!canvas || !fullGrid) {
-    toast('Open a file first.', 'error');
+    toast(t('toastOpenFirst'), 'error');
     return;
   }
   const name = `${currentBaseName}-spectrogram.png`;
   try {
     const saved = await savePngBlob(await canvasToPng(canvas), name);
-    toast(saved ? `Saved ${name}` : 'Save cancelled.');
+    toast(saved ? t('toastSaved', { name }) : t('toastSaveCancelled'));
   } catch (e) {
     console.error('export failed:', e);
-    toast('Export failed.', 'error');
+    toast(t('toastExportFailed'), 'error');
   }
 }
 
@@ -948,12 +996,12 @@ function updateExportPanel(): void {
   if (mode === 'current') {
     const { rulers, legend } = exportDecorations();
     const lay = exportLayout(1, CANVAS_WIDTH, rulers, legend);
-    summary.textContent = `Current view · ${lay.width} × ${lay.height} px${info}`;
+    summary.textContent = `${t('exportCurrent')} · ${lay.width} × ${lay.height} px${info}`;
     return;
   }
   const plan = currentExportPlan();
   if (!plan) {
-    summary.textContent = 'Open a file first.';
+    summary.textContent = t('toastOpenFirst');
     return;
   }
   const { rulers, legend } = exportDecorations();
@@ -966,13 +1014,14 @@ function updateExportPanel(): void {
   );
   // Both controls describe the same picture: speed sets each strip's width,
   // parts sets how many strips are stacked.
-  const noun = plan.strips === 1 ? 'strip' : 'strips';
-  const each = plan.strips > 1 ? ` · ${fmtTime(plan.stripSeconds)} each` : '';
+  const noun = plan.strips === 1 ? t('exportStripOne') : t('exportStripMany');
+  const each =
+    plan.strips > 1 ? ` · ${t('exportEach', { time: fmtTime(plan.stripSeconds) })}` : '';
   if (mode === 'lossless') {
-    summary.textContent = `Lossless · ${plan.strips} ${noun} · ${lay.width} × ${lay.height} px${each}${info}`;
+    summary.textContent = `${t('exportLossless')} · ${plan.strips} ${noun} · ${lay.width} × ${lay.height} px${each}${info}`;
   } else {
-    const speedLabel = speed === 'slowest' ? 'slowest (½×)' : `${speed}×`;
-    summary.textContent = `Custom · ${plan.strips} ${noun} · ${lay.width} × ${lay.height} px${each} · ${speedLabel}${info}`;
+    const speedLabel = speed === 'slowest' ? t('exportSlowestFactor') : `${speed}×`;
+    summary.textContent = `${t('exportCustom')} · ${plan.strips} ${noun} · ${lay.width} × ${lay.height} px${each} · ${speedLabel}${info}`;
   }
 }
 
@@ -980,7 +1029,7 @@ function openExportPanel(): void {
   const modal = $('export-modal');
   if (!modal) return;
   if (!fullGrid) {
-    toast('Open a file first.', 'error');
+    toast(t('toastOpenFirst'), 'error');
     return;
   }
   updateExportPanel();
@@ -1025,12 +1074,12 @@ async function exportStacked(plan: ExportPlan, lossless: boolean): Promise<void>
   const dur = trackDuration();
   const ranges = bandRanges(plan, dur, sampleRate);
   if (!ranges.length) {
-    toast('Nothing to export for this track.', 'error');
+    toast(t('toastNothingExport'), 'error');
     return;
   }
   const bands = await requestExportBands(ranges, plan.columns);
   if (!bands.length) {
-    toast('Nothing to export for this track.', 'error');
+    toast(t('toastNothingExport'), 'error');
     return;
   }
   const rows: ExportRow[] = bands.map((grid, i) => ({
@@ -1049,8 +1098,10 @@ async function exportStacked(plan: ExportPlan, lossless: boolean): Promise<void>
   const saved = await savePngBlob(blob, name);
   toast(
     saved
-      ? `Saved ${name} — ${bands.length > 1 ? `${bands.length} strips` : `${plan.columns} px wide`}`
-      : 'Save cancelled.',
+      ? bands.length > 1
+        ? t('toastSavedStrips', { name, n: bands.length })
+        : t('toastSavedWidth', { name, width: plan.columns })
+      : t('toastSaveCancelled'),
   );
   if (saved) closeExportPanel();
 }
@@ -1065,22 +1116,22 @@ async function runExport(): Promise<void> {
       if (saved) closeExportPanel();
     } catch (e) {
       console.error('export failed:', e);
-      toast('Export failed.', 'error');
+      toast(t('toastExportFailed'), 'error');
     }
     return;
   }
   const plan = currentExportPlan();
   if (!plan) {
-    toast('Open a file first.', 'error');
+    toast(t('toastOpenFirst'), 'error');
     return;
   }
   if (!fullGrid || !worker || !audioBuffer) {
-    toast('Audio is still loading — try again in a moment.', 'error');
+    toast(t('toastAudioLoading'), 'error');
     return;
   }
   if (go) {
     go.disabled = true;
-    go.textContent = 'Exporting…';
+    go.textContent = t('exporting');
   }
   try {
     await exportStacked(plan, mode === 'lossless');
@@ -1090,7 +1141,7 @@ async function runExport(): Promise<void> {
   } finally {
     if (go) {
       go.disabled = false;
-      go.textContent = 'Export';
+      go.textContent = t('exportGo');
     }
   }
 }
@@ -1306,10 +1357,12 @@ function setupFolderPanel(): void {
     panel.hidden = false;
     box.classList.add('folder-open');
     document.querySelector('main')?.classList.add('folder-open');
-    const count = `${files.length} audio file${files.length !== 1 ? 's' : ''}`;
-    const what = refreshed ? `Refreshed "${folderName}"` : `Folder "${folderName}"`;
-    if (truncated) toast(`${what} — showing the first ${count} (list capped).`);
-    else toast(`${what} — ${count}`);
+    const count = t(files.length === 1 ? 'audioFileOne' : 'audioFileMany', { n: files.length });
+    const what = refreshed
+      ? t('toastRefreshed', { name: folderName, count })
+      : t('toastFolder', { name: folderName, count });
+    if (truncated) toast(t('toastFolderCapped', { what, count }));
+    else toast(what);
   });
 
   // The shell opened a single file, so the listing it had is gone.
@@ -1336,8 +1389,8 @@ function scanButtonIdle(): void {
   const btn = $('scan-btn');
   if (!btn) return;
   btn.classList.remove('scanning');
-  btn.textContent = 'Scan';
-  btn.title = 'Scan every file in this folder and its subfolders';
+  btn.textContent = t('scan');
+  btn.title = t('scanTitle');
 }
 
 /** A folder was (re)loaded: remember its files and stop any running scan. */
@@ -1371,7 +1424,7 @@ async function rollAndReveal(): Promise<void> {
   const btn = el<HTMLButtonElement>('report-reveal-btn');
   if (!drum || !drumStage || !drumText || !reveal || !btn || activeDrumroll) return;
   btn.hidden = true;
-  drumText.textContent = 'Drumroll…';
+  drumText.textContent = t('drumroll');
   drum.classList.add('rolling');
   const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   const roll = playDrumroll({ reducedMotion: reduced });
@@ -1389,6 +1442,26 @@ async function rollAndReveal(): Promise<void> {
  * Show the modal on the drumroll screen, waiting for Reveal. The rating and
  * class counts are filled in now but stay hidden until the roll's crash.
  */
+// The report's ratings and class names live in report.ts as English text (they
+// also go into the saved Markdown, which stays English); map them to keys for
+// the dialog only.
+const RATING_I18N: Record<string, { title: I18nKey; blurb: I18nKey }> = {
+  'Lossy Lurker': { title: 'ratingLurkerTitle', blurb: 'ratingLurkerBlurb' },
+  'Lost in the Fog': { title: 'ratingFogTitle', blurb: 'ratingFogBlurb' },
+  'Crypt Keeper — a true collector': { title: 'ratingKeeperTitle', blurb: 'ratingKeeperBlurb' },
+  'Avid Collector': { title: 'ratingAvidTitle', blurb: 'ratingAvidBlurb' },
+  'Haunted Hoarder': { title: 'ratingHoarderTitle', blurb: 'ratingHoarderBlurb' },
+  'Costume Party Noob': { title: 'ratingNoobTitle', blurb: 'ratingNoobBlurb' },
+};
+const CLASS_I18N: Record<QualityClass, { label: I18nKey; short: I18nKey }> = {
+  genuine: { label: 'classGenuine', short: 'classGenuineShort' },
+  costume: { label: 'classCostume', short: 'classCostumeShort' },
+  inconclusive: { label: 'classInconclusive', short: 'classInconclusiveShort' },
+  lossy: { label: 'classLossy', short: 'classLossyShort' },
+  nocall: { label: 'classNoCall', short: 'classNoCallShort' },
+  failed: { label: 'classFailed', short: 'classFailedShort' },
+};
+
 function showReportModal(rows: Parameters<typeof countClasses>[0], total: number, cancelled: boolean): void {
   const modal = $('report-modal');
   const drum = $('report-drumroll');
@@ -1398,27 +1471,29 @@ function showReportModal(rows: Parameters<typeof countClasses>[0], total: number
 
   const counts = countClasses(rows);
   const rating = rateCollection(counts);
+  const ratingKeys = RATING_I18N[rating.title];
   $('report-emoji')!.textContent = rating.emoji;
-  $('report-title')!.textContent = rating.title;
-  $('report-blurb')!.textContent = rating.blurb;
+  $('report-title')!.textContent = ratingKeys ? t(ratingKeys.title) : rating.title;
+  $('report-blurb')!.textContent = ratingKeys ? t(ratingKeys.blurb) : rating.blurb;
   const list = $('report-counts')!;
   list.replaceChildren();
   for (const { cls, short, label } of CLASS_INFO) {
     if (!counts[cls]) continue;
     const li = document.createElement('li');
-    li.textContent = `${short} · ${counts[cls]}`;
-    li.title = label;
+    const keys = CLASS_I18N[cls];
+    li.textContent = `${keys ? t(keys.short) : short} · ${counts[cls]}`;
+    li.title = keys ? t(keys.label) : label;
     list.appendChild(li);
   }
   $('report-note')!.textContent = cancelled
-    ? `Scan stopped early: ${rows.length} of ${total} files judged.`
-    : `${rows.length} file${rows.length !== 1 ? 's' : ''} judged, subfolders included.`;
+    ? t('reportNoteCancelled', { n: rows.length, total })
+    : t('reportNoteDone', { n: rows.length });
 
   const n = rows.length;
   activeDrumroll?.stop();
   activeDrumroll = null;
   $('report-drum')?.classList.remove('rolling');
-  drumText.textContent = `${n} file${n !== 1 ? 's' : ''} judged. Ready for the verdict?`;
+  drumText.textContent = t('reportReady', { n });
   const btn = el<HTMLButtonElement>('report-reveal-btn');
   if (btn) btn.hidden = false;
   drum.hidden = false;
@@ -1437,19 +1512,19 @@ async function startScan(): Promise<void> {
   scanning = true;
   scanCancelRequested = false;
   btn.classList.add('scanning');
-  btn.title = 'Stop the scan';
-  btn.textContent = `Cancel · 0/${files.length}`;
+  btn.title = t('stopScan');
+  btn.textContent = `${t('cancel')} · 0/${files.length}`;
   try {
     const result = await runScan(files, {
       readFile: (p) => desktop.readFile(p),
       isCancelled: () => scanCancelRequested,
       onProgress: (done, total) => {
-        if (gen === scanFolderGen) btn.textContent = `Cancel · ${done}/${total}`;
+        if (gen === scanFolderGen) btn.textContent = `${t('cancel')} · ${done}/${total}`;
       },
     });
     if (gen !== scanFolderGen) return; // a different folder was opened meanwhile
     if (!result.rows.length) {
-      toast('Scan cancelled.');
+      toast(t('toastScanCancelled'));
       return;
     }
     reportMarkdown = buildReportMarkdown({
@@ -1462,7 +1537,7 @@ async function startScan(): Promise<void> {
     showReportModal(result.rows, files.length, result.cancelled);
   } catch (e) {
     console.error('scan failed:', e);
-    if (gen === scanFolderGen) toast('Scan failed.', 'error');
+    if (gen === scanFolderGen) toast(t('toastScanFailed'), 'error');
   } finally {
     // No scan is running any more, whichever folder is now showing.
     scanning = false;
@@ -1478,7 +1553,7 @@ function setupFolderReport(): void {
   btn?.addEventListener('click', () => {
     if (scanning) {
       scanCancelRequested = true;
-      btn.textContent = 'Stopping…';
+      btn.textContent = `${t('stopScan')}…`;
       return;
     }
     void startScan();
@@ -1489,10 +1564,10 @@ function setupFolderReport(): void {
     if (!reportMarkdown) return;
     try {
       const saved = await desktop.saveReport(reportMarkdown, REPORT_FILE_NAME);
-      toast(saved ? `Saved ${REPORT_FILE_NAME}` : 'Save cancelled.');
+      toast(saved ? t('toastSaved', { name: REPORT_FILE_NAME }) : t('toastSaveCancelled'));
     } catch (e) {
       console.error('report save failed:', e);
-      toast('Could not save the report.', 'error');
+      toast(t('toastReportSaveFailed'), 'error');
     }
   });
   // While the dialog is open it owns the keyboard: Esc closes it, and other
@@ -1553,7 +1628,7 @@ function rollDice(): void {
 function openMessageModal(): void {
   if (!fullGrid) return;
   if (!audioBuffer) {
-    toast('Audio is still loading — try again in a moment.');
+    toast(t('toastAudioLoading'));
     return;
   }
   const modal = $('message-modal');
@@ -1617,12 +1692,12 @@ async function generateMessage(): Promise<void> {
   if (!input || !gen) return;
   const text = truncateChars(input.value.trim(), MAX_MESSAGE_CHARS);
   if (!text) {
-    toast('Type a message or roll the dice first.', 'error');
+    toast(t('toastTypeMessage'), 'error');
     return;
   }
   const buffer = audioBuffer;
   if (!buffer) {
-    toast('Audio is still loading — try again in a moment.');
+    toast(t('toastAudioLoading'));
     return;
   }
   let mask: TextMask;
@@ -1630,11 +1705,11 @@ async function generateMessage(): Promise<void> {
     mask = rasterizeText(text);
   } catch (e) {
     console.error('rasterize failed:', e);
-    toast('Could not draw that message.', 'error');
+    toast(t('toastCouldNotDraw'), 'error');
     return;
   }
   if (mask.cols === 0) {
-    toast('Nothing to draw — try some letters.', 'error');
+    toast(t('toastNothingDraw'), 'error');
     return;
   }
   // Fixed-band fit check; the worker re-checks after it pulls the band under
@@ -1651,7 +1726,7 @@ async function generateMessage(): Promise<void> {
   try {
     wav = await embedInWorker(buffer, mask);
     if (!(await saveWavBytes(wav, name))) {
-      toast('Save cancelled.');
+      toast(t('toastSaveCancelled'));
       wav = null;
     }
   } catch (e) {
@@ -1902,7 +1977,7 @@ function zoomTo(t0: number, t1: number): void {
   if (!fullGrid || !(dur > 0)) return;
   if (!audioBuffer) {
     // A cached file's audio is still re-decoding; the worker has no samples yet.
-    toast('Audio is still loading — try again in a moment.');
+    toast(t('toastAudioLoading'));
     return;
   }
   if (dur <= min) {
@@ -2210,7 +2285,7 @@ function updatePlayButton(): void {
   if (start) start.disabled = !fullGrid || (!busy && cueSec <= 0);
   const btn = $('play-btn');
   if (!btn) return;
-  const label = isPlaying ? 'Pause' : 'Play';
+  const label = isPlaying ? t('pause') : t('play');
   btn.classList.toggle('playing', isPlaying);
   btn.title = label;
   btn.setAttribute('aria-label', label);
@@ -2390,12 +2465,10 @@ function setupMenuActions(screensaver: ScreensaverControls | null): void {
   desktop.onMenuAction((action, value) => {
     if (action === 'screensaver-enabled') {
       screensaver?.setEnabled(value === true);
-      toast(value === true ? 'Screensaver enabled' : 'Screensaver disabled');
+      toast(value === true ? t('toastScreensaverOn') : t('toastScreensaverOff'));
     } else if (action === 'advanced-export') {
       advancedExport = value !== false;
-      toast(
-        advancedExport ? 'Advanced export on' : 'Advanced export off — Export saves the current view',
-      );
+      toast(advancedExport ? t('toastAdvancedOn') : t('toastAdvancedOff'));
     } else if (action === 'show-screensaver') {
       screensaver?.showNow();
     } else if (action === 'toast') {
@@ -2403,6 +2476,63 @@ function setupMenuActions(screensaver: ScreensaverControls | null): void {
       if (typeof v?.message === 'string') toast(v.message, v.kind === 'error' ? 'error' : 'info');
     }
   });
+}
+
+/**
+ * Help › Language: apply a pick from the themed card. English is the default
+ * and the choice is session state (like the palette), so nothing is written to
+ * disk. `lang` follows it for screen readers, hyphenation and font fallback.
+ */
+function applyInterfaceLanguage(code: string): void {
+  setLanguage(code as Lang);
+  // The native menu bar lives in the shell, not the DOM, so tell it too.
+  window.spectregramDesktop?.setLanguage(code);
+  // Static markup is re-translated by setLanguage; re-render the labels this
+  // module builds itself, then the verdict (which is generated, not markup).
+  updatePaletteButton();
+  updateViewButton();
+  updatePlayButton();
+  scanButtonIdle();
+  setFacts(lastFacts);
+  updateExportPanel();
+  renderVerdict();
+}
+
+/** Desktop Help › Language: the shell sends `sg:language`; the card is in the
+ *  DOM, so the picker wears the app's styling instead of a native message box. */
+function setupLanguageCard(): void {
+  const modal = $('language-modal');
+  if (!modal) return;
+  const isOpen = (): boolean => !modal.hidden;
+  window.spectregramDesktop?.onShowLanguage(() => {
+    modal.hidden = false;
+    modal.querySelector<HTMLInputElement>("input[name='language']:checked")?.focus();
+  });
+  const close = (): void => {
+    modal.hidden = true;
+  };
+  el<HTMLButtonElement>('language-close')?.addEventListener('click', close);
+  // Clicking the dimmed backdrop closes it; clicks inside the card don't.
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) close();
+  });
+  for (const input of modal.querySelectorAll<HTMLInputElement>("input[name='language']")) {
+    input.addEventListener('change', () => {
+      if (!input.checked) return;
+      applyInterfaceLanguage(input.value);
+      toast(t('toastLanguage', { name: languageName(input.value as Lang) }));
+    });
+  }
+  // While open the card owns Esc, so it doesn't also reset the zoom.
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      if (!isOpen() || e.key !== 'Escape') return;
+      e.stopImmediatePropagation();
+      close();
+    },
+    { capture: true },
+  );
 }
 
 /** Desktop Help › About: the shell sends `sg:about`; the card is in the DOM. */
@@ -2458,6 +2588,7 @@ function init(): void {
   setupDbRangeKeys();
   setupMenuActions(setupScreensaver());
   setupAbout();
+  setupLanguageCard();
   updateLegend();
   window.addEventListener('beforeunload', () => {
     teardownWorker();

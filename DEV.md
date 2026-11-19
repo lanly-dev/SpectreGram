@@ -546,6 +546,61 @@ swallows the key so it doesn't also reset zoom.
 Native dialogs can't carry the app's styling, so this was built in-renderer
 instead.
 
+## Language card
+
+Help › Language used to open a native message box saying selection would
+arrive later. The shell now sends `sg:language` and the renderer shows a
+`.report-modal` card in the same haunted style as About (cobwebs, pumpkin
+title, translucent orange border), with the twelve available languages as a
+three-column grid of radio tiles:
+
+English (default) · Español · Français · 中文 · हिन्दी · Tiếng Việt ·
+한국어 · Русский · 日本語 · العربية · Deutsch · Halloween
+
+Each tile shows the native name with the English name underneath; the picked
+tile gets the same accent tint as the export modes, and the radio input stays
+focusable (arrow keys switch picks, focus ring on the tile). Picking a
+language translates the interface immediately, sets `<html lang>` and
+`data-language` (Halloween maps to `en`), shows a toast, and is remembered for
+the session — nothing is written to disk. Esc, the backdrop or Close dismisses
+the card and swallows the key so it can't also reset the zoom.
+
+## Interface translations (`src/i18n`)
+
+English is the source language and the default. `src/i18n/en.ts` holds every
+interface string as `key: English text` (149 keys). Each other language file
+exports a partial `Record<I18nKey, string>` with the same keys; a missing key
+falls back to English. `src/i18n/index.ts` exposes:
+
+- `t(key, vars)` — strings built in code (toasts, verdicts, facts, export
+  summary); `{name}` placeholders are filled from `vars`.
+- `setLanguage(code)` — switches the table, updates `<html lang>` and walks the
+  DOM.
+- `translateDom()` — matches text nodes and `title` / `aria-label` /
+  `placeholder` / `alt` values against the English table and swaps them in
+  place. The English original is kept in a `WeakMap`, so switching back (or to
+  another language) rebuilds from the source, never from the translation.
+
+`applyInterfaceLanguage()` in `src/main.ts` calls `setLanguage()` and then
+re-renders the strings that module owns: facts, palette/phase tooltips, play
+label, Scan button, export summary and the verdict. The verdict is generated,
+not markup: analysis stores `cutoffHz` (and the claimed format in the cache),
+and `renderVerdict()` rebuilds it with `buildVerdict()` in the new language.
+The report dialog maps `report.ts`'s English rating and class names to keys.
+
+The native menu bar is Electron chrome, not DOM, so the renderer also sends the
+pick to the shell (`spectregramDesktop.setLanguage` → `sg:set-language`).
+`electron/main.js` keeps the current language, rebuilds the menu from
+`electron/menu-labels.js`, and preserves the Options checkbox states.
+`SPECTREGRAM_SMOKE_MENU_LANG=de` prints the built menu in a chosen language for
+checks (test-only, alongside `SPECTREGRAM_SMOKE_MENU`).
+
+Halloween is spooky English: same keys, English grammar. Arabic translates the
+copy but keeps the LTR composition — the panels are absolutely positioned, so
+a mirrored layout would break them. The saved Markdown report, the folder
+loading counter, the message-fit error and the export summary's
+`Spectrum style · Phase overlay on` suffix stay English.
+
 ## Packaging
 
 electron-builder configuration lives in the `build` key of
