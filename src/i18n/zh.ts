@@ -46,6 +46,8 @@ export const ZH: Partial<Record<I18nKey, string>> = {
   stopScan: '停止扫描',
   refreshFolder: '刷新文件夹',
   folderLoading: '正在召唤幽灵……',
+  folderFilter: '筛选文件…',
+  folderFilterClear: '清除筛选',
   audioFileOne: '{n} 个音频文件',
   audioFileMany: '{n} 个音频文件',
   toastFolder: '文件夹“{name}” — {count}',

@@ -126,6 +126,23 @@ scan is asked to stop. `folder-loaded` or `active: false` restores the list.
 Test-only `SPECTREGRAM_SMOKE_WALK_DELAY_MS` slows the walk per folder so the
 smoke can observe the state.
 
+## Filter row (added 2026-11-19, maintainer's ask)
+
+A second row under the header holds `#folder-filter` (`type=search`,
+placeholder and `aria-label` "Filter files…") and `#folder-filter-count`, a
+tabular `shown / total` beside it. Typing filters rows by a case-insensitive
+substring of the relative path; non-matching rows are hidden, not removed, so
+Back/Skip, the selected row and Scan still use the full listing. A new folder
+resets the query; Refresh keeps it and re-applies it to the rebuilt rows.
+During the R1c loading state the row is hidden and the input disabled. The
+placeholder lives in the i18n tables like the rest of the chrome.
+
+Chromium's native search cross is hidden; `#folder-filter-clear` is a real
+16 px button over the input (white SVG via `currentColor`, `cursor:
+pointer`, shown only while the query is non-empty). Clicking it empties the
+query, re-applies the filter (back to `total / total`) and refocuses the
+input. Its `aria-label`/`title` ("Clear filter") is translated too.
+
 ## Risks
 
 - **Long scans:** ~0.5–1 s per file; 1,000 files ≈ 10–15 min. Mitigated by

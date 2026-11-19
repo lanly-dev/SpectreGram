@@ -48,6 +48,8 @@ export const HI: Partial<Record<I18nKey, string>> = {
   stopScan: 'स्कैन रोकें',
   refreshFolder: 'फ़ोल्डर रीफ़्रेश करें',
   folderLoading: 'आत्माओं को बुलाया जा रहा है…',
+  folderFilter: 'फ़ाइलें फ़िल्टर करें…',
+  folderFilterClear: 'फ़िल्टर साफ़ करें',
   audioFileOne: '{n} ऑडियो फ़ाइल',
   audioFileMany: '{n} ऑडियो फ़ाइलें',
   toastFolder: 'फ़ोल्डर "{name}" — {count}',

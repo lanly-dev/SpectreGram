@@ -94,6 +94,21 @@
           </svg>
         </button>
       </div>
+      <!-- Second row: filter the listing by text; the count is shown / total. -->
+      <div id="folder-filter-row" class="folder-filter-row">
+        <div class="folder-filter-wrap">
+          <input id="folder-filter" class="folder-filter" type="search" placeholder="Filter files…"
+            aria-label="Filter files…" autocomplete="off" spellcheck="false" />
+          <button id="folder-filter-clear" class="folder-filter-clear" type="button" hidden
+            aria-label="Clear filter" title="Clear filter">
+            <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+              <path d="M2 2l8 8M10 2l-8 8" fill="none" stroke="currentColor" stroke-width="1.7"
+                stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
+        <span id="folder-filter-count" class="folder-filter-count" aria-live="polite">0 / 0</span>
+      </div>
       <!-- Loading state (spec: .kiro/specs/folder-report/, R1c): replaces the list while a folder is walked. -->
       <div id="folder-loading" class="folder-loading" role="status" aria-live="polite" hidden>
         <div class="folder-loading-ghost" aria-hidden="true">👻</div>

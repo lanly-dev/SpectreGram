@@ -49,6 +49,8 @@ export const RU: Partial<Record<I18nKey, string>> = {
   stopScan: 'Остановить сканирование',
   refreshFolder: 'Обновить папку',
   folderLoading: 'Вызываем духов…',
+  folderFilter: 'Фильтр файлов…',
+  folderFilterClear: 'Очистить фильтр',
   audioFileOne: '{n} аудиофайл',
   audioFileMany: '{n} аудиофайлов',
   toastFolder: 'Папка «{name}» — {count}',

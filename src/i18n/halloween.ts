@@ -48,6 +48,8 @@ export const HALLOWEEN: Partial<Record<I18nKey, string>> = {
   stopScan: 'Call off the scan',
   refreshFolder: 'Summon the folder anew',
   folderLoading: 'Rousing the spirits…',
+  folderFilter: 'Filter the souls…',
+  folderFilterClear: 'Banish the filter',
   audioFileOne: '{n} audio soul',
   audioFileMany: '{n} audio souls',
   toastFolder: 'Folder "{name}" — {count}',
