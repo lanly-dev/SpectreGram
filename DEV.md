@@ -86,7 +86,7 @@ reopen instant:
 
 | Tier | What it holds | Size per file | Budget (TUNABLE) |
 | --- | --- | --- | --- |
-| Analysis | facts, STFT params, full-track grid, verdict | ≤ ~4 MB (≤ ~1024 frames × 1025 bins × 4 B) | `GRID_CACHE_MAX_BYTES` = 200 MB, about 50 full-length tracks |
+| Analysis | facts, STFT params, full-track grid (+ phase bytes), verdict | ≤ ~5 MB (≤ ~1024 frames × 1025 bins × (4 B magnitude + 1 B phase)) | `GRID_CACHE_MAX_BYTES` = 200 MB, about 45 full-length tracks |
 | Audio | decoded `AudioBuffer` + mono mixdown, for playback and zoom | ~250 MB for a 7-min track at 48 kHz stereo | `AUDIO_CACHE_MAX_BYTES` = 400 MB |
 
 Eviction is least-recently-used. Over the audio budget, the oldest files
@@ -299,10 +299,10 @@ Spec: `.kiro/specs/ruler-seek/`.
 
 ### Transport controls
 All buttons live in the controls row at the bottom of the UI. The row reads
-left to right as: tools (palette, PNG export, spectral message), the open
-file's **name** (`#track-name`, set by `setTrackName(file.name)` in the load
-path, 11 px muted, one line with an ellipsis at 42ch and the full name in its
-`title`), then the transport group (`.transport`, a nowrap flex box holding
+left to right as: tools (palette, view mode, PNG export, spectral message),
+the open file's **name** (`#track-name`, set by `setTrackName(file.name)` in
+the load path, 11 px muted, one line, ellipsis when the row runs out of room
+and the full name in its `title`), then the transport group (`.transport`, a nowrap flex box holding
 Back, Skip, Back-to-start, play/pause and Stop). The name sits directly after
 the tools (8 px gap) — not centred in the row — and `.transport`'s
 `margin-left: auto` absorbs the slack, so the group stays flush with the right
@@ -402,6 +402,61 @@ Plain mouse wheel or trackpad scroll moves the zoomed view horizontally. One
 request in flight; scrolling coalesces to the latest view. Frequency stays
 full-range in all zoom states.
 
+## Phase view
+
+Spec: `.kiro/specs/phase-view/`. The dial button (`#phase-btn`, right after
+the palette button) overlays **phase** on the spectrogram that is already
+there: every bin keeps the palette colour for its level, and that colour's
+hue is rotated by the bin's phase (up to ±63° — `PHASE_HUE_SPAN`, TUNABLE).
+Brightness and saturation are untouched, so the graph still reads exactly
+like the normal spectrogram — same palette ramp, same structure — with phase
+showing as hue ripples across it, not as a second graph that replaces it.
+It is session state like the palette, and switching repaints the grid
+already in memory: no STFT, no re-analysis.
+
+**Where the phase comes from.** `computeStft` already has `re`/`im` per bin
+when it writes the magnitude, so with `withPhase` on it also writes
+`phase[i] = round(((atan2(im, re) + π) / 2π) · 255)` — one byte per bin,
+same row-major order as `DbGrid.data`. `computeStftSegment` takes the same
+flag, so zoomed views and stacked-export strips carry phase too. The worker
+asks for it on `analyze`, `zoom` and `export-bands`, never on `classify`
+(the folder scan only needs the verdict), and transfers both arrays
+zero-copy. The verdict path (`cutoff.ts`) never reads phase — it is
+display-only, and the +1 MB per full-track grid is counted in the grid
+cache budget.
+
+**Painting.** `src/render.ts` keeps `viewMode: 'magnitude' | 'phase'` beside
+the palette. The phase path builds one lookup table per palette (256 palette
+steps × 256 phase steps): each palette colour is converted to HSV once, its
+hue is rotated by `(phase / 255 − 0.5) × PHASE_HUE_SPAN`, and the result is
+stored — so the pixel loop is still a single table lookup, and the dB key →
+palette index mapping is precomputed per draw. A dark bin stays as dark as
+the palette makes it, so the phase ripple never brightens quiet passages.
+
+**Trade-off.** Because hue now carries phase, two pixels at the same level
+can differ in colour — that *is* the phase information. The legend beside
+the graph keeps showing the plain palette, because the level axis has not
+changed (only the hue drifts), and `u`/`U`, `l`/`L`, the zoom view and both
+export shapes all keep working on top of the overlay.
+
+**Measured** on `lab/CHOCOLATE.128.mp3` (3:02, 48 kHz), 1126 × 530 current-view
+export: lit pixels 378,531 → 378,353 (level structure intact to within
+0.05 %), mean brightness 195 → 189, hue buckets 18 → 35 — and the number
+that matters, pixels inside one narrow brightness band (0x5A–0x82) go from
+**14** hue buckets to **36**: the same level now spans the whole phase
+wheel. Confirmed on 1:1 crops of the two exports: the vertical structure is
+identical between them, and the phase version carries magenta/pink ripple
+through the orange instead of one flat hue.
+
+**Exports in phase mode.** The stacked PNG export paints each strip at
+the grid's native bin height (1025 rows) instead of the fixed 512
+(`exportBandHeight` in `src/export-image.ts`), because scaling the bin
+rows blends neighbouring bins into single pixels and the blend destroys
+the hue-carried phase. At native height every bin row is one pixel row,
+so the export is a pixel-exact copy of the segment grids and the phase
+tint survives intact; magnitude exports keep the 512 strip height. The
+export panel's size summary quotes the same height it will write.
+
 ## Export panel
 
 Spec: `.kiro/specs/export-panel/` (feature-branch spec, merged to main via PR
@@ -421,7 +476,9 @@ re-analysis; this is the fastest option.
   one image (`1024 × 512·N`).
 
 Every strip is `computeStftSegment` at its own column count, so it carries real
-detail rather than a stretched overview, in the active palette and dB range.
+detail rather than a stretched overview, in the active palette, dB range and
+view mode (a stacked export in phase view is painted by phase too, with the
+grey brightness legend beside it).
 The worker gained an `export-bands` request that answers with all grids in one
 message; `drawGridStrip()` in `src/render.ts` takes the strip width and paints
 each onto the composite canvas.

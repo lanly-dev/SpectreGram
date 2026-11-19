@@ -670,6 +670,13 @@ main.folder-open .controls {
   border-radius: 3px;
 }
 
+/* View-mode toggle: lit while the phase view is on, so the graph's colouring
+   always has a visible reason in the controls row. */
+.view-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .privacy {
   margin: 0;
   color: var(--muted);

@@ -15,6 +15,9 @@ import {
   paintLegend,
   paletteGradientCss,
   DB_STEP,
+  getViewMode,
+  setViewMode,
+  hasPhaseData,
   type PaletteName,
 } from './render';
 import { DEFAULT_STFT, stftParamsFor, type DbGrid, type StftParams } from './audio/stft';
@@ -26,7 +29,7 @@ import type {
   ZoomRequest,
 } from './audio/stft-worker';
 import { bandRanges, planExport, type ExportPlan, type SplitMode } from './export-bands';
-import { composeExportImage, exportLayout, type ExportRow } from './export-image';
+import { composeExportImage, exportBandHeight, exportLayout, type ExportRow } from './export-image';
 import { runScan } from './scan';
 import { buildReportMarkdown, CLASS_INFO, countClasses, rateCollection } from './report';
 import type { FolderFile } from './types/desktop';
@@ -399,7 +402,7 @@ function onWorkerMessage(msg: WorkerMessage): void {
     setProgress(msg.fraction);
     setVerdictPending(`Analyzing… ${Math.round(msg.fraction * 100)}%`);
   } else if (msg.type === 'result') {
-    const grid: DbGrid = { data: msg.data, frames: msg.frames, bins: msg.bins };
+    const grid: DbGrid = { data: msg.data, frames: msg.frames, bins: msg.bins, phase: msg.phase };
     const desktop = window.spectregramDesktop;
     if (desktop) void desktop.reportSpectrogramState(true);
     setProgress(1);
@@ -422,7 +425,7 @@ function onWorkerMessage(msg: WorkerMessage): void {
       pendingCache = null;
     }
   } else if (msg.type === 'zoom-result') {
-    onZoomResult(msg.id, { data: msg.data, frames: msg.frames, bins: msg.bins });
+    onZoomResult(msg.id, { data: msg.data, frames: msg.frames, bins: msg.bins, phase: msg.phase });
   } else if (msg.type === 'zoom-error') {
     console.error('zoom error:', msg.message);
     onZoomResult(msg.id, null);
@@ -518,7 +521,7 @@ function enforceCacheBudget(keepKey: string): void {
   let gridTotal = 0;
   for (const e of analysisCache.values()) {
     audioTotal += e.audio?.bytes ?? 0;
-    gridTotal += e.grid.data.byteLength;
+    gridTotal += e.grid.data.byteLength + (e.grid.phase?.byteLength ?? 0);
   }
   for (const [k, e] of analysisCache) {
     if (audioTotal <= AUDIO_CACHE_MAX_BYTES) break;
@@ -531,7 +534,7 @@ function enforceCacheBudget(keepKey: string): void {
     if (gridTotal <= GRID_CACHE_MAX_BYTES) break;
     if (k === keepKey) continue;
     analysisCache.delete(k);
-    gridTotal -= e.grid.data.byteLength;
+    gridTotal -= e.grid.data.byteLength + (e.grid.phase?.byteLength ?? 0);
   }
 }
 
@@ -716,6 +719,59 @@ function updatePaletteButton(): void {
   if (swatch) swatch.style.background = paletteGradientCss(active);
 }
 
+/**
+ * Phase overlay toggle (spec: .kiro/specs/phase-view/): the same palette
+ * spectrogram, with each bin's phase rotating its colour's hue. The button and
+ * the legend description follow the mode; the graph repaints from the grid
+ * already in memory, so switching is instant and never re-runs the STFT.
+ */
+function updateViewButton(): void {
+  const btn = $('phase-btn');
+  const phase = getViewMode() === 'phase';
+  if (btn) {
+    btn.classList.toggle('active', phase);
+    btn.setAttribute('aria-pressed', String(phase));
+    const label = phase
+      ? 'Phase overlay: on (click to hide phase)'
+      : 'Phase overlay: off (click to show phase)';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+  }
+  const legend = $('legend');
+  if (legend) {
+    if (phase) {
+      legend.title =
+        'Phase overlay — hue drifts with phase, colour = dBFS (u/U, l/L still move the range)';
+      legend.setAttribute('aria-label', 'dBFS color scale, tinted by phase');
+    } else {
+      legend.title =
+        'dBFS scale — u / U: lower / raise upper limit, l / L: lower / raise lower limit';
+      legend.setAttribute('aria-label', 'dBFS color scale');
+    }
+  }
+}
+
+function setupPhaseToggle(): void {
+  const btn = $('phase-btn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const next = getViewMode() === 'phase' ? 'magnitude' : 'phase';
+    if (next === 'phase' && !hasPhaseData()) {
+      toast('No phase data for this file yet — reopen it to analyse again.', 'error');
+      return;
+    }
+    setViewMode(next);
+    updateLegend();
+    updateViewButton();
+    toast(
+      next === 'phase'
+        ? 'Phase overlay on — hue shifts with phase, colour still = level'
+        : 'Phase overlay off — colour = level',
+    );
+  });
+  updateViewButton();
+}
+
 function setupPaletteToggle(): void {
   const btn = $('palette-toggle');
   if (!btn) return;
@@ -876,7 +932,13 @@ function updateExportPanel(): void {
     return;
   }
   const { rulers, legend } = exportDecorations();
-  const lay = exportLayout(plan.strips, plan.columns, rulers, legend);
+  const lay = exportLayout(
+    plan.strips,
+    plan.columns,
+    rulers,
+    legend,
+    exportBandHeight(fullGrid?.bins ?? 0, getViewMode() === 'phase'),
+  );
   if (split === 'speed') {
     // One strip covering the file; the speed setting compresses the time axis.
     const label = value === 'slowest' ? 'slowest (½×)' : `${value}×`;
@@ -2347,6 +2409,7 @@ function setupAbout(): void {
 function init(): void {
   setupIntake();
   setupPaletteToggle();
+  setupPhaseToggle();
   setupPng();
   setupExportPanel();
   setupMenuExport();

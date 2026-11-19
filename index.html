@@ -44,6 +44,8 @@
       </div>
       <div id="ruler-bottom" class="ruler ruler-bottom" aria-hidden="true"></div>
       <div id="seek-tooltip" class="seek-tooltip" aria-hidden="true" hidden></div>
+      <!-- Legend title/label are rewritten by the view-mode toggle: hue means
+           level in spectrum colours, phase angle in the phase view. -->
       <div id="legend" class="legend" role="img" aria-label="dBFS color scale"
         title="dBFS scale — u / U: lower / raise upper limit, l / L: lower / raise lower limit">
         <canvas id="legend-canvas" class="legend-canvas" width="10" height="256"></canvas>
@@ -106,6 +108,18 @@
       <button id="palette-toggle" class="icon-btn palette-btn" type="button"
         aria-label="Palette: Spectrum (click to change)" title="Palette: Spectrum (click to change)">
         <span id="palette-swatch" class="palette-swatch" aria-hidden="true"></span>
+      </button>
+      <!-- Phase overlay (spec: .kiro/specs/phase-view/): the same palette
+           spectrogram, with each bin's phase rotating its colour's hue. -->
+      <button id="phase-btn" class="icon-btn view-btn" type="button" aria-pressed="false"
+        aria-label="Phase overlay: off (click to show phase)"
+        title="Phase overlay: off (click to show phase)">
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <circle cx="8" cy="8" r="5.3" fill="none" stroke="currentColor" stroke-width="1.4" />
+          <path d="M8 8 10.9 4.7" fill="none" stroke="currentColor" stroke-width="1.6"
+            stroke-linecap="round" />
+          <circle cx="8" cy="8" r="0.9" fill="currentColor" />
+        </svg>
       </button>
       <button id="png-btn" class="icon-btn" type="button" aria-label="Export PNG" title="Export PNG">
         <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
