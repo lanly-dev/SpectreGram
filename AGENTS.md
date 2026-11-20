@@ -250,5 +250,7 @@ URL verification remains. `npm run build` → Vite 8.3.6 build succeeded; `npm r
   task 3):** `package.json` pins Vite 8.3.8 and Vitest 5.1.1. The required `npm run build` and `npm run test` passed again in the existing install, which still contained Vite 8.3.6 and Vitest 5.1.0. `npm install --no-audit --no-fund` could not replace the locked Electron package (`EBUSY`); direct current-pin checks then passed with `npx --yes vite@8.3.8 build` (31 modules) and `npx --yes vitest@5.1.1 run` (1 file, 10 tests). The renderer build checks used the current `main` configuration; no phase
 implementation files changed.
 
+- **Dice phrases expanded by 10 (2026-11-20, maintainer's ask):** `HALLOWEEN_PHRASES` in `src/message/phrases.ts` grew 20 → 30 with ten new original Halloween/audio phrases (`🦴 BONE SHAKER 🦴` … `😈 SIX SIX SIX HERTZ 😈`), all short enough for the unchanged 32-grapheme message limit. No behaviour changed; the 🎲 dice now draws from the larger pool. Verified: build ✓, Vitest 10/10 ✓; a grapheme count over the list shows 30 unique phrases, none over 32 characters.
+
 ## How we work
 Plan → Work → Assess → Compound. Lessons earned go into this file immediately. Decisions land in Open decisions the same session. This is the smallest, safest entry — its job in the portfolio is to be *finished early and submitted-ready*; resist every urge to grow it.

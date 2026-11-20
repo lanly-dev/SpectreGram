@@ -27,6 +27,16 @@ export const HALLOWEEN_PHRASES: readonly string[] = [
   'BURIED BELOW 16 KHZ ⚰️',
   '🎃👻🦇💀🕷️',
   '🍬 SWEETS OR SPELLS 🧙',
+  '🦴 BONE SHAKER 🦴',
+  '🧟 DEAD BUT STREAMING 🧟',
+  '🌙 MIDNIGHT FREQUENCIES 🌙',
+  '🕯️ CANDLELIT CUTOFF 🕯️',
+  '🪦 GONE BUT NOT LOSSY 🪦',
+  '🦇 BAT SIGNAL AT 16 KHZ 🦇',
+  '🕸️ TANGLED IN THE TREBLE 🕸️',
+  '👻 PHANTOM FREQUENCY 👻',
+  '🎃 SMASH THE PUMPKIN 🎃',
+  '😈 SIX SIX SIX HERTZ 😈',
 ];
 
 // Intl.Segmenter exists in Chromium/Electron and Node, but the project's TS
