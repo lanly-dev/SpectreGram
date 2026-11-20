@@ -119,6 +119,18 @@ Installers are unsigned (SmartScreen/Gatekeeper warnings expected on first launc
 
 See `AGENTS.md` for the full build log, open decisions, and acceptance status.
 
+## Future work
+
+- **Smaller download.** The desktop build is large because Electron bundles a full
+  browser (the portable exe is about 112 MB, about 366 MB unpacked). Trimming unused
+  language packs would save roughly 45 MB unpacked. A port of the same web code to a
+  system-web-view shell such as Neutralino or Tauri could bring it to a few MB, but it
+  needs the native menus, dialogs and folder scan rewritten and the web view's audio
+  decoding and worker support checked first.
+- **Broader calibration.** The cutoff thresholds are heuristic estimates, tested with
+  synthetic fixtures and several real lossy files. Calibration against a labelled
+  genuine/lossy corpus remains future work, and ambiguous results stay inconclusive.
+- **Signed builds.** The installers are unsigned, so SmartScreen and Gatekeeper warn.
 ## License
 MIT — see [LICENSE](./LICENSE). Spek is GPL-3.0 and is **not** a dependency of
 this codebase; only its concept is referenced.

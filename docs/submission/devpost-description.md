@@ -59,6 +59,12 @@ FFT is the MIT-licensed `fft.js`; decoding is the browser's own `decodeAudioData
 - The macOS and Linux builds come from GitHub Actions and were not launched by the
   maintainer. [MAINTAINER: edit if you test them.]
 
+### Future work
+
+- A much smaller download. The Electron build bundles a full browser (about 112 MB portable). A system-web-view port is possible but untested.
+- Broader calibration of the cutoff thresholds against a labelled corpus.
+- Code-signed builds.
+
 ### Pre-existing code and assets disclosure
 
 - New project, first commit 2026-11-06, inside the submission period.
