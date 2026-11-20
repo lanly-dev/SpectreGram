@@ -64,7 +64,13 @@
             "target": "dmg"
         },
         "win": {
-            "target": "nsis"
+            "target": [
+                "nsis",
+                "portable"
+            ]
+        },
+        "portable": {
+            "artifactName": "${productName}-Portable-${version}.${ext}"
         }
     },
     "dependencies": {

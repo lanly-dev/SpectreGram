@@ -265,3 +265,4 @@ implementation files changed.
 
 ## How we work
 Plan → Work → Assess → Compound. Lessons earned go into this file immediately. Decisions land in Open decisions the same session. This is the smallest, safest entry — its job in the portfolio is to be *finished early and submitted-ready*; resist every urge to grow it.
+- **Release setup (2026-11-19, submission-readiness task 4):** Windows now builds an NSIS installer plus a standalone portable exe (SpectreGram-Portable-<version>.exe); .github/workflows/release.yml builds Windows, Linux (AppImage) and macOS (DMG) on a * tag and attaches them to a draft GitHub Release. All builds are unsigned. Verified locally: Windows installer + portable built, build ?, Vitest 10/10 ?. Not verified: the workflow on GitHub, the Linux and macOS builds, launching the portable exe.

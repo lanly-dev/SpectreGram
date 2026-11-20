@@ -1,4 +1,4 @@
-# Submission Readiness — Tasks
+﻿# Submission Readiness — Tasks
 
 Part of the `submission-readiness` Kiro spec. Requirements: `./requirements.md` · Design: `./design.md`.
 Trail rules: `/.kiro/steering/work-trail.md` — **read them before task 0.**
@@ -32,7 +32,14 @@ One task = one commit, message suffix `(submission-readiness task N)`.
    verdict; PNG save works). Create Release `v1.0.0` with the installer
    attached and notes (what it is, the desktop-only distribution path,
    unsigned first-run notes, and no hosted demo URL).
-   macOS DMG too if a Mac is at hand; otherwise record the gap.
+   **Amended 2026-11-19 (maintainer's go, release hold lifted):** ship a
+   standalone Windows portable `.exe` next to the NSIS installer, plus a
+   Linux AppImage and a macOS DMG, all built by
+   `.github/workflows/release.yml` (matrix: windows / ubuntu / macos
+   runners) when a `v*` tag is pushed. The workflow creates a **draft**
+   Release, so the maintainer reviews it and clicks Publish. All builds
+   are unsigned. The macOS DMG cannot be built on the Windows dev machine;
+   CI is its only build path.
 5. **Real-file calibration.** Record the available real lossy measurements and,
    if a labeled genuine/lossy pair is available, run it through the app and
    record the cutoffs. Do not fabricate a genuine measurement when no labeled
@@ -80,6 +87,7 @@ behalf, any change to `cutoff.ts` beyond tasks 1 and 5.
   documentation and not rewrite or force-push history, so the split is
   disclosed here rather than rewritten.
 - ⏳ **4** — 2026-11-16, partial. `package.json` version 0.1.0 → 1.0.0 (installer name matches the planned `v1.0.0`). `npm run dist` on Windows → `release/SpectreGram Setup 1.0.0.exe` (124.9 MB, NSIS, x64, unsigned; one transient EBUSY on the unpacked exe, likely an antivirus scan — a clean retry passed). Packaged smoke on `release/win-unpacked/SpectreGram.exe` (the same app the installer lays down, served from `app://`): the fake-FLAC from task 2 → `Claims FLAC. Cutoff ≈16.8 kHz — smells like a 128k MP3 in a costume. (estimate)`, class `stamp-fake`, PNG save ✓. Network was not disabled for this run. Release notes drafted in `docs/submission/release-notes-v1.0.0.md`. **Remaining, needs the maintainer:** (a) run the installer itself (it registers SpectreGram as a handler for MP3/FLAC/WAV/… on the machine, so the agent did not) and open a file offline; (b) create the GitHub Release `v1.0.0` with the `.exe` attached and the notes pasted (desktop-only distribution path; no hosted demo URL). macOS DMG: no Mac available — gap recorded, not built. **ON HOLD (2026-11-16, maintainer's instruction):** no GitHub Release is to be created and no further release builds run until he lifts the hold. The local installer stays in the gitignored `release/` folder.
+  - **2026-11-19 — release setup (task 4, maintainer lifted the hold):** added `win.target: [nsis, portable]` + `portable.artifactName` in `package.json` and `.github/workflows/release.yml` (windows/ubuntu/macos matrix, runs on `v*` tags, uploads to a **draft** Release). Local `npm run dist -- --win --publish=never` produced `SpectreGram Setup 1.0.0.exe` (124.8 MB) and `SpectreGram-Portable-1.0.0.exe` (112.6 MB), unsigned; the first attempt failed on a file lock and a clean retry passed. `npm run build` and `npm run test` (10/10) green. **Not verified:** the workflow has never run on GitHub, so the Linux AppImage and macOS DMG are unbuilt; the portable exe was built but not launched. **Remaining, needs the maintainer:** push, push a `v1.0.0` tag, check the Actions run, review the draft Release and click Publish.
 - ⏳ **5** — 2026-11-16, partial: lossy side measured, genuine side blocked. No genuine FLAC and no FLAC encoder on this machine (the local `lab/` folder holds only MP3s + one M4A), so each real lossy file was copied to a `.flac` name (the app's format claim comes from the name) and run through the desktop smoke. The smoke now also reports the facts text (`electron/main.js`, test-only). Results (Nyquist 24 kHz, since all decoded at 48 kHz; bitrate ≈ size ÷ duration):
 
   | File (in `lab/`) | ≈ bitrate | Cutoff | Ratio | Verdict |
