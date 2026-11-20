@@ -861,8 +861,8 @@ main.folder-open .controls {
 
 .empty-ghost {
   position: relative;
-  width: 128px;
-  height: 128px;
+  width: 96px;
+  height: 96px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -915,8 +915,8 @@ main.folder-open .controls {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 112px;
-  height: 112px;
+  width: 88px;
+  height: 88px;
 }
 
 .empty-folder-pick[hidden] {
@@ -941,11 +941,11 @@ main.folder-open .controls {
   box-sizing: border-box;
   width: 100%;
   min-height: 3.1em;
-  max-width: 500px;
+  max-width: 460px;
   margin: 0 auto;
   padding: 0 16px;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   line-height: 1.5;
   letter-spacing: 0.14em;
   text-align: center;
