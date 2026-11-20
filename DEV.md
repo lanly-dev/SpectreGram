@@ -87,6 +87,12 @@ Clearing the folder restores the normal intake. All start-screen copy (`dropHint
 four empty-state keys) follows the language picker, including while the hover
 hint is showing; the ghost's `aria-label`/`title` translate too.
 
+**Start Over.** File ▸ Start Over sits directly under Export PNG and is enabled
+when a file or a folder is selected. It stops playback, drops the analysis (grid,
+facts, verdict, track name, window title, canvas), closes the export / message
+/ report cards, clears the folder session, and returns to the start screen.
+Cached analyses stay in memory, so reopening the same file is still instant.
+
 ## Recent-file cache
 
 Reopening a file you already opened this session paints its spectrogram

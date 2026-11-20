@@ -51,6 +51,20 @@ Everything else is untouched. DevDeps added: `electron`, `electron-builder` (pin
 
 ---
 
+## Amendment — File ▸ Start Over (2026-11-19, maintainer's ask)
+
+File ▸ Export PNG… is followed directly by **Start Over** (`id: start-over`,
+label key `startOver` in all 12 menu tables), then the separator and Exit. It is
+enabled while a spectrogram or folder is selected; `updateFileMenuState()`
+keeps it and Export PNG in step from `hasSpectrogram`, `currentFolderPath`,
+the folder load/clear paths and the `sg:spectrogram-state` IPC. Clicking it
+(`menuStartOver()`) drops `hasSpectrogram`, clears the folder, updates the menu
+and sends `sg:menu-action('start-over')`. The renderer's
+`startOver()` invalidates in-flight opens, terminates the worker, stops
+playback, resets zoom/analysis/facts/verdict/title/canvas, closes the export,
+message and report cards, restores the start screen, then reports no
+spectrogram and calls `resetFolder()` so the shell and panel agree.
+
 ## Amendment — folder chooser from the start screen (2026-11-19)
 
 The renderer can ask for a folder without the menu: `chooseFolder()` in
@@ -96,7 +110,7 @@ message-fit error stay English.
 
 The native menu bar is not DOM: the renderer also reports the pick through
 `spectregramDesktop.setLanguage` (`sg:set-language`), and main rebuilds the
-application menu from `electron/menu-labels.js` — 18 labels in the same twelve
+application menu from `electron/menu-labels.js` — 19 labels in the same twelve
 languages — keeping the Options checkbox states. The existing
 `SPECTREGRAM_SMOKE_MENU` harness accepts `SPECTREGRAM_SMOKE_MENU_LANG` to print
 the menu in a chosen language.

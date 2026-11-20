@@ -69,7 +69,12 @@ export interface FolderLoading {
 }
 
 /** Actions the Options menu sends to the renderer. */
-export type MenuAction = 'screensaver-enabled' | 'advanced-export' | 'show-screensaver' | 'toast';
+export type MenuAction =
+  | 'screensaver-enabled'
+  | 'advanced-export'
+  | 'show-screensaver'
+  | 'toast'
+  | 'start-over';
 
 declare global {
   interface Window {

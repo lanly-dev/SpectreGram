@@ -1364,6 +1364,47 @@ function clearFolderPanel(): void {
   selectFolderRow('');
 }
 
+/** File > Start Over: drop the selected audio and folder, back to the start screen. */
+function startOver(): void {
+  openGen++;
+  teardownWorker();
+  cueSec = 0;
+  stopPlayback();
+  pendingCache = null;
+  closeExportPanel();
+  closeMessageModal();
+  closeReportModal();
+  resetZoomState();
+  lastVerdict = null;
+  lastFacts = null;
+  audioBuffer = null;
+  sampleRate = 0;
+  currentDurationSec = 0;
+  currentClaimedFormat = '';
+  currentBaseName = 'spectregram';
+  hideProgress();
+  setFacts(null);
+  setVerdict('');
+  setTrackName('');
+  setFreqRuler(0);
+  setTimeRuler(0, 0);
+  emptyStateHinting = false;
+  setEmptyStateFolderMode(false);
+  const empty = $('empty-state');
+  if (empty) empty.hidden = false;
+  const canvas = el<HTMLCanvasElement>('canvas');
+  const ctx = canvas?.getContext('2d');
+  if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  document.title = 'SpectreGram';
+  updatePlayButton();
+  updateTransportButtons();
+  const desktop = window.spectregramDesktop;
+  if (desktop) {
+    void desktop.reportSpectrogramState(false);
+    void desktop.resetFolder();
+  }
+}
+
 /** Folder panel: list audio files from an opened folder; clicking one opens it. */
 function setupFolderPanel(): void {
   const desktop = window.spectregramDesktop;
@@ -2606,6 +2647,8 @@ function setupMenuActions(screensaver: ScreensaverControls | null): void {
     } else if (action === 'toast') {
       const v = value as { message?: unknown; kind?: unknown } | undefined;
       if (typeof v?.message === 'string') toast(v.message, v.kind === 'error' ? 'error' : 'info');
+    } else if (action === 'start-over') {
+      startOver();
     }
   });
 }

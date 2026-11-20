@@ -357,6 +357,13 @@ is an explicit invariant owned by "there is no networking code in the repo"
   folder mode sets the overlay's `right` to the panel's 200 px so the art and
   prompt center in the visible area; the prompt is a wrapping span. Clearing
   the folder restores the normal intake.
+- **File ▸ Start Over** (`startOver()` in `src/main.ts`, sent by the shell as
+  `sg:menu-action('start-over')`) returns here from a selected file or folder:
+  it invalidates in-flight opens, stops playback, resets the worker, zoom,
+  grid, facts, verdict, track name, title and canvas, closes the
+  export/message/report cards, and restores the start screen. The analysis
+  cache is untouched, so reopening the same file stays instant. The label
+  avoids “Clear”, which collides with the folder filter's clear ×.
 - Every start-screen string follows the language picker: `dropHint` for the
   idle caption, `emptyGhostHint` for the ghost's `aria-label`/`title`,
   `emptyClickHint` / `emptyFolderHint` for the hover copy (the folder variant

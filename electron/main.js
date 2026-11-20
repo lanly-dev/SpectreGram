@@ -204,8 +204,7 @@ function registerIpc() {
   // Renderer reports whether a spectrogram is present, gating the Export item.
   ipcMain.handle('sg:spectrogram-state', (_event, present) => {
     hasSpectrogram = Boolean(present);
-    const item = Menu.getApplicationMenu()?.getMenuItemById('export-png');
-    if (item) item.enabled = hasSpectrogram;
+    updateFileMenuState();
     return true;
   });
 
@@ -316,6 +315,7 @@ function clearFolder() {
   currentFolderPath = '';
   currentFolderOptions = {};
   folderLoadSeq++;
+  updateFileMenuState();
   if (mainWindow && rendererReady) mainWindow.webContents.send('sg:folder-cleared');
 }
 
@@ -349,6 +349,7 @@ async function loadFolder(folderPath, { limit = Infinity, displayName, refreshed
     files.forEach((f) => allowedReadPaths.add(f.path));
     currentFolderPath = folderPath;
     currentFolderOptions = { limit, displayName };
+    updateFileMenuState();
     mainWindow.webContents.send('sg:folder-loaded', {
       folderPath,
       folderName: displayName || path.basename(folderPath),
@@ -467,6 +468,23 @@ function menuT(key) {
   return MENU_LABELS[uiLanguage]?.[key] ?? MENU_LABELS.en[key];
 }
 
+/** Keep Export and Start Over in step with what is currently on screen. */
+function updateFileMenuState() {
+  const menu = Menu.getApplicationMenu();
+  const exportItem = menu?.getMenuItemById('export-png');
+  if (exportItem) exportItem.enabled = hasSpectrogram;
+  const startOverItem = menu?.getMenuItemById('start-over');
+  if (startOverItem) startOverItem.enabled = hasSpectrogram || Boolean(currentFolderPath);
+}
+
+/** File > Start Over: drop the graph and/or the folder listing. The renderer resets. */
+function menuStartOver() {
+  hasSpectrogram = false;
+  clearFolder();
+  updateFileMenuState();
+  sendMenuAction('start-over');
+}
+
 function buildMenu() {
   // Test-only: print the menu in a chosen language (SPECTREGRAM_SMOKE_MENU).
   const smokeLang = process.env.SPECTREGRAM_SMOKE_MENU_LANG;
@@ -491,6 +509,12 @@ function buildMenu() {
           accelerator: process.platform === 'darwin' ? 'Cmd+S' : 'Ctrl+S',
           enabled: hasSpectrogram,
           click: menuExport,
+        },
+        {
+          id: 'start-over',
+          label: menuT('startOver'),
+          enabled: hasSpectrogram || Boolean(currentFolderPath),
+          click: menuStartOver,
         },
         { type: 'separator' },
         {
