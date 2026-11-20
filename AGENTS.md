@@ -1,4 +1,4 @@
-# AGENTS.md — SpectreGram
+﻿# AGENTS.md — SpectreGram
 
 Kiroween 2026 entry — **Resurrection**. Read this file first in every session on this project.
 
