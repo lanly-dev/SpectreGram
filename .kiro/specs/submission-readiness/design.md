@@ -30,11 +30,12 @@ for the uncommitted `estimateCutoff` final-run fix + its 2 regression
 tests. The committed `cutoff.ts` already contains a post-loop flush
 assigning `bestLen`/`bestEnd` — diff carefully; land only what adds value
 (at minimum the tests, if they cover behavior the committed tests miss),
-as its own commit. Calibration: one real CD-ripped FLAC (known genuine)
-and one real MP3→FLAC transcode of the same track if available, else two
-different tracks. Run both through the app, record the measured cutoffs
-in the status section. Thresholds change ONLY if the pair misclassifies,
-and any change ships with Vitest cases encoding the measured evidence.
+as its own commit. Calibration: record any available genuine/lossy pair and
+the five real lossy measurements already made. Thresholds are heuristic
+estimates, tested with synthetic fixtures and several real lossy files;
+broader calibration against a labeled genuine/lossy corpus remains future
+work, and ambiguous results stay inconclusive. Change thresholds only on a
+misclassification.
 
 **R5 (Drafts).** All drafts live in `docs/submission/` (tracked, so the
 trail shows them). The Kiro write-up is assembled from evidence — `git

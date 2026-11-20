@@ -17,8 +17,9 @@ Everything runs on your machine. No uploads, no accounts, no network.
 
 - **Windows (x64):** `SpectreGram Setup 1.0.0.exe` — per-user install, no
   admin rights needed.
-- **No install:** the web demo runs the same code in a browser —
-  WEB_DEMO_URL (fill in once the GitHub Pages deploy is live).
+- **Desktop-only distribution:** the Windows installer is the shipped access
+  path; the Vite renderer is bundled inside Electron. No hosted web deployment
+  or browser demo is provided.
 - macOS and Linux installers are configured (`npm run dist` on those
   platforms) but not built for this release.
 
@@ -45,6 +46,10 @@ Only do this for a file you downloaded from this repository's Releases page.
 - The verdict can be fooled: genuinely band-limited recordings, quiet
   masters, or resampled files can read as suspicious. Treat it as an
   estimate.
+- The cutoff thresholds are heuristic estimates, tested with synthetic fixtures
+  and several real lossy files. Broader calibration against a labeled
+  genuine/lossy corpus remains future work, and ambiguous results stay
+  inconclusive.
 - Supported formats are whatever Chromium's decoder handles; there is no
   FFmpeg.
 

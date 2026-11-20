@@ -33,11 +33,14 @@ One task = one commit, message suffix `(submission-readiness task N)`.
    attached and notes (what it is, the desktop-only distribution path,
    unsigned first-run notes, and no hosted demo URL).
    macOS DMG too if a Mac is at hand; otherwise record the gap.
-5. **Real-file calibration.** Run one real genuine FLAC and one real
-   MP3→FLAC transcode through the app; record both measured cutoffs in
-   the status section. Change thresholds ONLY on a misclassification,
-   with Vitest cases encoding the evidence. Update `AGENTS.md` open
-   decision #3 with the outcome.
+5. **Real-file calibration.** Record the available real lossy measurements and,
+   if a labeled genuine/lossy pair is available, run it through the app and
+   record the cutoffs. Do not fabricate a genuine measurement when no labeled
+   genuine file is available. Thresholds change ONLY on a demonstrated
+   misclassification, with Vitest cases encoding the evidence. The thresholds
+   are heuristic estimates, tested with synthetic fixtures and several real
+   lossy files; broader calibration against a labeled genuine/lossy corpus
+   remains future work, and ambiguous results stay inconclusive.
 6. **Submission drafts.** Create `docs/submission/` with:
    `devpost-description.md` (features, Resurrection framing, clean-room
    note, honest mixed-tooling disclosure), `kiro-writeup.md` (from
@@ -47,10 +50,9 @@ One task = one commit, message suffix `(submission-readiness task N)`.
    ready, mentions the Kiroween 2026 hackathon), `social-post.md`
    (**starts with** `#KiroweenHackathon26`). Drafts only — no posting.
 7. **Final compliance sweep.** Walk every hard item in the `AGENTS.md`
-   compliance section against the repo, the live demo, the release, and
-   the drafts. Record the checklist in the status section; anything left
-   unchecked is either fixed here or listed as a named maintainer action
-   in `AGENTS.md`'s packaging checklist. Close with a build-log entry:
+   compliance section against the repository, desktop package, and release
+   artifacts. Do not expect or fabricate a live demo URL; record any remaining
+   maintainer action in the status section. Close with a build-log entry:
    "ready to submit" + the maintainer's remaining clicks, enumerated.
 
 Out of scope for every task above: new features, format expansion,
@@ -82,6 +84,7 @@ behalf, any change to `cutoff.ts` beyond tasks 1 and 5.
   | `fripSide_-_absolute_wish_(mp3.pm).mp3` | 307 kbps MP3 | 21.2 kHz | 0.88 | inconclusive |
   | `Camelia.m4a` | 259 kbps AAC | 21.0 kHz | 0.88 | inconclusive |
 
-  No lossy file was called "genuine lossless", so there is no misclassification and thresholds are unchanged (no `cutoff.ts` edit). **Finding (stop-and-report):** `decode.ts` creates a default `AudioContext`, and `decodeAudioData` resamples to the device rate (48 kHz here). So the facts panel shows the device's rate, not the file's, and a genuine 44.1 kHz FLAC is measured against a 24 kHz Nyquist, capping its best ratio at 22.05/24 ≈ 0.919, just above `LOSSLESS_HIGH_RATIO` 0.90. Genuine CD rips may therefore read "inconclusive" on 48 kHz devices. Untested without a genuine file. **Remaining, needs the maintainer:** a real genuine FLAC (ideally a CD rip, plus an MP3→FLAC transcode of the same track), and a decision on whether to address the resampling (out of this task's `cutoff.ts`-only scope).
-- ⏳ **6** — not started. (`docs/submission/` does not exist yet.)
+  No lossy file was called "genuine lossless", so there is no misclassification and thresholds are unchanged (no `cutoff.ts` edit). The thresholds are heuristic estimates, tested with synthetic fixtures and several real lossy files; broader calibration against a labeled genuine/lossy corpus remains future work, and ambiguous results stay inconclusive. **Finding (stop-and-report):** `decode.ts` creates a default `AudioContext`, and `decodeAudioData` resamples to the device rate (48 kHz here). So the facts panel shows the device's rate, not the file's, and a genuine 44.1 kHz FLAC is measured against a 24 kHz Nyquist, capping its best ratio at 22.05/24 ≈ 0.919, just above `LOSSLESS_HIGH_RATIO` 0.90. Genuine CD rips may therefore read "inconclusive" on 48 kHz devices. Untested without a genuine file. **Remaining, needs the maintainer:** a real genuine FLAC (ideally a CD rip, plus an MP3→FLAC transcode of the same track), and a decision on whether to address the resampling (out of this task's `cutoff.ts`-only scope).
+- ⏳ **6** — not started. The required five submission drafts are not created;
+  the separate `release-notes-v1.0.0.md` draft exists.
 - ⏳ **7** — not started.

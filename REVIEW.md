@@ -35,7 +35,7 @@ SpectreGram is a **Kiroween 2026 Resurrection** entry — a clean-room MIT reimp
 | **Dependencies pinned** | ✅ Pass | Exact versions in package.json, no lockfile |
 | **No GPL contamination** | ✅ Pass | Clean-room only, steering enforces it, no Spek code |
 | **Desktop app installs** | ⏳ Pending | Task 4 — Windows NSIS built locally, not yet released |
-| **Web demo live** | ⏳ Pending | Task 3 — workflow ready, Pages not yet enabled |
+| **Hosted web deployment** | ✅ Not shipped | Desktop-only decision documented; no Pages workflow or live URL |
 
 ### ✅ Privacy & Hygiene
 
@@ -205,19 +205,17 @@ From `.kiro/specs/submission-readiness/tasks.md`:
 | 0 | Precondition (read AGENTS.md) | ✅ Done | — |
 | 1 | B1 resolution | ✅ Done | Already committed in `1fb2f9a` |
 | 2 | Merge PR #1 (halloween-flair) | ✅ Done | Already merged @ `8e6b87e` |
-| 3 | Web demo live (GitHub Pages) | ⏳ Partial | **Needs: Pages enabled, then verify live URL** |
+| 3 | Desktop-only distribution | ✅ Done | Pages workflow removed; no hosted URL claimed |
 | 4 | Windows installer + Release | ⏳ Partial | **ON HOLD per maintainer** — installer built, not released |
 | 5 | Real-file calibration | ⏳ Partial | **Needs: genuine FLAC file** for measurement |
-| 6 | Submission drafts | ⏳ Not started | **Needs: docs/submission/ directory** |
+| 6 | Submission drafts | ⏳ Not started | **Needs: five required drafts under `docs/submission/`** |
 | 7 | Final compliance sweep | ⏳ Not started | Depends on tasks 3-6 |
 
 **Remaining maintainer actions:**
-1. Enable GitHub Pages (Settings → Pages → Source = Actions)
-2. Verify live demo URL, add to README
-3. Decide: lift Release hold → create v1.0.0 with installer
-4. Provide genuine FLAC for calibration (or document resampling caveat)
-5. Review + approve submission drafts (task 6)
-6. Execute final clicks: Devpost submit, blog/social posts
+1. Lift the Release hold and create v1.0.0 with the Windows installer
+2. Provide or label the missing genuine/lossy calibration corpus as future work
+3. Review + approve submission drafts (task 6)
+4. Execute final clicks: Devpost submit, blog/social posts
 
 ---
 
@@ -228,9 +226,9 @@ From `.kiro/specs/submission-readiness/tasks.md`:
 1. ~~Name final?~~ ✅ DECIDED: SpectreGram
 2. ~~Stack?~~ ✅ DECIDED: Vanilla TS + Vite
 3. **Verdict strictness / calibration** — ⏳ PARTIAL  
-   Thresholds unchanged after 5 lossy files (no misclassification).  
+   Thresholds unchanged after five real lossy files and synthetic fixtures (no misclassification).
    **Finding:** Device resamples to 48 kHz → genuine 44.1 kHz FLAC reads against 24 kHz Nyquist, may show "inconclusive".  
-   **Needs:** Real genuine FLAC measurement + decision on resampling.
+   **Future work:** Thresholds are heuristic estimates, tested with synthetic fixtures and several real lossy files; broader calibration against a labeled genuine/lossy corpus remains future work, and ambiguous results stay inconclusive.
 4. ~~Go/no-go?~~ ✅ DONE
 5. ~~B1 blocker?~~ ✅ RESOLVED
 6. ~~Halloween flair?~~ ✅ DONE (PR #1)
@@ -298,7 +296,7 @@ From `.kiro/specs/submission-readiness/tasks.md`:
 - Solves real problem: detecting fake lossless files
 - Novel automated verdict (Spek required manual graph reading)
 - Privacy-preserving (local analysis, no uploads)
-- Cross-platform (Windows/macOS/Linux + web demo)
+- Cross-platform (Windows/macOS/Linux installers configured)
 
 **Limitation:** Niche audience (audiophiles, archivists) vs mass-market appeal.
 
@@ -352,7 +350,8 @@ From `.kiro/specs/submission-readiness/tasks.md`:
 
 ### Before Submission (Priority Order)
 
-1. **Enable GitHub Pages** → verify live demo → add URL to README (task 3)
+1. **Documented desktop-only distribution** — task 3 is complete; no hosted URL
+   or Pages action remains.
 2. **Create docs/submission/ directory** with all 5 required drafts (task 6):
    - devpost-description.md (features, Resurrection framing, mixed-tooling disclosure)
    - kiro-writeup.md (spec-first evidence, differs from vibe coding)
@@ -360,7 +359,10 @@ From `.kiro/specs/submission-readiness/tasks.md`:
    - blog-post.md (mentions Kiroween 2026 hackathon)
    - social-post.md (starts with #KiroweenHackathon26)
 3. **Maintainer: decide on Release** — lift hold, create v1.0.0, attach installer
-4. **Calibration caveat** — if no genuine FLAC available, document the resampling finding in task 5 and in the Devpost description as a known limitation
+4. **Calibration caveat** — thresholds are heuristic estimates tested with
+   synthetic fixtures and several real lossy files. Broader calibration against
+   a labeled genuine/lossy corpus remains future work; ambiguous results stay
+   inconclusive.
 5. **Final compliance sweep** (task 7) — walk every hard requirement, record checklist
 
 ### Post-Submission Improvements (Out of Scope for V1)
@@ -378,7 +380,8 @@ From `.kiro/specs/submission-readiness/tasks.md`:
 
 **SpectreGram is feature-complete, well-documented, and compliant with Kiroween hard requirements.** The spec-first discipline is genuine and traceable. Mixed tooling (Kiro specs + maintainer polish) is honestly disclosed.
 
-**Ready for submission** once remaining tasks 3-7 complete (primarily drafts + Pages URL + maintainer's final clicks).
+**Ready for submission** once remaining tasks 4-7 complete (primarily the
+release, drafts, calibration caveat, and the maintainer's final clicks).
 
 **Strengths:**
 - Clean-room execution (no GPL contamination)

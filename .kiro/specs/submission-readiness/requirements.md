@@ -45,9 +45,12 @@ work, Devpost submit, and post publishing).
   gap is recorded, not hidden. Release notes describe the desktop-only
   product and do not advertise a hosted demo.
 - **R4 — Detector honesty.** B1 is resolved (landed with its tests, or
-  closed with evidence it duplicates committed behavior) and the cutoff
-  thresholds are checked against at least one real genuine/lossy pair,
-  with the measured values recorded.
+  closed with evidence it duplicates committed behavior). The shipped
+  thresholds are heuristic estimates, tested with synthetic fixtures and
+  several real lossy files. Broader calibration against a labeled
+  genuine/lossy corpus remains future work; ambiguous results stay
+  inconclusive. Any available genuine/lossy pair is recorded, and thresholds
+  change only on a demonstrated misclassification.
 - **R5 — Submission package (drafts).** Under `docs/submission/`:
   Devpost description, Kiro-usage write-up, demo-video script/shot list
   (<3 min), blog post draft, social post draft — each satisfying the
