@@ -5,8 +5,7 @@
 > product context Kiro sessions always need.
 
 ## What it is
-SpectreGram is a desktop acoustic spectrum analyser (Electron) — the same
-build also runs in the browser as a demo — a clean-room reimagining of
+SpectreGram is a desktop acoustic spectrum analyser (Electron) — a clean-room reimagining of
 Spek (https://github.com/alexkay/spek). Drop an audio file in and it renders
 the full-track spectrogram, estimates the true frequency cutoff, and gives a
 verdict: is this file what it claims to be, or a low-bitrate file in a
@@ -16,15 +15,14 @@ folders for a collector rating, or hide spectral messages in your audio.
 ## The pitch (Kiroween "Resurrection")
 The dead tech is file-era audio inspection (Spek and its kin). Today's
 innovations: a real desktop app like the original (files never leave the
-machine; the web build is a no-install demo of the same code), an
-automated verdict instead of reading the graph by eye, a spectrogram
-rendered as a haunted visual centerpiece rather than a grey utility plot,
-interactive exploration (time zoom, ruler seek, playback), folder scanning
-with collector ratings, and spectral message embedding.
+machine), with an automated verdict instead of reading the graph by eye, a
+spectrogram rendered as a haunted visual centerpiece rather than a grey utility
+plot, interactive exploration (time zoom, ruler seek, playback), folder
+scanning with collector ratings, and spectral message embedding.
 
 ## Scope (v1)
 - Drag-and-drop or pick an audio file (mp3 / flac / wav / ogg / m4a / opus /
-  aac / wma as the browser can decode).
+  aac / wma supported by Electron's Chromium decoder).
 - Decode with Web Audio (`decodeAudioData`); show file facts: format,
   duration, sample rate, channels.
 - STFT in a Web Worker (fft.js); render the full-track spectrogram on Canvas
@@ -57,8 +55,8 @@ with collector ratings, and spectral message embedding.
 ## Acceptance checks
 - A genuine lossless file and a 128k-MP3-disguised-as-FLAC render visibly
   different spectrograms, and verdicts differ. ✓ (Vitest, real files)
-- A 60-second track renders its full spectrogram without freezing the tab
-  unacceptably (progress shown if slow). ✓ (worker + progress)
+- A 60-second track renders its full spectrogram without freezing the desktop
+  app unacceptably (progress shown if slow). ✓ (worker + progress)
 - PNG export opens and matches what was on screen. ✓ (canvas toBlob)
 - Verdict text says "estimate" (or equivalent) everywhere it appears. ✓
   (Vitest invariant test)

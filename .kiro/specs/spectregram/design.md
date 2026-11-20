@@ -38,7 +38,8 @@ Everything else maps 1:1 to the locked file list.
 Vite + TypeScript (strict, no `any` in analysis/cutoff/render paths) · Canvas
 2D (`ImageData` + palette color lookup tables) · Web Audio `decodeAudioData`
 (no FFmpeg.wasm) · `fft.js` (MIT, no hand-rolled FFT) · STFT in a module Web
-Worker (Vite worker syntax) · Vitest (covers `cutoff.ts` only) · static hosting.
+Worker (Vite worker syntax) · Vitest (covers `cutoff.ts` only). The Vite
+renderer is packaged inside Electron; there is no hosted web deployment.
 Dependency versions are pinned exactly (no open ranges).
 
 ## Locked file structure (1:1 with tasks)
@@ -342,8 +343,9 @@ is an explicit invariant owned by "there is no networking code in the repo"
   button floating; reduced motion turns both off.
 - **Hovering or focusing** the ghost swaps the caption from “Drop a file… if
   you dare” to “Or click for a file… double-click for a folder of souls” in
-  the accent colour; leaving/blurring restores the idle copy. The web build
-  has no `chooseFolder`, so its hover copy ends at “Or click for a file…”.
+  the accent colour; leaving/blurring restores the idle copy. Without the
+  Electron bridge during renderer-only development, the hover copy ends at
+  “Or click for a file…”.
 - **Click** the ghost opens the hidden `#file-input` picker after a 300 ms
   hold, so the first click of a double-click cannot open two dialogs.
   Keyboard activation (`detail === 0`) opens it immediately.
@@ -376,7 +378,7 @@ is an explicit invariant owned by "there is no networking code in the repo"
 | Operation | Failure condition | Recoverable? | Caller receives | Logged where |
 |---|---|---|---|---|
 | `file.arrayBuffer()` | read error (rare) | recoverable (user retries) | `decodeFile` → `DecodeResult.ok=false` ("Could not read file.") | `main.ts` `console.warn` |
-| `decodeAudioData` | unsupported codec / corrupt / empty | recoverable | `DecodeResult.ok=false` ("Could not decode… browser may not support this format.") | `main.ts` `console.warn` |
+| `decodeAudioData` | unsupported codec / corrupt / empty | recoverable | `DecodeResult.ok=false` ("Could not decode… Electron's Chromium engine may not support this format.") | `main.ts` `console.warn` |
 | `computeStft` | `fftSize` not power of two | fatal (programmer error) | throws `RangeError` | `stft.ts` throws; worker catches → `error` msg |
 | `computeStft` | `samples.length < N` | recoverable | empty grid (`frames=0`) | not logged (expected edge) |
 | worker `onmessage` | any thrown error | recoverable (retry new file) | `{ type:'error', message }` | `main.ts` `console.error`, terminate worker |

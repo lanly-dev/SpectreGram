@@ -15,7 +15,9 @@ render, cutoff estimate, verdict, PNG export. The foundation spec.
 **Desktop app shell** — Electron window, `app://` protocol, preload bridge,
 native save dialogs, open-with file routing, single-instance lock.
 
-**Status:** ✓ Implemented 2026-11-06, verified headless on Linux.
+**Status:** ✓ Implemented 2026-11-06, verified headless on Linux. The
+Vite output is packaged into Electron; no hosted web deployment is part of
+the product.
 
 ### 3. [folder-report/](folder-report/)
 **Folder scanning & collector rating** — recursive audio file listing, worker
@@ -44,10 +46,11 @@ navigation, Space bar shortcut.
 
 ### 6. [submission-readiness/](submission-readiness/)
 **Submission package preparation** — B1 blocker resolution verification,
-GitHub Pages deploy, GitHub Release with installers, docs/submission drafts,
-final compliance sweep. Agent-delegated work under work-trail rules.
+desktop-only product documentation, GitHub Release with installers,
+docs/submission drafts, and final compliance sweep. Agent-delegated work
+under work-trail rules.
 
-**Status:** Partial (task 1 = B1 resolved; tasks 2+ not started per
+**Status:** Partial (tasks 1–3 complete; tasks 4+ remain per
 `tasks.md` status section).
 
 ## Features implemented without dedicated specs
@@ -96,6 +99,6 @@ pipeline, shell, and major features each have full three-doc specs.
 ## Status snapshot (2026-11-18)
 
 V1 feature-complete. Core + 5 major feature specs implemented and shipped.
-Build + Vitest green. Desktop installers configured (unsigned). Web demo
-build verified. Submission package preparation in progress (`.kiro/specs/
-submission-readiness/`).
+Build + Vitest green. Desktop installers configured (unsigned). Hosted web
+deployment intentionally removed. Submission package preparation in progress
+(`.kiro/specs/submission-readiness/`).

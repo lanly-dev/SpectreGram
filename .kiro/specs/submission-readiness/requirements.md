@@ -9,12 +9,14 @@ authority for everything below) and `/.kiro/steering/work-trail.md`
 
 ### Goal
 
-Take SpectreGram from **built** to **submittable**: the app is feature-
-complete on `main`, but as of 2026-11-16 there is no working app URL, no
-GitHub Release, an unmerged flair PR, two unverified engineering loose
-ends, and no submission package. Deadline: **Fri Dec 4, 2026, 2:00 PM PT**
-(Kiroween submission close). After this spec, the only remaining actions
-should be the maintainer's own clicks (Devpost submit, post publishing).
+Take SpectreGram from **built** to **submittable** as a desktop-only app:
+the Electron app is feature-complete on `main`, but as of 2026-11-16 there
+is no GitHub Release, an unmerged flair PR, two unverified engineering loose
+ends, and no submission package. The Vite output is an internal renderer
+build consumed by Electron; there is no hosted web app. Deadline: **Fri Dec
+4, 2026, 2:00 PM PT** (Kiroween submission close). After this spec, the only
+remaining actions should be the maintainer's own clicks (release/account
+work, Devpost submit, and post publishing).
 
 ### Current state (verified 2026-11-16)
 
@@ -22,7 +24,9 @@ should be the maintainer's own clicks (Devpost submit, post publishing).
   screensaver, palettes, zoom — all shipped.
 - PR #1 (`feat/halloween-flair`: verdict stamps, Pumpkin palette, haunted
   empty state, ghost playhead, cobwebs, toast icons) is OPEN and unmerged.
-- GitHub Pages is not enabled (repo Pages endpoint 404) — no demo URL.
+- The previous Pages investigation found no enabled site and no live URL;
+  the hosted deployment path is now intentionally removed for the desktop-only
+  product decision.
 - Zero GitHub Releases; Windows/macOS installers configured, never built.
 - AGENTS.md open items: B1 (uncommitted `estimateCutoff` fix + regression
   tests in the maintainer's local tree) and real-file cutoff calibration.
@@ -31,13 +35,15 @@ should be the maintainer's own clicks (Devpost submit, post publishing).
 
 - **R1 — One codebase.** PR #1 is merged (or explicitly closed with a
   recorded reason) so the submitted app is exactly what `main` builds.
-- **R2 — Working app URL.** The web build is deployed and publicly
-  reachable; the URL loads the app and completes an analysis in a browser.
-  This is the judges' door (compliance: URL to the working app).
+- **R2 — Desktop-only product path.** The Electron app is the only shipped
+  product. `dist/` remains the internal Vite renderer build consumed by the
+  Electron shell; no GitHub Pages workflow, hosted web app, or live demo URL
+  is maintained.
 - **R3 — Release.** A GitHub Release carries the Windows installer built
   from `main`, verified by installing and running it (open a file, get a
-  verdict, offline). macOS DMG likewise if a Mac is available; if not,
-  the gap is recorded, not hidden.
+  verdict, offline). macOS DMG likewise if a Mac is available; if not, the
+  gap is recorded, not hidden. Release notes describe the desktop-only
+  product and do not advertise a hosted demo.
 - **R4 — Detector honesty.** B1 is resolved (landed with its tests, or
   closed with evidence it duplicates committed behavior) and the cutoff
   thresholds are checked against at least one real genuine/lossy pair,
@@ -52,9 +58,11 @@ should be the maintainer's own clicks (Devpost submit, post publishing).
 - **R6 — Trail.** Every task follows `/.kiro/steering/work-trail.md`:
   one commit per task, status section updated in the same commit, build
   log appended, nothing fabricated.
-- **R7 — Final sweep.** A line-by-line pass of the compliance section
-  against the repo and the package, recorded in the status section, so
-  the maintainer can submit with confidence before Dec 4.
+- **R7 — Final sweep.** A line-by-line pass of the compliance section of
+  `AGENTS.md` against the repo and the desktop package, including an explicit
+  check that no hosted deployment or fabricated live URL remains, recorded in
+  the status section, so the maintainer can submit with confidence before Dec
+  4.
 
 ### Non-goals
 

@@ -1,12 +1,14 @@
 # SpectreGram 👻
 
-A desktop acoustic spectrum analyser — with the same build also running
-in the browser as a no-install demo — a clean-room reimagining of
-[Spek](https://github.com/alexkay/spek) for the file-era audio inspector who
-refused to move on. Drop an audio file; get the full-track spectrogram, an
-estimate of the true frequency cutoff, and a verdict: is this file what it
-claims to be, or a 128k MP3 in a lossless costume? Zoom into time segments,
-scan folders, play tracks, or hide spectral messages in your audio.
+A desktop acoustic spectrum analyser built with Electron — a clean-room
+reimagining of [Spek](https://github.com/alexkay/spek) for the file-era audio
+inspector who refused to move on. Drop an audio file; get the full-track
+spectrogram, an estimate of the true frequency cutoff, and a verdict: is this
+file what it claims to be, or a 128k MP3 in a lossless costume? Zoom into time
+segments, scan folders, play tracks, or hide spectral messages in your audio.
+
+The Electron desktop app is the only shipped product. The Vite renderer build
+is packaged locally and is not deployed as a hosted web app.
 
 Built for **Kiroween 2026** — the *Resurrection* category.
 
@@ -18,7 +20,6 @@ justify. SpectreGram brings the idea back, reimagined:
 
 - **A real desktop app again** — Electron shell, open-with file routing,
   native save dialog. Your files never leave your machine.
-- **No-install demo.** The identical build also runs in the browser.
 - **An automated verdict**, not a graph you squint at.
 - **A haunted spectrogram** as the visual centerpiece, not a grey utility plot.
 - **Interactive exploration** — zoom into time segments with drag or Ctrl+wheel,

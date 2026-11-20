@@ -20,18 +20,18 @@ Every run script in `package.json`, and what each one is for:
 | Command | What it does |
 | --- | --- |
 | `npm run start` | Build first (`build`), then launch the Electron app on the production `app://` path — the real app, exactly as it ships packaged. No hot reload; restart to pick up changes. |
-| `npm run dev` | Desktop dev loop **with hot reload**: starts Vite and opens the Electron shell against it, so edits under `src/` hot-reload while you work. Changes to `electron/` still need a restart. Note: this is **not** the browser dev server (that's `web:dev`). |
+| `npm run dev` | Desktop dev loop **with hot reload**: starts Vite and opens the Electron shell against it, so edits under `src/` hot-reload while you work. Changes to `electron/` still need a restart. The optional browser renderer loop is `web:dev`, not a product target. |
 | `npm run build` | Typecheck (`tsc --noEmit`) + production build into `dist/`. Runs automatically as the first step of `start`, `dist`, and `pack`, so you rarely call it alone except to check a build. |
 | `npm run preview` | Alias for `dev` — the same hot-reload desktop dev loop. Despite the name, this is **not** `vite preview` (that's `web:preview`). |
 | `npm run dist` | Build, then package the installer for your OS into `release/` (Windows NSIS · macOS dmg · Linux AppImage). |
 | `npm run pack` | Build, then package into `release/` *without* an installer — just the unpacked app directory. For checking the packaged form runs before you make installers. |
-| `npm run web:dev` | Vite dev server in the browser (http://localhost:5173) — developing the web demo with hot reload, no Electron. |
-| `npm run web:preview` | Serve the production `dist/` build locally, to check the web demo exactly as it will ship. |
+| `npm run web:dev` | Optional Vite renderer diagnostics in a browser (http://localhost:5173) with hot reload; this is not a shipped app or deployment target. |
+| `npm run web:preview` | Serve the production `dist/` renderer locally for diagnostics; this is not a deployment step. |
 | `npm run test` | Run the Vitest suite once (`src/audio/cutoff.test.ts` — the cutoff/verdict tests). |
 | `npm run test:watch` | Vitest in watch mode — re-runs the suite as files change. |
 
-Rule of thumb: develop with `dev` (or `web:dev` for the demo), verify
-with `start`, package with `dist`.
+Rule of thumb: develop with `dev` (use `web:dev` only for optional renderer
+  diagnostics), verify with `start`, and package with `dist`.
 
 ## Dev loops and hot reload
 
@@ -43,9 +43,10 @@ Two loops have hot reload; the production path does not:
   dev server instead of `app://`. Edits under `src/` hot-reload in the
   window. Edits to `electron/main.js` or `electron/preload.cjs` do **not**
   reload — restart the command.
-- **`web:dev`** (web dev loop) — plain Vite in the browser, full HMR, no
-  Electron. The desktop bridge is absent here, so PNG export falls back to
-  a browser download and open-with does nothing, by design.
+- **`web:dev`** (optional renderer diagnostics) — plain Vite in a browser,
+  full HMR, no Electron. The desktop bridge is absent, so PNG export falls
+  back to a browser download and open-with does nothing. This loop is for
+  renderer debugging only; the shipped product is the Electron app.
 - **`start`** — no hot reload at all: a fresh production build,
   loaded over the custom `app://` protocol from `dist/`. This is the path
   the packaged app runs, so it's the one to verify in — a dev loop can
@@ -56,9 +57,8 @@ Two loops have hot reload; the production path does not:
 
 `npm run build` = `tsc --noEmit` (typecheck; any type error fails the
 build) followed by `vite build` into `dist/`. The STFT worker is emitted
-as its own chunk. Vite is configured with `base: './'` so the same
-`dist/` output loads from the desktop shell's `app://` protocol and from
-a GitHub Pages subpath alike. `dist/` is gitignored.
+`dist/` is gitignored. Vite's `base: './'` keeps the renderer assets relative
+so the Electron `app://` protocol can load them in the packaged app.
 
 ## Tests
 
@@ -71,8 +71,8 @@ run, `npm run test:watch` while tuning thresholds.
 The black start screen is also the intake. Its ghost is a hand-authored SVG
 button with two poses: idle, and a cheering wink while hovered or focused.
 Hovering also swaps the caption from “Drop a file… if you dare” to “Or click
-for a file… double-click for a folder of souls” (on the web, where there is
-no folder bridge, just “Or click for a file…”). **Click** opens the file
+for a file… double-click for a folder of souls” (when the Electron bridge is
+available; renderer-only diagnostics stop at “Or click for a file…”). **Click** opens the file
 picker after a 300 ms hold, so the first half of a double-click can't open two
 dialogs; **double-click** opens the folder picker (desktop). Keyboard
 activation opens the file picker immediately. Text on the start screen can't
@@ -304,8 +304,8 @@ when the track's cutoff is lower) and `BAND_LO_FLOOR` (0.15: the band won't
 dim below this share of Nyquist; it squeezes instead).
 **Output.** 16-bit PCM at the decoded sample rate (the device rate — see
 AGENTS.md #3), same length and channels as the decoded track, default name
-`<original>-haunted.wav`. Desktop: native save dialog. Web: browser
-download.
+`<original>-haunted.wav`. Desktop: native save dialog. The renderer-only
+fallback downloads it in a browser during optional renderer diagnostics.
 
 **Smoke test.** `SPECTREGRAM_SMOKE=1 SPECTREGRAM_SMOKE_FILE=<track>
 SPECTREGRAM_SMOKE_SAVE_DIR=<dir> SPECTREGRAM_SMOKE_MESSAGE="TRICK OR TREAT"
@@ -426,8 +426,8 @@ pinch and wheel notches both feel even).
   `#canvas-wrap`)
 
 **preventDefault fix:** Both Ctrl+wheel and plain wheel call `preventDefault()`
-so the browser's own page zoom never triggers (it used to in Electron and the
-web demo before this was added).
+so the browser's own page zoom never triggers in Electron or in the optional
+renderer diagnostics loop.
 
 ### Reset zoom
 Button (top-right of spectrogram) or Esc returns to the full track. The zoomed

@@ -20,7 +20,8 @@ idea, not the source.
 - **Rendering:** Canvas 2D (`ImageData` pixels, palette = color lookup table).
   No WebGL / Three.js.
 - **Decoding:** native Web Audio `decodeAudioData` only — no FFmpeg.wasm
-  (heavy, GPL drag). Supported formats = whatever the browser can decode.
+  (heavy, GPL drag). Supported formats are those Electron's Chromium engine
+  can decode.
 - **Analysis:** STFT in a Web Worker. Vite worker syntax:
   `new Worker(new URL('./audio/stft-worker.ts', import.meta.url), { type: 'module' })`.
   Required to pass the 60-second no-freeze check; post progress from the
@@ -29,10 +30,9 @@ idea, not the source.
   corrupts every verdict downstream.
 - **Tests:** Vitest, for `cutoff.ts` only — lock thresholds against the
   genuine-FLAC vs fake-FLAC test pair. No e2e suite in v1.
-- **Packaging:** Electron desktop app (installers via electron-builder);
-  the same web build is kept as a static demo (GitHub Pages). No server,
-  no Next.js. (Electron pivot DECIDED 2026-11-06 — supersedes the earlier
-  static-only lock; see `AGENTS.md`.)
+- **Packaging:** Electron desktop app and installers via electron-builder.
+  `dist/` is the internal Vite renderer output consumed by Electron. There
+  is no hosted web deployment or Pages workflow. No server, no Next.js.
 
 ## File structure (evolved from spec-first tasks)
 ```
@@ -60,7 +60,7 @@ electron/main.js         — Electron main process (ESM)
 electron/preload.cjs     — sandboxed preload (CommonJS, bridge to renderer)
 electron/icon.png        — app icon (512×512, for window/taskbar in unpackaged runs)
 build/icon.png           — installer icon (512×512, electron-builder)
-public/icon.png          — web favicon (256×256)
+public/icon.png          — renderer favicon asset used inside the packaged app
 public/screensaver.mp4   — idle screensaver video
 ```
 
@@ -78,8 +78,8 @@ Never write an absolute local path (e.g. `C:\Users\...`, `/home/...`,
 `/Users/...`) into any file that is tracked by git. This includes source
 code, docs, specs, steering files, review artifacts, and verification notes.
 
-- Use repo-relative paths (`src/audio/cutoff.ts`, `.kiro/specs/...`) or
-  path-agnostic references everywhere.
+- Use a repo-relative path (`src/audio/cutoff.ts`, `.kiro/specs/...`) or a
+  path-agnostic reference everywhere.
 - Agent task artifacts under `.agents/` are gitignored for this exact reason
   — do NOT `git add .agents/` or remove `.agents/` from `.gitignore`.
 - If a tool or script needs an absolute path at runtime, derive it

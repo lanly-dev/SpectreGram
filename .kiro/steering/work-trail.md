@@ -14,7 +14,7 @@
    commit (a task that produces no file change still gets its verification
    recorded — see 3 — but no empty commits). Commit message format:
    `type(scope): summary (submission-readiness task N)` — e.g.
-   `ci(pages): deploy web demo to GitHub Pages (submission-readiness task 3)`.
+   `docs(desktop): document the Electron-only product (submission-readiness task N)`.
 3. **Update the status section as you go.** When a task finishes, flip its
    line in the spec's `## Implementation status` from ⏳ to ✅ **in the same
    commit**, with the date and a one-line evidence note (what was run, what

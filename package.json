@@ -1,6 +1,6 @@
 {
     "name": "spectregram",
-    "description": "SpectreGram — acoustic spectrum analyser and lossy-disguise verdict (Kiroween 2026 Resurrection). Desktop app (Electron) + web demo, same code.",
+    "description": "SpectreGram — acoustic spectrum analyser and lossy-disguise verdict (Kiroween 2026 Resurrection). Desktop app (Electron), same renderer build packaged locally.",
     "private": true,
     "main": "electron/main.js",
     "build": {

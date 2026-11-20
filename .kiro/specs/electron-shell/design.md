@@ -30,12 +30,20 @@ Everything else is untouched. DevDeps added: `electron`, `electron-builder` (pin
 - Main handles `savePng` with `dialog.showSaveDialog` (PNG filter) + `fs.writeFile`. Cancel = resolve false, renderer stays silent (no error toast).
 - Renderer (`src/main.ts`) additive changes:
   1. Extract/confirm an `analyzeArrayBuffer(name, buffer)` entry point that the existing drop/pick handlers already effectively use; open-with calls the same entry point with `readFile(path)`. One analysis path, three doors (drop, pick, open-with).
-  2. PNG export: if `window.spectregramDesktop` exists → `savePng(...)`; else → current browser download. No other branching on desktop vs web anywhere.
-- Type the bridge in `src/types/` with an optional global declaration so `tsc --noEmit` stays green on the web build without Electron types leaking in.
+  2. PNG export: if `window.spectregramDesktop` exists → `savePng(...)`;
+     otherwise use the renderer-only browser download fallback for local
+     development. No other branching on desktop vs fallback is needed.
+- Type the bridge in `src/types/` with an optional global declaration so
+  `tsc --noEmit` stays green when the renderer is exercised without Electron;
+  Electron types never leak into the renderer build.
 
 ### 2.4 Vite config
-- Set `base: './'` so built asset URLs are relative — required for the `app://` protocol mapping and it also keeps the GitHub Pages subpath deploy working. Re-run the web smoke check after this change (it touches every build).
-- Worker bundling stays as-is (locked `new URL(..., import.meta.url)` syntax); verify the worker chunk is emitted under `dist/assets/` and reachable via the protocol handler's path mapping (strip/allow subpaths, block path traversal outside dist).
+- Set `base: './'` so built asset URLs are relative, as required by the
+  Electron `app://` protocol mapping and packaged renderer build.
+  Worker bundling stays as-is (locked `new URL(..., import.meta.url)` syntax);
+  verify the worker chunk is emitted under `dist/assets/` and reachable via
+  the protocol handler's path mapping (strip/allow subpaths, block path
+  traversal outside dist).
 
 ### 2.5 Packaging (electron-builder, in package.json `build` key)
 - `appId`: `dev.lanly.spectregram` (adjust if a domain is preferred; do not block on this).
@@ -72,7 +80,7 @@ The renderer can ask for a folder without the menu: `chooseFolder()` in
 same native `dialog.showOpenDialog({ properties: ['openDirectory'] })` path
 as File ▸ Open Folder (shared `chooseFolder()` in `electron/main.js`) and
 loads the pick. It resolves `false` on cancel. The start screen's ghost
-double-click uses it; the web build has no bridge and hides the hint.
+double-click uses it; the renderer-only diagnostics path has no bridge and hides the hint.
 
 ## Amendment — themed Language card (2026-11-19)
 
