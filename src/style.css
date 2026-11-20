@@ -796,9 +796,11 @@ main.folder-open .controls {
 
 /* --- Halloween dressing ---------------------------------------------------- */
 
-/* Cobwebs in the spectrogram frame's top corners (pure decoration). */
-.spectrogram-box::before,
-.spectrogram-box::after {
+/* Cobwebs in the main panel's top corners (pure decoration), above the
+   folder panel (z-index 11) so an open audio list can't cover either corner.
+   They ride on <main>, not the spectrogram canvas. */
+main::before,
+main::after {
   content: '';
   position: absolute;
   top: 0;
@@ -807,16 +809,22 @@ main.folder-open .controls {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='white' stroke-opacity='0.13'%3E%3Cpath d='M0 0 L84 16 M0 0 L68 46 M0 0 L38 76 M0 0 L10 84'/%3E%3Cpath d='M14 82 Q18 52 42 34 M8 56 Q12 32 30 16 M3 30 Q6 14 16 5'/%3E%3C/g%3E%3C/svg%3E");
   background-repeat: no-repeat;
   pointer-events: none;
-  z-index: 1;
+  z-index: 12;
 }
 
-.spectrogram-box::before {
+main::before {
   left: 0;
 }
 
-.spectrogram-box::after {
+main::after {
   right: 0;
   transform: scaleX(-1);
+}
+
+/* With the folder panel open, keep the right web flush against its left edge
+   instead of over the audio list. */
+main.folder-open::after {
+  right: 200px;
 }
 
 /* Haunted empty state: blacks out the whole window until the first file is
