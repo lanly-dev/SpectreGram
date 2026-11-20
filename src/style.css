@@ -1789,6 +1789,54 @@ main.folder-open .controls {
   min-height: 0;
   overflow-y: auto;
   padding: 8px 18px 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 122, 61, 0.65) rgba(0, 0, 0, 0.2);
+}
+
+/* Themed scrollbar for the folder audio list, matching the guide card. These
+   rules come after the older transparent-scrollbar block, so they win. */
+.folder-list {
+  scrollbar-color: rgba(255, 122, 61, 0.65) rgba(0, 0, 0, 0.2);
+}
+
+.folder-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.folder-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+}
+
+.folder-list::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--accent), #9a86ff);
+  border: 2px solid var(--panel);
+  border-radius: 999px;
+}
+
+.folder-list::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* Themed scrollbar for the guide body (WebKit/Chromium), matching the card's
+   warm accent instead of the OS grey. */
+.guide-body::-webkit-scrollbar {
+  width: 10px;
+}
+
+.guide-body::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+}
+
+.guide-body::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--accent), #9a86ff);
+  border: 2px solid var(--panel);
+  border-radius: 999px;
+}
+
+.guide-body::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
 .guide-section {
