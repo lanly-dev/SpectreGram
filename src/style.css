@@ -825,6 +825,11 @@ main.folder-open .controls {
    drops still bubble to the window's drop handler. The progress line (20),
    toasts (30) and screensaver (100) stay above it; the folder panel is raised
    above it so a freshly opened folder's files can be picked. */
+.empty-state.folder-mode {
+  /* The folder panel keeps the right 200 px; center the prompt beside it. */
+  right: 200px;
+}
+
 .empty-state {
   position: fixed;
   inset: 0;
@@ -842,6 +847,15 @@ main.folder-open .controls {
 }
 
 .empty-state[hidden] {
+  display: none;
+}
+
+.empty-intake {
+  display: flex;
+  justify-content: center;
+}
+
+.empty-intake[hidden] {
   display: none;
 }
 
@@ -896,12 +910,39 @@ main.folder-open .controls {
   transform: scale(1.04) translateY(-4px);
 }
 
+/* Folder opened but no file picked yet: the list is on the right. */
+.empty-folder-pick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 112px;
+  height: 112px;
+}
+
+.empty-folder-pick[hidden] {
+  display: none;
+}
+
+.empty-folder-pick svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 8px 18px rgba(255, 122, 61, 0.22));
+}
+
+.empty-state.folder-mode .empty-text {
+  color: var(--text);
+}
+
 .empty-text {
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
   min-height: 3.1em;
   max-width: 500px;
+  margin: 0 auto;
   padding: 0 16px;
   color: var(--muted);
   font-size: 0.78rem;
@@ -910,6 +951,11 @@ main.folder-open .controls {
   text-align: center;
   text-transform: uppercase;
   transition: color 0.15s ease, text-shadow 0.15s ease;
+}
+
+.empty-text > span {
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
 
 .empty-text.hint {

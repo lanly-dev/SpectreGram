@@ -5,6 +5,7 @@ export const KO: Partial<Record<I18nKey, string>> = {
   emptyGhostHint: '클릭: 파일 열기 · 더블클릭: 폴더 열기',
   emptyClickHint: '또는 클릭하여 파일 선택…',
   emptyFolderHint: '또는 클릭하여 파일 선택… 더블클릭하면 영혼의 폴더가 열립니다',
+  emptyFolderPick: '폴더 목록에서 오디오 파일을 선택하세요 →',
   fileFacts: '파일 정보',
   spectrogram: '스펙트로그램',
   zoomReset: '확대를 전체 트랙으로 초기화',

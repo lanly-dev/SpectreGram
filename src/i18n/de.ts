@@ -5,6 +5,7 @@ export const DE: Partial<Record<I18nKey, string>> = {
   emptyGhostHint: 'Klick: Datei öffnen · Doppelklick: Ordner öffnen',
   emptyClickHint: 'Oder klicken, um eine Datei zu wählen…',
   emptyFolderHint: 'Oder klicken, um eine Datei zu wählen… Doppelklick öffnet einen Ordner voller Seelen',
+  emptyFolderPick: 'Bitte wähle eine Audiodatei aus der Ordnerliste →',
   fileFacts: 'Dateiinfos',
   spectrogram: 'Spektrogramm',
   zoomReset: 'Zoom auf die ganze Spur zurücksetzen',

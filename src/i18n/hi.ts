@@ -5,6 +5,7 @@ export const HI: Partial<Record<I18nKey, string>> = {
   emptyGhostHint: 'क्लिक: फ़ाइल खोलें · डबल-क्लिक: फ़ोल्डर खोलें',
   emptyClickHint: 'या फ़ाइल चुनने के लिए क्लिक करें…',
   emptyFolderHint: 'या फ़ाइल चुनने के लिए क्लिक करें… आत्माओं का फ़ोल्डर खोलने के लिए डबल-क्लिक करें',
+  emptyFolderPick: 'कृपया फ़ोल्डर सूची से एक ऑडियो फ़ाइल चुनें →',
   fileFacts: 'फ़ाइल जानकारी',
   spectrogram: 'स्पेक्ट्रोग्राम',
   zoomReset: 'ज़ूम को पूरे ट्रैक पर रीसेट करें',

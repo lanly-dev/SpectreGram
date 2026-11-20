@@ -5,6 +5,7 @@ export const AR: Partial<Record<I18nKey, string>> = {
   emptyGhostHint: 'نقرة: فتح ملف · نقرتان: فتح مجلد',
   emptyClickHint: 'أو انقر لاختيار ملف…',
   emptyFolderHint: 'أو انقر لاختيار ملف… وانقر نقرتين لفتح مجلد الأرواح',
+  emptyFolderPick: 'يرجى اختيار ملف صوتي من قائمة المجلد',
   fileFacts: 'بيانات الملف',
   spectrogram: 'مخطط الطيف',
   zoomReset: 'إعادة التكبير إلى المقطع كاملًا',

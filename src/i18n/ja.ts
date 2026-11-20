@@ -5,6 +5,7 @@ export const JA: Partial<Record<I18nKey, string>> = {
   emptyGhostHint: 'クリック：ファイルを開く · ダブルクリック：フォルダーを開く',
   emptyClickHint: 'またはクリックしてファイルを選ぶ…',
   emptyFolderHint: 'またはクリックしてファイルを選ぶ…ダブルクリックで魂のフォルダーを開く',
+  emptyFolderPick: 'フォルダー一覧から音声ファイルを選んでください →',
   fileFacts: 'ファイル情報',
   spectrogram: 'スペクトログラム',
   zoomReset: 'ズームを曲全体に戻す',

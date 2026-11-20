@@ -349,12 +349,20 @@ is an explicit invariant owned by "there is no networking code in the repo"
   Keyboard activation (`detail === 0`) opens it immediately.
 - **Double-click** cancels that hold and calls `chooseFolder()` on the
   desktop bridge. Dropping a file anywhere still works.
+- When a folder is open and no file has been picked, `onFolderLoaded` puts
+  the empty state in folder mode (`setEmptyStateFolderMode(true)`): the ghost
+  intake is hidden, a folder illustration takes its place, and the caption
+  becomes `emptyFolderPick` (“Please select an audio file from the folder
+  list →”). The folder panel stays above the overlay on the right, and
+  folder mode sets the overlay's `right` to the panel's 200 px so the art and
+  prompt center in the visible area; the prompt is a wrapping span. Clearing
+  the folder restores the normal intake.
 - Every start-screen string follows the language picker: `dropHint` for the
-  idle caption, `emptyGhostHint` for the ghost's `aria-label`/`title`, and
+  idle caption, `emptyGhostHint` for the ghost's `aria-label`/`title`,
   `emptyClickHint` / `emptyFolderHint` for the hover copy (the folder variant
-  only when the bridge exists). `applyInterfaceLanguage()` calls
-  `refreshEmptyStateText()` after `translateDom()`, so a language change
-  updates the caption even mid-hover.
+  only when the bridge exists), and `emptyFolderPick` for folder mode.
+  `applyInterfaceLanguage()` calls `refreshEmptyStateText()` after
+  `translateDom()`, so a language change updates the caption even mid-hover.
 
 ## Error handling (concrete, per operation)
 

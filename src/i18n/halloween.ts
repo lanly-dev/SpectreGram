@@ -5,6 +5,7 @@ export const HALLOWEEN: Partial<Record<I18nKey, string>> = {
   emptyGhostHint: 'Click: summon a file · Double-click: open a folder',
   emptyClickHint: 'Or click to summon a file…',
   emptyFolderHint: 'Or click to summon a file… double-click for a folder of souls',
+  emptyFolderPick: 'Pick an audio soul from the folder list →',
   fileFacts: 'Tome of the file',
   spectrogram: 'Spectrogram',
   zoomReset: 'Return the gaze to the whole track',

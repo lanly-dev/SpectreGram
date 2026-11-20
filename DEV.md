@@ -78,10 +78,14 @@ dialogs; **double-click** opens the folder picker (desktop). Keyboard
 activation opens the file picker immediately. Text on the start screen can't
 be selected. The hidden `#file-input` is what the renderer's change handler
 reads, and dropping a file anywhere still works. `chooseFolder()` in the
-bridge opens the same native directory dialog as File ▸ Open Folder. All of
-the start-screen copy (`dropHint` and the three empty-state keys) follows the
-language picker, including while the hover hint is showing; the ghost's
-`aria-label`/`title` translate too.
+bridge opens the same native directory dialog as File ▸ Open Folder. When a
+folder is open with no file picked, the intake gives way to a folder illustration and `emptyFolderPick` (“Please select an audio file from the
+folder list →”), with the folder panel still open on the right. Folder mode
+shrinks the overlay by the panel's 200 px, so the art and prompt center in the
+visible area instead of sliding under the panel; the prompt wraps if needed.
+Clearing the folder restores the normal intake. All start-screen copy (`dropHint` and the
+four empty-state keys) follows the language picker, including while the hover
+hint is showing; the ghost's `aria-label`/`title` translate too.
 
 ## Recent-file cache
 

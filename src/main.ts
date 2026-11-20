@@ -737,18 +737,36 @@ function setupWindowDrop(): void {
 }
 
 let emptyStateHinting = false;
+let emptyStateFolderMode = false;
 
 /** Start-screen copy in the current language (hover shows the click hints). */
 function refreshEmptyStateText(): void {
   const ghost = el<HTMLButtonElement>('empty-ghost');
   const text = $('empty-text');
-  if (!text) return;
+  const copy = $('empty-text-inner');
+  if (!text || !copy) return;
   const folder = Boolean(window.spectregramDesktop?.chooseFolder);
-  text.textContent = emptyStateHinting
-    ? t(folder ? 'emptyFolderHint' : 'emptyClickHint')
-    : t('dropHint');
-  text.classList.toggle('hint', emptyStateHinting);
-  ghost?.classList.toggle('hinting', emptyStateHinting);
+  const hinting = emptyStateHinting && !emptyStateFolderMode;
+  copy.textContent = emptyStateFolderMode
+    ? t('emptyFolderPick')
+    : hinting
+      ? t(folder ? 'emptyFolderHint' : 'emptyClickHint')
+      : t('dropHint');
+  text.classList.toggle('hint', hinting);
+  ghost?.classList.toggle('hinting', hinting);
+}
+
+/** A folder is open with no file picked: swap the intake for a list prompt. */
+function setEmptyStateFolderMode(on: boolean): void {
+  emptyStateFolderMode = on;
+  if (on) emptyStateHinting = false;
+  const empty = $('empty-state');
+  empty?.classList.toggle('folder-mode', on);
+  const intake = $('empty-intake');
+  if (intake) intake.hidden = on;
+  const pick = $('empty-folder-pick');
+  if (pick) pick.hidden = !on;
+  refreshEmptyStateText();
 }
 
 /**
@@ -1337,6 +1355,7 @@ function clearFolderPanel(): void {
     refreshBtn.classList.remove('spinning');
   }
   if (scanBtn) scanBtn.disabled = false;
+  setEmptyStateFolderMode(false);
   if (panel) panel.hidden = true;
   el<HTMLElement>('spectrogram-box')?.classList.remove('folder-open');
   document.querySelector('main')?.classList.remove('folder-open');
@@ -1428,6 +1447,7 @@ function setupFolderPanel(): void {
 
   desktop.onFolderLoaded(({ folderName, files, truncated, refreshed }) => {
     setFolderLoading(false);
+    setEmptyStateFolderMode(true);
     onFolderForScan(folderName, files);
     nameNode.textContent = folderName;
     nameNode.title = folderName;

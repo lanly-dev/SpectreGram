@@ -5,6 +5,7 @@ export const ES: Partial<Record<I18nKey, string>> = {
   emptyGhostHint: 'Clic: abrir un archivo · Doble clic: abrir una carpeta',
   emptyClickHint: 'O haz clic para elegir un archivo…',
   emptyFolderHint: 'O haz clic para elegir un archivo… doble clic para abrir una carpeta de almas',
+  emptyFolderPick: 'Selecciona un archivo de audio de la lista de la carpeta →',
   fileFacts: 'Datos del archivo',
   spectrogram: 'Espectrograma',
   zoomReset: 'Restablecer el zoom a la pista completa',

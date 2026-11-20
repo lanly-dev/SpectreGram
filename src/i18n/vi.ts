@@ -5,6 +5,7 @@ export const VI: Partial<Record<I18nKey, string>> = {
   emptyGhostHint: 'Nhấp: mở tệp · Nhấp đúp: mở thư mục',
   emptyClickHint: 'Hoặc nhấp để chọn một tệp…',
   emptyFolderHint: 'Hoặc nhấp để chọn một tệp… nhấp đúp để mở thư mục của những linh hồn',
+  emptyFolderPick: 'Vui lòng chọn một tệp âm thanh từ danh sách trong thư mục →',
   fileFacts: 'Thông tin tệp',
   spectrogram: 'Phổ đồ',
   zoomReset: 'Đặt lại thu phóng về toàn bộ bản nhạc',
