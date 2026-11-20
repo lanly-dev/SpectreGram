@@ -114,7 +114,7 @@ Functional and feature-complete for v1. Core features implemented and verified:
 - Advanced export panel (current view, whole track compressed or stacked, with decorations)
 - Recent-file cache, idle screensaver, Halloween UI polish
 
-Verified on Windows, Linux (headless), and macOS. Build + Vitest green.
+Windows is built and tested locally. Linux and macOS builds come from GitHub Actions and have not been launched by the maintainer. Build + Vitest green.
 Installers are unsigned (SmartScreen/Gatekeeper warnings expected on first launch).
 
 See `AGENTS.md` for the full build log, open decisions, and acceptance status.

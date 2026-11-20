@@ -1,7 +1,7 @@
-# SpectreGram v1.0.0 — release notes (DRAFT)
+# SpectreGram 1.0.0 — release notes (DRAFT)
 
 > Draft for the maintainer to paste into the GitHub Release form. Attach:
-> `release/SpectreGram Setup 1.0.0.exe` (built with `npm run dist` on Windows).
+> the files the `Release desktop builds` workflow produces for tag `1.0.0`.
 
 **SpectreGram** is a desktop acoustic spectrum analyser for local audio files —
 a clean-room revival of the idea behind Spek, built for the Kiroween 2026
@@ -15,18 +15,16 @@ Everything runs on your machine. No uploads, no accounts, no network.
 
 ## Download
 
-- **Windows (x64):** `SpectreGram Setup 1.0.0.exe` — per-user install, no
-  admin rights needed.
-- **Desktop-only distribution:** the Windows installer is the shipped access
-  path; the Vite renderer is bundled inside Electron. No hosted web deployment
-  or browser demo is provided.
-- macOS and Linux installers are configured (`npm run dist` on those
-  platforms) but not built for this release.
+- **Windows (x64):** `SpectreGram Setup 1.0.0.exe` (installer) or `SpectreGram-Portable-1.0.0.exe` (no install).
+- **Linux:** the `.AppImage`.
+- **macOS:** the `.dmg`.
+- Desktop only: the renderer is bundled inside Electron. There is no hosted web demo.
+- The Linux and macOS builds come from GitHub Actions and have not been launched by the maintainer.
 
 ## First run: the app is unsigned
 
-The installer is not code-signed, so Windows SmartScreen may show
-"Windows protected your PC". Click **More info → Run anyway** to install.
+No build is code-signed. Windows SmartScreen may show
+"Windows protected your PC". On macOS, right-click the app and choose Open. On Windows, click **More info → Run anyway** to install.
 Only do this for a file you downloaded from this repository's Releases page.
 
 ## What it does
