@@ -32,6 +32,8 @@ export interface SpectreGramDesktop {
   onFolderLoading(callback: (data: FolderLoading) => void): () => void;
   /** Report whether a spectrogram is present (gates Export in the menu). */
   reportSpectrogramState(present: boolean): Promise<boolean>;
+  /** Help > How to Use: show the styled in-app guide. Returns an unsubscribe. */
+  onShowGuide(callback: () => void): () => void;
   /** Help > About: show the styled in-app About card. Returns an unsubscribe. */
   onShowAbout(callback: () => void): () => void;
   /** Help > Language: show the styled in-app language card. Returns an unsubscribe. */

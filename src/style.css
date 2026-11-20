@@ -1755,6 +1755,111 @@ main.folder-open .controls {
   font-size: 0.62rem;
 }
 
+/* --- Guide card (Help > How to Use SpectreGram, desktop) ------------------- */
+/* Reuses .report-modal / .report-card. The header and footer stay put while
+   the guide body scrolls inside the 666x366 window. */
+
+.guide-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(540px, 94vw);
+  max-height: 92vh;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+  border-color: rgba(255, 122, 61, 0.35);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.65), 0 0 26px rgba(255, 122, 61, 0.16);
+}
+
+.guide-head {
+  flex: 0 0 auto;
+  padding: 13px 18px 0;
+  text-align: center;
+}
+
+.guide-title {
+  margin: 0 0 3px;
+  font-size: 1.02rem;
+  letter-spacing: 0.02em;
+}
+
+.guide-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 18px 4px;
+}
+
+.guide-section {
+  margin: 0 0 11px;
+}
+
+.guide-section h3 {
+  margin: 0 0 3px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.guide-section p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.73rem;
+  line-height: 1.45;
+}
+
+.guide-section strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.guide-keys {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guide-keys li {
+  display: grid;
+  grid-template-columns: 148px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  color: var(--muted);
+  font-size: 0.71rem;
+}
+
+.guide-keys li > span:first-child {
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.guide-keys kbd {
+  display: inline-block;
+  padding: 0 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 0.66rem;
+  color: var(--text);
+}
+
+.guide-foot {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 18px 11px;
+  border-top: 1px solid var(--border);
+}
+
+.guide-foot button {
+  min-width: 64px;
+}
+
 .language-card .report-actions {
   justify-content: flex-end;
 }

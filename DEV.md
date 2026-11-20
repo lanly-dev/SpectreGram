@@ -569,6 +569,15 @@ the Export button and Ctrl/⌘+S do:
 The shell sends `sg:menu-action('advanced-export', checked)` and the renderer
 holds the flag (session-only).
 
+## Guide card
+
+Help › **How to Use SpectreGram** is the first Help item. The shell sends
+`sg:guide`, the preload exposes `onShowGuide`, and the renderer shows
+`#guide-modal` — a scrollable `.report-card` in the About card's haunted style
+whose header and footer stay fixed. It covers Kiroween 2026 / the clean-room
+Spek revival, quick start, the spectrogram and phase overlay, PNG export
+modes, and shortcuts. English-only, like About; nothing is written to disk.
+
 ## About card
 
 Help › About is no longer a native message box. The shell sends `sg:about` and

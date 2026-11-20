@@ -22,6 +22,7 @@ export const MENU_LABELS = {
     help: 'Help',
     language: 'Language',
     about: 'About',
+    guide: 'How to Use SpectreGram',
     audioFiles: 'Audio files',
   },
   es: {
@@ -43,6 +44,7 @@ export const MENU_LABELS = {
     help: 'Ayuda',
     language: 'Idioma',
     about: 'Acerca de',
+    guide: 'Cómo usar SpectreGram',
     audioFiles: 'Archivos de audio',
   },
   fr: {
@@ -64,6 +66,7 @@ export const MENU_LABELS = {
     help: 'Aide',
     language: 'Langue',
     about: 'À propos',
+    guide: 'Comment utiliser SpectreGram',
     audioFiles: 'Fichiers audio',
   },
   de: {
@@ -85,6 +88,7 @@ export const MENU_LABELS = {
     help: 'Hilfe',
     language: 'Sprache',
     about: 'Über',
+    guide: 'SpectreGram verwenden',
     audioFiles: 'Audiodateien',
   },
   zh: {
@@ -106,6 +110,7 @@ export const MENU_LABELS = {
     help: '帮助',
     language: '语言',
     about: '关于',
+    guide: '如何使用 SpectreGram',
     audioFiles: '音频文件',
   },
   ja: {
@@ -127,6 +132,7 @@ export const MENU_LABELS = {
     help: 'ヘルプ',
     language: '言語',
     about: 'SpectreGram について',
+    guide: 'SpectreGram の使い方',
     audioFiles: '音声ファイル',
   },
   ko: {
@@ -148,6 +154,7 @@ export const MENU_LABELS = {
     help: '도움말',
     language: '언어',
     about: '정보',
+    guide: 'SpectreGram 사용 방법',
     audioFiles: '오디오 파일',
   },
   hi: {
@@ -169,6 +176,7 @@ export const MENU_LABELS = {
     help: 'सहायता',
     language: 'भाषा',
     about: 'परिचय',
+    guide: 'SpectreGram का उपयोग कैसे करें',
     audioFiles: 'ऑडियो फ़ाइलें',
   },
   vi: {
@@ -190,6 +198,7 @@ export const MENU_LABELS = {
     help: 'Trợ giúp',
     language: 'Ngôn ngữ',
     about: 'Giới thiệu',
+    guide: 'Cách dùng SpectreGram',
     audioFiles: 'Tệp âm thanh',
   },
   ru: {
@@ -211,6 +220,7 @@ export const MENU_LABELS = {
     help: 'Справка',
     language: 'Язык',
     about: 'О программе',
+    guide: 'Как пользоваться SpectreGram',
     audioFiles: 'Аудиофайлы',
   },
   ar: {
@@ -232,6 +242,7 @@ export const MENU_LABELS = {
     help: 'مساعدة',
     language: 'اللغة',
     about: 'حول',
+    guide: 'كيفية استخدام SpectreGram',
     audioFiles: 'ملفات صوتية',
   },
   halloween: {
@@ -253,6 +264,7 @@ export const MENU_LABELS = {
     help: 'Help',
     language: 'Tongue',
     about: 'About',
+    guide: 'How to Haunt',
     audioFiles: 'Audio souls',
   },
 };

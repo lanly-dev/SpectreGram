@@ -252,5 +252,7 @@ implementation files changed.
 
 - **Dice phrases expanded by 10 (2026-11-20, maintainer's ask):** `HALLOWEEN_PHRASES` in `src/message/phrases.ts` grew 20 → 30 with ten new original Halloween/audio phrases (`🦴 BONE SHAKER 🦴` … `😈 SIX SIX SIX HERTZ 😈`), all short enough for the unchanged 32-grapheme message limit. No behaviour changed; the 🎲 dice now draws from the larger pool. Verified: build ✓, Vitest 10/10 ✓; a grapheme count over the list shows 30 unique phrases, none over 32 characters.
 
+- **How to Use guide (2026-11-20, maintainer's ask):** Help gains **How to Use SpectreGram** as its first item (`menuGuide()` → `sg:guide`; preload `onShowGuide`; renderer `#guide-modal`). The scrollable haunted card covers Kiroween 2026 and the clean-room Spek revival, quick start, the spectrogram/cutoff estimate, the phase overlay, the three PNG export modes and the Advanced Export toggle, plus shortcuts. Menu labels added in all 12 languages; the guide itself is English-only like About. No analysis code or verdict logic changed. Verified: build ✓, Vitest 10/10 ✓, `node --check` on the shell/preload/labels ✓, and the menu smoke prints How to Use SpectreGram first in Help. Not verified in a running window (the card's look/scroll).
+
 ## How we work
 Plan → Work → Assess → Compound. Lessons earned go into this file immediately. Decisions land in Open decisions the same session. This is the smallest, safest entry — its job in the portfolio is to be *finished early and submitted-ready*; resist every urge to grow it.

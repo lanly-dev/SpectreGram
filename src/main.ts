@@ -2712,6 +2712,38 @@ function setupLanguageCard(): void {
   );
 }
 
+/** Desktop Help › How to Use SpectreGram: the shell sends `sg:guide`. */
+function setupGuide(): void {
+  const modal = $('guide-modal');
+  const closeBtn = el<HTMLButtonElement>('guide-close');
+  if (!modal || !closeBtn) return;
+  const body = modal.querySelector<HTMLElement>('.guide-body');
+  const isOpen = (): boolean => !modal.hidden;
+  window.spectregramDesktop?.onShowGuide(() => {
+    modal.hidden = false;
+    if (body) body.scrollTop = 0;
+    closeBtn.focus();
+  });
+  const close = (): void => {
+    modal.hidden = true;
+  };
+  closeBtn.addEventListener('click', close);
+  // Clicking the dimmed backdrop closes it; clicks inside the card don't.
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) close();
+  });
+  // While open the card owns Esc, so it doesn't also reset the zoom.
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      if (!isOpen() || e.key !== 'Escape') return;
+      e.stopImmediatePropagation();
+      close();
+    },
+    { capture: true },
+  );
+}
+
 /** Desktop Help › About: the shell sends `sg:about`; the card is in the DOM. */
 function setupAbout(): void {
   const modal = $('about-modal');
@@ -2766,6 +2798,7 @@ function init(): void {
   setupDbRangeKeys();
   setupMenuActions(setupScreensaver());
   setupAbout();
+  setupGuide();
   setupLanguageCard();
   updateLegend();
   window.addEventListener('beforeunload', () => {

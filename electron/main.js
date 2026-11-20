@@ -445,6 +445,12 @@ function menuExit() {
   app.quit();
 }
 
+// Help > How to Use SpectreGram: same in-renderer card pattern as About, so
+// the field guide wears the app's haunted styling and can scroll.
+function menuGuide() {
+  if (mainWindow) mainWindow.webContents.send('sg:guide');
+}
+
 // Help > Language: the renderer draws the picker card, like About, so the
 // language list wears the app's own styling instead of a native dialog.
 function menuLanguage() {
@@ -561,6 +567,7 @@ function buildMenu() {
     {
       label: menuT('help'),
       submenu: [
+        { label: menuT('guide'), click: menuGuide },
         { label: menuT('language'), click: menuLanguage },
         { label: menuT('about'), click: menuAbout },
       ],

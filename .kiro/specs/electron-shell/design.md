@@ -17,7 +17,7 @@ Everything else is untouched. DevDeps added: `electron`, `electron-builder` (pin
   - Fallback if `app://` misbehaves with the worker: tiny localhost static server in main (127.0.0.1, ephemeral port). Either way, acceptance check F5 is run against the PACKAGED build before calling this done.
 - Single-instance lock; `second-instance` + macOS `open-file` events forward the file path to the renderer via the preload bridge (§2.3) once the window is ready; cold-start file path is held and delivered after `did-finish-load`.
 - Custom native menu (File: Open… / Save / Quit; Help: Language / About / Developer Tools), in addition to OS menu defaults.
-  - *Amended 2026-11-17 (maintainer's ask):* **Developer Tools** moves out of Help into **Options › Development**, next to the other development helpers (Show Screensaver, Show Error Toast, Load Sample Folder), keeping its shortcut (F12; ⌥⌘I on macOS). Help keeps Language / About.
+  - *Amended 2026-11-17 (maintainer's ask):* **Developer Tools** moves out of Help into **Options › Development**, next to the other development helpers (Show Screensaver, Show Error Toast, Load Sample Folder), keeping its shortcut (F12; ⌥⌘I on macOS). Help keeps Language / About, joined by **How to Use SpectreGram** as its first item (amendment below).
 
 ### 2.3 Preload bridges (the only renderer changes)
 ```js
@@ -118,7 +118,16 @@ message-fit error stay English.
 
 The native menu bar is not DOM: the renderer also reports the pick through
 `spectregramDesktop.setLanguage` (`sg:set-language`), and main rebuilds the
-application menu from `electron/menu-labels.js` — 19 labels in the same twelve
+application menu from `electron/menu-labels.js` — 20 labels in the same twelve
 languages — keeping the Options checkbox states. The existing
 `SPECTREGRAM_SMOKE_MENU` harness accepts `SPECTREGRAM_SMOKE_MENU_LANG` to print
 the menu in a chosen language.
+
+## Amendment — How to Use guide (2026-11-20)
+
+Help gains **How to Use SpectreGram** as its first item. `menuGuide()` sends
+`sg:guide`; the preload exposes `onShowGuide`, and the renderer shows
+`#guide-modal`, a scrollable `.report-card` in the About card's haunted style.
+The guide covers Kiroween 2026 and the clean-room Spek revival, quick start,
+the spectrogram and the phase overlay, PNG export modes, and shortcuts. It is
+English-only like About; no analysis code, data or verdict logic changes.

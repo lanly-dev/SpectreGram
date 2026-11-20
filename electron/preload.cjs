@@ -54,6 +54,12 @@ contextBridge.exposeInMainWorld('spectregramDesktop', {
   saveWav: (arrayBuffer, defaultName) => ipcRenderer.invoke('sg:save-wav', arrayBuffer, defaultName),
   /** Folder report: save dialog opened in the scanned folder. Resolves true if saved. */
   saveReport: (text, defaultName) => ipcRenderer.invoke('sg:save-report', text, defaultName),
+  /** Help > How to Use: show the styled in-app guide. Returns an unsubscribe. */
+  onShowGuide: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('sg:guide', listener);
+    return () => ipcRenderer.removeListener('sg:guide', listener);
+  },
   /** Help > About: show the styled in-app About card. Returns an unsubscribe. */
   onShowAbout: (callback) => {
     const listener = () => callback();

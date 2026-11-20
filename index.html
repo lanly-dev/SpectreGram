@@ -414,6 +414,82 @@
       </div>
     </div>
 
+    <!-- Help > How to Use SpectreGram (desktop): the shell sends sg:guide
+           and the renderer draws the field guide in the app's own styling. -->
+    <div id="guide-modal" class="report-modal" role="dialog" aria-modal="true" aria-labelledby="guide-title" hidden>
+      <div class="report-card guide-card">
+        <span class="about-web about-web-left" aria-hidden="true"></span>
+        <span class="about-web about-web-right" aria-hidden="true"></span>
+        <div class="guide-head">
+          <h2 id="guide-title" class="report-title guide-title">
+            <span class="about-ghost" aria-hidden="true">📖</span> How to Use SpectreGram
+          </h2>
+          <p class="report-blurb">A field guide to the crypt.</p>
+        </div>
+        <div class="guide-body" tabindex="0">
+          <section class="guide-section">
+            <h3>🎃 Kiroween &amp; Spek</h3>
+            <p>
+              SpectreGram is a <strong>Kiroween 2026</strong> entry in the Resurrection category: a clean-room
+              desktop revival of <strong>Spek</strong>, the file-era acoustic spectrum analyser. Built spec-first
+              with Kiro, MIT licensed, and local-only — your audio never leaves this machine.
+            </p>
+          </section>
+          <section class="guide-section">
+            <h3>🚪 Quick start</h3>
+            <p>
+              Drop an audio file anywhere in the window, or click the ghost to pick one. Double-click the ghost to
+              open a folder; <strong>Scan</strong> then judges every track inside it.
+            </p>
+          </section>
+          <section class="guide-section">
+            <h3>🔊 The spectrogram</h3>
+            <p>
+              Time runs left to right, frequency bottom to top, and colour is energy — brighter means louder. Lossy
+              encoders often stop before the top of the spectrum, leaving a visible cliff. SpectreGram finds the
+              highest sustained frequency and gives its verdict as an <strong>estimate</strong>: a quiet or
+              deliberately filtered master can fool it.
+            </p>
+          </section>
+          <section class="guide-section">
+            <h3>🌀 Phase view</h3>
+            <p>
+              The <strong>phase button</strong> overlays phase on the same graph: each bin keeps its palette colour
+              for level, while its hue shifts with the bin's phase angle. Phase describes how the waveform cycles
+              line up — steady tones make smooth sweeps, noise turns to confetti. It is a second way to read the
+              audio, not a codec test: the cutoff verdict ignores phase.
+            </p>
+          </section>
+          <section class="guide-section">
+            <h3>🖼️ Export</h3>
+            <p>
+              <strong>Current view</strong> saves exactly what is on screen, zoom included.
+              <strong>Lossless</strong> saves the whole track from the analysis data, optionally split into 1–10
+              stacked parts. <strong>Custom</strong> trades width for detail with a speed setting and stacked
+              parts. Rulers and the dB legend can be toggled per export. With
+              <strong>Options › Advanced Export</strong> off, Export saves the current view immediately.
+            </p>
+          </section>
+          <section class="guide-section">
+            <h3>⌨️ Shortcuts</h3>
+            <ul class="guide-keys">
+              <li><span><kbd>Ctrl</kbd> / <kbd>⌘</kbd> + <kbd>O</kbd></span><span>Open a file</span></li>
+              <li><span><kbd>Ctrl</kbd> / <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>O</kbd></span><span>Open a folder</span></li>
+              <li><span><kbd>Space</kbd></span><span>Play / pause</span></li>
+              <li><span><kbd>Ctrl</kbd> / <kbd>⌘</kbd> + wheel</span><span>Zoom around the pointer</span></li>
+              <li><span>Drag / wheel</span><span>Zoom to a time range / pan</span></li>
+              <li><span>Click the time ruler</span><span>Set the playback cue</span></li>
+              <li><span><kbd>Esc</kbd></span><span>Close a card or reset the zoom</span></li>
+              <li><span><kbd>Ctrl</kbd> / <kbd>⌘</kbd> + <kbd>S</kbd></span><span>Export PNG</span></li>
+            </ul>
+          </section>
+        </div>
+        <div class="guide-foot">
+          <button id="guide-close" type="button">Got it</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Help > About (desktop): the shell sends sg:about and the renderer
            draws the card, so it wears the app's own haunted styling. -->
     <div id="about-modal" class="report-modal" role="dialog" aria-modal="true" aria-labelledby="about-title" hidden>
