@@ -205,11 +205,18 @@ From `.kiro/specs/submission-readiness/tasks.md`:
 | 0 | Precondition (read AGENTS.md) | ✅ Done | — |
 | 1 | B1 resolution | ✅ Done | Already committed in `1fb2f9a` |
 | 2 | Merge PR #1 (halloween-flair) | ✅ Done | Already merged @ `8e6b87e` |
-| 3 | Desktop-only distribution | ✅ Done | Pages workflow removed; no hosted URL claimed |
+| 3 | Desktop-only distribution | ✅ Done* | Pages workflow removed; no hosted URL claimed |
 | 4 | Windows installer + Release | ⏳ Partial | **ON HOLD per maintainer** — installer built, not released |
 | 5 | Real-file calibration | ⏳ Partial | **Needs: genuine FLAC file** for measurement |
 | 6 | Submission drafts | ⏳ Not started | **Needs: five required drafts under `docs/submission/`** |
 | 7 | Final compliance sweep | ⏳ Not started | Depends on tasks 3-6 |
+
+*Task 3's product work is complete. Its review trail has an explicit
+maintainer-authorized exception: `30f01f2`, `17985bb`, `f388d05`, and `a9846b8`
+are already published in `origin/main`. The instruction to preserve the
+existing Pages-investigation documentation and prohibit rewriting or
+force-pushing history takes precedence over consolidating those commits, so the
+split is recorded rather than presented as one compliant task commit.*
 
 **Remaining maintainer actions:**
 1. Lift the Release hold and create v1.0.0 with the Windows installer
