@@ -5,6 +5,27 @@
 
 ## SpectreGram — an x-ray for "lossless" audio files
 
+### Inspiration
+
+In the 2000s, everybody I knew had a music collection they built by hand. We
+ripped our own CDs, traded albums, and burned mixes. A big part of the fun was
+bragging: how many albums you had, how well organized the folders were, and
+above all, how good the quality was. A "lossless" label on a folder was a badge
+of honor.
+
+Then came the doubt. That "FLAC" you downloaded might really be a low-bitrate
+MP3 someone had re-saved — a lossy file wearing a lossless costume. So people
+checked, and the tool I knew was Spek. You opened a file, looked at its
+spectrogram, and watched for a hard cutoff where the sound just stops. I used
+it by hand, file after file.
+
+Then streaming took over. Nobody cares about their collection anymore, and I
+lost my momentum on that long, boring job of checking everything. I kept
+putting it off. I still have plenty left to check.
+
+So I wanted to resurrect it: could a Kiro agent help me build something like
+Spek — and also automate the boring part, and add some fun?
+
 **Resurrection:** the dead technology is file-era audio inspection. Spek was the
 audiophile's x-ray: a desktop tool that showed whether a "lossless" download was
 really a transcoded MP3. Streaming killed the local-library world that needed it.
